@@ -17,7 +17,8 @@
     "lint": "eslint . --ext .ts",
     "test": "vitest",
     "test:ci": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:socket": "tsx scripts/test-socket.ts"
   },
   "dependencies": {
     "axios": "^1.13.6",
@@ -37,8 +38,10 @@
     "@typescript-eslint/parser": "^8.56.1",
     "eslint": "^10.0.2",
     "nodemon": "^3.1.14",
+    "socket.io-client": "^4.8.3",
     "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }
