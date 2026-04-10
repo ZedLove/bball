@@ -1,8 +1,58 @@
 import axios from 'axios';
 import { CONFIG } from '../config/env.ts';
-import type { ScheduleResponse } from './types.ts';
 
-export type { ScheduleResponse };
+/**
+ * Minimal shape of the MLB schedule API response with `hydrate=linescore,team`.
+ * Only the fields we actually read are typed; the rest stays unknown.
+ */
+export interface ScheduleResponse {
+  dates: ScheduleDate[];
+}
+
+export interface ScheduleDate {
+  date: string;
+  games: ScheduleGame[];
+}
+
+export interface ScheduleGame {
+  gamePk: number;
+  status: {
+    detailedState: string;
+    abstractGameState: string;
+  };
+  teams: {
+    away: ScheduleTeamEntry;
+    home: ScheduleTeamEntry;
+  };
+  linescore?: Linescore;
+}
+
+export interface ScheduleTeamEntry {
+  team: {
+    id: number;
+    name: string;
+    abbreviation: string;
+  };
+  score: number;
+  leagueRecord: {
+    wins: number;
+    losses: number;
+  };
+}
+
+export interface Linescore {
+  currentInning: number;
+  currentInningOrdinal: string;
+  inningState: "Top" | "Bottom";
+  scheduledInnings: number;
+  outs: number;
+  balls: number;
+  strikes: number;
+  teams: {
+    home: { runs: number; hits: number; errors: number };
+    away: { runs: number; hits: number; errors: number };
+  };
+}
 
 const MLB_SCHEDULE_ENDPOINT = 'https://statsapi.mlb.com/api/v1/schedule';
 
