@@ -1,11 +1,12 @@
 import { Server as SocketIOServer } from "socket.io";
 import type { Server as HttpServer } from "http";
 import { logger } from "../config/logger.ts";
+import { CONFIG } from "../config/env.ts";
 
 export function attachSocketServer(httpServer: HttpServer): SocketIOServer {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: "*",
+      origin: CONFIG.CORS_ORIGIN,
       methods: ["GET", "POST"],
     },
   });

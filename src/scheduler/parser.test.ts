@@ -1,5 +1,5 @@
 import { parseGameUpdate } from './parser.ts';
-import type { ScheduleResponse, ScheduleGame } from './types.ts';
+import type { ScheduleResponse, ScheduleGame } from './poller.ts';
 
 const NYM_ID = 121;
 const STL_ID = 138;
@@ -44,14 +44,19 @@ function makeSchedule(games: ScheduleGame[]): ScheduleResponse {
 describe('parseGameUpdate', () => {
   describe('when the target team is on defense (home defending, Top of inning)', () => {
     it('returns a GameUpdate for the home team', () => {
-      // Top of inning: away (NYM) is batting, home (STL) is defending
-      // Target = STL (home, defending)
       const schedule = makeSchedule([makeGame()]);
       const result = parseGameUpdate(schedule, STL_ID);
 
       expect(result).not.toBeNull();
       expect(result!.defendingTeam).toBe('STL');
       expect(result!.outs).toBe(1);
+      expect(result!.trackingMode).toBe('outs');
+      expect(result!.outsRemaining).toBe(2);
+      // Top 5th, 1 out: outsRemaining=2, futureHalfInnings=(9-5)=4 → 2 + 12 = 14
+      expect(result!.totalOutsRemaining).toBe(14);
+      expect(result!.runsNeeded).toBeNull();
+      expect(result!.isExtraInnings).toBe(false);
+      expect(result!.scheduledInnings).toBe(9);
       expect(result!.inning).toEqual({
         number: 5,
         half: 'Top',
@@ -66,8 +71,6 @@ describe('parseGameUpdate', () => {
 
   describe('when the target team is batting (not defending)', () => {
     it('returns null for the away team batting in Top of inning', () => {
-      // Top of inning: away (NYM) is batting, not defending
-      // Target = NYM (batting) -> should return null
       const schedule = makeSchedule([makeGame()]);
       const result = parseGameUpdate(schedule, NYM_ID);
 
@@ -77,7 +80,6 @@ describe('parseGameUpdate', () => {
 
   describe('when the target team is on defense (away defending, Bottom of inning)', () => {
     it('returns a GameUpdate for the away team', () => {
-      // Bottom of inning: home (STL) is batting, away (NYM) is defending
       const game = makeGame({
         linescore: {
           currentInning: 5,
@@ -99,7 +101,303 @@ describe('parseGameUpdate', () => {
       expect(result).not.toBeNull();
       expect(result!.defendingTeam).toBe('NYM');
       expect(result!.outs).toBe(2);
+      expect(result!.trackingMode).toBe('outs');
+      expect(result!.outsRemaining).toBe(1);
+      // Bottom 5th, away winning (2-1): futureHalfInnings=(9-5)=4 → 1 + 12 = 13
+      expect(result!.totalOutsRemaining).toBe(13);
       expect(result!.inning.half).toBe('Bottom');
+    });
+  });
+
+  describe('extra innings', () => {
+    it('emits when target team is batting in extras while tied', () => {
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 3,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 3,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 10,
+          currentInningOrdinal: '10th',
+          inningState: 'Top',
+          scheduledInnings: 9,
+          outs: 1,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 3, hits: 6, errors: 0 },
+            away: { runs: 3, hits: 7, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      // NYM is batting (Top), game is extras, score tied → should emit
+      const result = parseGameUpdate(schedule, NYM_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('runs');
+      expect(result!.runsNeeded).toBe(1);
+      expect(result!.outsRemaining).toBeNull();
+      expect(result!.isExtraInnings).toBe(true);
+      expect(result!.scheduledInnings).toBe(9);
+    });
+
+    it('emits when target team is batting in extras while losing', () => {
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 3,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 5,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 11,
+          currentInningOrdinal: '11th',
+          inningState: 'Top',
+          scheduledInnings: 9,
+          outs: 0,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 5, hits: 9, errors: 0 },
+            away: { runs: 3, hits: 7, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      // NYM batting in 11th, losing 3-5 → need 3 runs
+      const result = parseGameUpdate(schedule, NYM_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('runs');
+      expect(result!.runsNeeded).toBe(3);
+      expect(result!.isExtraInnings).toBe(true);
+    });
+
+    it('returns null when target team is batting in extras with a lead', () => {
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 5,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 3,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 10,
+          currentInningOrdinal: '10th',
+          inningState: 'Top',
+          scheduledInnings: 9,
+          outs: 1,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 3, hits: 6, errors: 0 },
+            away: { runs: 5, hits: 9, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      // NYM batting in extras but winning 5-3 → no tracking needed
+      const result = parseGameUpdate(schedule, NYM_ID);
+
+      expect(result).toBeNull();
+    });
+
+    it('tracks outs when defending in extras (totalOutsRemaining is null)', () => {
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 3,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 3,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 10,
+          currentInningOrdinal: '10th',
+          inningState: 'Top',
+          scheduledInnings: 9,
+          outs: 2,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 3, hits: 6, errors: 0 },
+            away: { runs: 3, hits: 7, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      // STL defending (Top), extras → track outs but totalOutsRemaining is null
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('outs');
+      expect(result!.outsRemaining).toBe(1);
+      expect(result!.totalOutsRemaining).toBeNull();
+      expect(result!.isExtraInnings).toBe(true);
+    });
+
+    it('reduces totalOutsRemaining when away is defending and losing (excludes final bottom inning)', () => {
+      // Bottom 5th, away defending, away LOSING (1-2)
+      // futureHalfInnings = (9 - 5 - 1) = 3 (Bottom 9 excluded) → 1 + 9 = 10
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 1,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 2,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 5,
+          currentInningOrdinal: '5th',
+          inningState: 'Bottom',
+          scheduledInnings: 9,
+          outs: 2,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 2, hits: 4, errors: 0 },
+            away: { runs: 1, hits: 3, errors: 1 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, NYM_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.outsRemaining).toBe(1);
+      expect(result!.totalOutsRemaining).toBe(10);
+    });
+
+    it('totalOutsRemaining collapses to outsRemaining in the bottom of the final scheduled inning', () => {
+      // Bottom 9th, away defending, away winning (5-3): no future half-innings → totalOutsRemaining = outsRemaining
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 5,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 3,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 9,
+          currentInningOrdinal: '9th',
+          inningState: 'Bottom',
+          scheduledInnings: 9,
+          outs: 1,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 3, hits: 6, errors: 0 },
+            away: { runs: 5, hits: 9, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, NYM_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.outsRemaining).toBe(2);
+      expect(result!.totalOutsRemaining).toBe(2);
+    });
+
+    it('returns null when batting in regulation (not extras)', () => {
+      // Bottom of 7th, STL batting → not extras, should return null
+      const game = makeGame({
+        linescore: {
+          currentInning: 7,
+          currentInningOrdinal: '7th',
+          inningState: 'Bottom',
+          scheduledInnings: 9,
+          outs: 1,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 1, hits: 3, errors: 0 },
+            away: { runs: 2, hits: 5, errors: 1 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).toBeNull();
+    });
+
+    it('handles home team batting in bottom of extras while tied', () => {
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 4,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 4,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 12,
+          currentInningOrdinal: '12th',
+          inningState: 'Bottom',
+          scheduledInnings: 9,
+          outs: 0,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 4, hits: 8, errors: 0 },
+            away: { runs: 4, hits: 7, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      // STL batting (Bottom), extras, tied → track runs
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('runs');
+      expect(result!.runsNeeded).toBe(1);
+      expect(result!.isExtraInnings).toBe(true);
+      expect(result!.inning.half).toBe('Bottom');
+      expect(result!.inning.number).toBe(12);
     });
   });
 
@@ -156,6 +454,9 @@ describe('parseGameUpdate', () => {
 
       expect(result).not.toBeNull();
       expect(result!.outs).toBe(0);
+      expect(result!.outsRemaining).toBe(3);
+      // Top 5th, 0 outs, home defending: 3 + (9-5)*3 = 15
+      expect(result!.totalOutsRemaining).toBe(15);
     });
 
     it('picks the correct game when multiple games exist', () => {
@@ -169,6 +470,8 @@ describe('parseGameUpdate', () => {
       const result = parseGameUpdate(schedule, STL_ID);
       expect(result).not.toBeNull();
       expect(result!.defendingTeam).toBe('STL');
+      // Top 5th, 1 out, home defending: 2 + (9-5)*3 = 14
+      expect(result!.totalOutsRemaining).toBe(14);
     });
   });
 });

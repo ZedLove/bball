@@ -3,12 +3,13 @@ import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { healthRouter } from "../routes/health.ts";
 import { logger } from "../config/logger.ts";
+import { CONFIG } from "../config/env.ts";
 
 export function createApp(): express.Application {
   const app = express();
 
   // ----- Global middlewares -------------------------------------------------
-  app.use(cors({ origin: "*", methods: ["GET", "POST"] }));
+  app.use(cors({ origin: CONFIG.CORS_ORIGIN, methods: ["GET", "POST"] }));
   app.use(express.json());
 
   // ----- Routes -------------------------------------------------------------

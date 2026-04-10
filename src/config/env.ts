@@ -5,11 +5,12 @@ dotenv.config();
 
 const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
+  CORS_ORIGIN: z.string().default("*"),
 
   // MLB scheduler settings
   TEAM_ID: z.coerce.number().int().positive(),
   IDLE_POLL_INTERVAL: z.coerce.number().int().positive().default(60),
-  ACTIVE_POLL_INTERVAL: z.coerce.number().int().positive().default(30),
+  ACTIVE_POLL_INTERVAL: z.coerce.number().int().positive().default(10),
   MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
   RETRY_BACKOFF_MS: z.coerce.number().int().nonnegative().default(500),
 });
@@ -18,6 +19,7 @@ const _env = EnvSchema.parse(process.env);
 
 export const CONFIG = {
   PORT: _env.PORT,
+  CORS_ORIGIN: _env.CORS_ORIGIN,
 
   /** MLB team ID – see https://statsapi.mlb.com/api/v1/teams */
   TEAM_ID: _env.TEAM_ID,
