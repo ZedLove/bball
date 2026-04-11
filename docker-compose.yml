@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  bball:
+    build: .
+    container_name: bball
+    ports:
+      - '4000:4000'
+    environment:
+      NODE_ENV: production
+      TEAM_ID: ${TEAM_ID:-141}
+      PORT: 4000
+      IDLE_POLL_INTERVAL: ${IDLE_POLL_INTERVAL:-60}
+      ACTIVE_POLL_INTERVAL: ${ACTIVE_POLL_INTERVAL:-10}
+      BATTING_POLL_INTERVAL: ${BATTING_POLL_INTERVAL:-30}
+      MAX_RETRIES: ${MAX_RETRIES:-3}
+      RETRY_BACKOFF_MS: ${RETRY_BACKOFF_MS:-500}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--quiet',
+          '--tries=1',
+          '--spider',
+          'http://localhost:4000/health',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # Optional: volume for logs in production
+    # volumes:
+    #   - ./logs:/app/logs

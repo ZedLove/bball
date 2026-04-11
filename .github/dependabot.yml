@@ -1,0 +1,38 @@
+version: 2
+updates:
+  # npm dependencies
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '03:00'
+    open-pull-requests-limit: 5
+    reviewers:
+      - ZedLove
+    labels:
+      - dependencies
+    commit-message:
+      prefix: 'deps:'
+      include: 'scope'
+    groups:
+      dev-dependencies:
+        dependency-type: dev
+        update-types:
+          - minor
+          - patch
+      major-updates:
+        update-types:
+          - major
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '03:30'
+    labels:
+      - ci
+    commit-message:
+      prefix: 'ci:'
