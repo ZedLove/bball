@@ -444,13 +444,16 @@ describe('parseGameUpdate', () => {
       expect(parseGameUpdate(schedule, STL_ID)).toBeNull();
     });
 
-    it('returns null when game status is Final', () => {
+    it('returns final mode when game status is Final', () => {
       const game = makeGame({
         status: { detailedState: 'Final', abstractGameState: 'Final' },
       });
       const schedule = makeSchedule([game]);
 
-      expect(parseGameUpdate(schedule, STL_ID)).toBeNull();
+      const result = parseGameUpdate(schedule, STL_ID);
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('final');
+      expect(result!.gameStatus).toBe('Final');
     });
 
     it('returns null when linescore is missing', () => {
@@ -661,6 +664,125 @@ describe('parseGameUpdate', () => {
 
       expect(result).not.toBeNull();
       expect(result!.pitchingChange).toBe(false);
+    });
+  });
+
+  describe('final game detection', () => {
+    it('returns final mode when game is Final', () => {
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 2,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 4,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        status: { detailedState: 'Final', abstractGameState: 'Final' },
+        linescore: {
+          currentInning: 9,
+          currentInningOrdinal: '9th',
+          inningState: 'Bottom',
+          scheduledInnings: 9,
+          outs: 2,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 4, hits: 8, errors: 0 },
+            away: { runs: 2, hits: 5, errors: 1 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('final');
+      expect(result!.gameStatus).toBe('Final');
+      expect(result!.score).toEqual({ away: 2, home: 4 });
+      expect(result!.inning.half).toBe('Bottom');
+      expect(result!.isExtraInnings).toBe(false);
+    });
+
+    it('returns final mode even when game ends between innings', () => {
+      // If API sends Final with a between-innings state, still emit final mode
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 3,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 3,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        status: { detailedState: 'Final', abstractGameState: 'Final' },
+        linescore: {
+          currentInning: 9,
+          currentInningOrdinal: '9th',
+          inningState: 'End',
+          scheduledInnings: 9,
+          outs: 3,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 3, hits: 7, errors: 0 },
+            away: { runs: 3, hits: 6, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, NYM_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('final');
+      // Should still have inning info for context
+      expect(result!.inning.half).toBe('End');
+    });
+
+    it('returns final mode for extra innings game that ends', () => {
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 4,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            score: 5,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        status: { detailedState: 'Final', abstractGameState: 'Final' },
+        linescore: {
+          currentInning: 11,
+          currentInningOrdinal: '11th',
+          inningState: 'Top',
+          scheduledInnings: 9,
+          outs: 1,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 5, hits: 10, errors: 0 },
+            away: { runs: 4, hits: 9, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('final');
+      expect(result!.isExtraInnings).toBe(true);
+      expect(result!.scheduledInnings).toBe(9);
     });
   });
 });

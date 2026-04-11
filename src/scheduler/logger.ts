@@ -48,6 +48,12 @@ export function logUpdate(update: GameUpdate): void {
       pitcherStr,
       delayPrefix,
     );
+  } else if (update.trackingMode === 'final') {
+    logger.info(
+      'Game Final | %s | %s [FINAL]',
+      inningLine,
+      scoreLine,
+    );
   } else {
     logger.info(
       '%s batting | %s | %s%s',

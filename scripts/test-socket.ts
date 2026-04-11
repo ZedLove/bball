@@ -67,6 +67,8 @@ socket.on('game-update', (update) => {
   } else if (trackingMode === 'between-innings') {
     const breakStr = inningBreakLength != null ? ` (${inningBreakLength}s break)` : '';
     console.log(`   ⏸️  Between innings${breakStr}\n`);
+  } else if (trackingMode === 'final') {
+    console.log(`   🏁 Game Final\n`);
   } else {
     console.log(`   🏏 ${battingTeam} batting\n`);
   }

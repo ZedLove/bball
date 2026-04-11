@@ -70,7 +70,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     // Transition-only modes: emit once when entering, then stay quiet until the mode changes.
     // 'outs' and 'runs' emit every tick because their values change continuously.
     const isTransitionMode = (mode: GameUpdate['trackingMode']) =>
-      mode === 'batting' || mode === 'between-innings';
+      mode === 'batting' || mode === 'between-innings' || mode === 'final';
 
     const shouldEmit =
       update !== null &&
@@ -89,10 +89,12 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         ? CONFIG.IDLE_POLL_INTERVAL
         : update.isDelayed
           ? CONFIG.IDLE_POLL_INTERVAL
-          : update.trackingMode === 'between-innings'
-            ? (update.inningBreakLength ?? 120) + CONFIG.BETWEEN_INNINGS_BUFFER_S
-            : update.trackingMode === 'batting'
-              ? CONFIG.BATTING_POLL_INTERVAL
+          : update.trackingMode === 'final'
+            ? CONFIG.IDLE_POLL_INTERVAL
+            : update.trackingMode === 'between-innings'
+              ? (update.inningBreakLength ?? 120) + CONFIG.BETWEEN_INNINGS_BUFFER_S
+              : update.trackingMode === 'batting'
+                ? CONFIG.BATTING_POLL_INTERVAL
               : CONFIG.ACTIVE_POLL_INTERVAL;
 
     logger.info(`Next tick in ${intervalSec}s`);

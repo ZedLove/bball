@@ -34,8 +34,9 @@ export interface GameUpdate {
    * 'runs'           – target team is batting in extras while tied/losing; show runsNeeded.
    * 'batting'        – target team is batting in regulation; emitted once on transition.
    * 'between-innings'– half-inning just ended; emitted once, scheduler sleeps for inningBreakLength.
+   * 'final'          – game has ended; emitted once, scheduler transitions to idle polling.
    */
-  trackingMode: "outs" | "runs" | "batting" | "between-innings";
+  trackingMode: "outs" | "runs" | "batting" | "between-innings" | "final";
   /** 3 − current outs when defending, null otherwise */
   outsRemaining: number | null;
   /**
@@ -82,11 +83,12 @@ function isDelayedState(detailedState: string): boolean {
  *   - null (no game, game not in valid state, or nothing to track)
  *
  * Tracking rules:
- *   1. Between half-innings (Middle/End) → trackingMode 'between-innings', emitted once
- *   2. Target team is on defense → trackingMode 'outs' (any inning)
- *   3. Target team is batting in extra innings while tied or losing → trackingMode 'runs'
- *   4. Target team is batting in regulation → trackingMode 'batting', emitted once on transition
- *   5. Game is delayed → isDelayed: true on any update
+ *   1. Game is Final → trackingMode 'final', emitted once
+ *   2. Between half-innings (Middle/End) → trackingMode 'between-innings', emitted once
+ *   3. Target team is on defense → trackingMode 'outs' (any inning)
+ *   4. Target team is batting in extra innings while tied or losing → trackingMode 'runs'
+ *   5. Target team is batting in regulation → trackingMode 'batting', emitted once on transition
+ *   6. Game is delayed → isDelayed: true on any update
  */
 export function parseGameUpdate(
   schedule: ScheduleResponse,
@@ -104,10 +106,11 @@ export function parseGameUpdate(
 
   const detailedState = game.status?.detailedState ?? '';
   const isInProgress = detailedState === 'In Progress';
+  const isFinal = detailedState === 'Final';
   const isDelayed = isDelayedState(detailedState);
 
-  // Only process live and delayed games; ignore Final, Pre-Game, etc.
-  if (!isInProgress && !isDelayed) return null;
+  // Only process live, delayed, and final games; ignore Pre-Game, Scheduled, etc.
+  if (!isInProgress && !isDelayed && !isFinal) return null;
 
   const linescore = game.linescore;
   if (!linescore) return null;
@@ -133,7 +136,9 @@ export function parseGameUpdate(
   let runsNeeded: number | null = null;
   let inningBreakLength: number | null = null;
 
-  if (isBetweenInnings) {
+  if (isFinal) {
+    trackingMode = 'final';
+  } else if (isBetweenInnings) {
     trackingMode = 'between-innings';
     inningBreakLength = game.inningBreakLength ?? 120;
   } else if (defendingEntry.team.id === targetTeamId) {
