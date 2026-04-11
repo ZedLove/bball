@@ -1,0 +1,78 @@
+import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { SimulationState } from '../types.ts';
+
+/**
+ * Construct a complete GameUpdate payload from the current simulation state.
+ *
+ * @param state       Current simulation state.
+ * @param trackingMode  Explicit tracking mode for this emission.
+ * @param overrides   Optional field overrides applied last (e.g. pitchingChange: true).
+ */
+export function buildPayload(
+  state: SimulationState,
+  trackingMode: GameUpdate['trackingMode'],
+  overrides?: Partial<GameUpdate>,
+): GameUpdate {
+  const defending =
+    state.inning.half === 'Top' ? state.teams.home.abbreviation : state.teams.away.abbreviation;
+  const batting =
+    state.inning.half === 'Top' ? state.teams.away.abbreviation : state.teams.home.abbreviation;
+
+  const isExtraInnings = state.inning.number > state.scheduledInnings;
+
+  // Use 'End' for the half field during a between-innings transition to match the real API.
+  const half: GameUpdate['inning']['half'] =
+    trackingMode === 'between-innings' ? 'End' : state.inning.half;
+
+  const outsRemaining = trackingMode === 'outs' ? 3 - state.outs : null;
+  const totalOutsRemaining =
+    trackingMode === 'outs' || trackingMode === 'batting'
+      ? computeTotalOutsRemaining(state)
+      : null;
+  const runsNeeded = trackingMode === 'runs' ? computeRunsNeeded(state) : null;
+
+  const base: GameUpdate = {
+    gameStatus: state.gameEnded ? 'Final' : 'In Progress',
+    teams: {
+      away: { ...state.teams.away },
+      home: { ...state.teams.home },
+    },
+    score: { ...state.score },
+    inning: {
+      number: state.inning.number,
+      half,
+      ordinal: state.inning.ordinal,
+    },
+    outs: state.outs,
+    defendingTeam: defending,
+    battingTeam: batting,
+    isDelayed: state.isDelayed,
+    delayDescription: state.delayDescription,
+    isExtraInnings,
+    scheduledInnings: state.scheduledInnings,
+    currentPitcher: state.currentPitcher ? { ...state.currentPitcher } : null,
+    pitchingChange: false,
+    trackingMode,
+    outsRemaining,
+    totalOutsRemaining,
+    runsNeeded,
+    inningBreakLength: trackingMode === 'between-innings' ? 120 : null,
+  };
+
+  return overrides ? { ...base, ...overrides } : base;
+}
+
+function computeTotalOutsRemaining(state: SimulationState): number | null {
+  if (state.inning.number > state.scheduledInnings) return null;
+  const remainingInnings = state.scheduledInnings - state.inning.number;
+  return 3 - state.outs + remainingInnings * 3;
+}
+
+function computeRunsNeeded(state: SimulationState): number {
+  const battingKey = state.inning.half === 'Top' ? 'away' : 'home';
+  const defendingKey = battingKey === 'away' ? 'home' : 'away';
+  const battingScore = state.score[battingKey];
+  const defendingScore = state.score[defendingKey];
+  if (battingScore >= defendingScore) return 1;
+  return defendingScore - battingScore + 1;
+}

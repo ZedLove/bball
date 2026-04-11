@@ -23,6 +23,9 @@ const EnvSchema = z.object({
 
 const _env = EnvSchema.parse(process.env);
 
+/** True when DEV_MODE=true is set – disables real polling, activates the dev simulator. */
+const DEV_MODE = process.env.DEV_MODE === 'true';
+
 function resolveTeamId(): number {
   const abbrev = process.env.TEAM?.toUpperCase();
   if (abbrev) {
@@ -47,8 +50,11 @@ export const CONFIG = {
   PORT: _env.PORT,
   CORS_ORIGIN: _env.CORS_ORIGIN,
 
+  /** When true, real MLB polling is disabled and the dev event simulator runs instead. */
+  DEV_MODE,
+
   /** MLB team ID – resolved from TEAM abbreviation or TEAM_ID env var */
-  TEAM_ID: resolveTeamId(),
+  TEAM_ID: DEV_MODE ? 0 : resolveTeamId(),
   /** Seconds between polls when no game is in progress */
   IDLE_POLL_INTERVAL: _env.IDLE_POLL_INTERVAL,
   /** Seconds between polls during an active game */

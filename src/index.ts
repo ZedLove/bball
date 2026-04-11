@@ -2,17 +2,23 @@ import { CONFIG } from './config/env.ts';
 import { createHttpServer } from './server/http-server.ts';
 import { startScheduler } from './scheduler/mlb-scheduler.ts';
 import { registerConnectionHandlers } from './server/socket.ts';
+import { startDevSimulator } from './dev/dev-simulator.ts';
 import { logger } from './config/logger.ts';
 
 async function main() {
   const { httpServer, io } = createHttpServer();
 
-  const scheduler = startScheduler(io);
-  logger.info('Scheduler started');
+  let stopScheduler: (() => void) | null = null;
 
-  // Register Socket.IO connection handlers after scheduler is available
-  // so newly connected clients receive the last known game state immediately.
-  registerConnectionHandlers(io, scheduler);
+  if (CONFIG.DEV_MODE) {
+    logger.info('🎮  Dev mode – real polling disabled, interactive simulator active');
+    startDevSimulator(io);
+  } else {
+    const scheduler = startScheduler(io);
+    logger.info('Scheduler started');
+    registerConnectionHandlers(io, scheduler);
+    stopScheduler = () => scheduler.stop();
+  }
 
   httpServer.listen(CONFIG.PORT, () => {
     logger.info('Server listening on http://localhost:%d', CONFIG.PORT);
@@ -20,7 +26,7 @@ async function main() {
 
   const shutdown = () => {
     logger.info('Shutting down...');
-    scheduler.stop();
+    stopScheduler?.();
     io.close();
     httpServer.close(() => {
       logger.info('Server closed');
