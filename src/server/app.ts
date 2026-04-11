@@ -18,15 +18,13 @@ export function createApp(): express.Application {
 
   // ----- 404 handler --------------------------------------------------------
   app.use((_req: Request, _res: Response, next: NextFunction) => {
-    const err = new Error('Not Found');
-    // @ts-ignore – we add a status property for the error‑handler below
-    (err as any).status = 404;
+    const err = new Error('Not Found') as Error & { status?: number };
+    err.status = 404;
     next(err);
   });
 
   // ----- Central error handler ----------------------------------------------
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || 500;
     logger.error('❗  %s – %s', err.message, err.stack);
     res.status(status).json({

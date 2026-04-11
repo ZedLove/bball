@@ -42,7 +42,7 @@ export function logUpdate(update: GameUpdate): void {
     );
   } else if (update.trackingMode === 'between-innings') {
     const breakStr =
-      update.inningBreakLength != null
+      update.inningBreakLength !== null
         ? ` (${update.inningBreakLength}s break)`
         : '';
     const pitcherStr = update.currentPitcher
