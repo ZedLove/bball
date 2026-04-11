@@ -1,6 +1,7 @@
 import { CONFIG } from "./config/env.ts";
 import { createHttpServer } from "./server/http-server.ts";
 import { startScheduler } from "./scheduler/mlb-scheduler.ts";
+import { registerConnectionHandlers } from "./server/socket.ts";
 import { logger } from "./config/logger.ts";
 
 async function main() {
@@ -8,6 +9,10 @@ async function main() {
 
   const scheduler = startScheduler(io);
   logger.info("Scheduler started");
+
+  // Register Socket.IO connection handlers after scheduler is available
+  // so newly connected clients receive the last known game state immediately.
+  registerConnectionHandlers(io, scheduler);
 
   httpServer.listen(CONFIG.PORT, () => {
     logger.info("Server listening on http://localhost:%d", CONFIG.PORT);
