@@ -10,23 +10,18 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** One tick – fetch, parse, emit. Returns the update (or null) so callers can determine game state. */
-async function tick(io: SocketIOServer): Promise<GameUpdate | null> {
+/** Fetch and parse the current game state, with retry logic. */
+async function fetchUpdate(): Promise<GameUpdate | null> {
   let attempt = 0;
   while (attempt <= CONFIG.MAX_RETRIES) {
     try {
       const schedule = await fetchSchedule();
-      const update = parseGameUpdate(schedule, CONFIG.TEAM_ID);
-      if (update) {
-        logUpdate(update);
-        io.emit('game-update', update);
-      }
-      return update;
+      return parseGameUpdate(schedule, CONFIG.TEAM_ID);
     } catch (err) {
       attempt++;
       const backoff = CONFIG.RETRY_BACKOFF_MS * 2 ** (attempt - 1);
       logger.error(
-        `Tick failed (attempt ${attempt}/${CONFIG.MAX_RETRIES}) – %s`,
+        `Fetch failed (attempt ${attempt}/${CONFIG.MAX_RETRIES}) – %s`,
         err,
       );
       if (attempt > CONFIG.MAX_RETRIES) {
@@ -42,22 +37,63 @@ async function tick(io: SocketIOServer): Promise<GameUpdate | null> {
 
 export interface Scheduler {
   stop(): void;
+  /** Last game update that was emitted, or null if none yet. Used to replay state to newly connected clients. */
+  getLastUpdate(): GameUpdate | null;
 }
 
 export function startScheduler(io: SocketIOServer): Scheduler {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
+  let lastTrackingMode: GameUpdate['trackingMode'] | null = null;
+  let lastEmittedUpdate: GameUpdate | null = null;
+  let lastPitcherId: number | null = null;
 
   const loop = async () => {
     if (stopped) return;
 
-    const update = await tick(io);
+    const rawUpdate = await fetchUpdate();
 
     if (stopped) return;
 
-    const intervalSec = update
-      ? CONFIG.ACTIVE_POLL_INTERVAL
-      : CONFIG.IDLE_POLL_INTERVAL;
+    // Detect pitching changes by comparing the incoming pitcher ID to the last known one.
+    // The parser always sets pitchingChange: false; we override it here if a change occurred.
+    let update = rawUpdate;
+    if (update?.currentPitcher) {
+      const pitcher = update.currentPitcher;
+      const pitchingChange = lastPitcherId !== null && pitcher.id !== lastPitcherId;
+      if (pitchingChange) {
+        update = { ...update, pitchingChange: true };
+      }
+      lastPitcherId = pitcher.id;
+    }
+
+    // Transition-only modes: emit once when entering, then stay quiet until the mode changes.
+    // 'outs' and 'runs' emit every tick because their values change continuously.
+    const isTransitionMode = (mode: GameUpdate['trackingMode']) =>
+      mode === 'batting' || mode === 'between-innings';
+
+    const shouldEmit =
+      update !== null &&
+      (!isTransitionMode(update.trackingMode) || lastTrackingMode !== update.trackingMode);
+
+    if (shouldEmit && update !== null) {
+      logUpdate(update);
+      io.emit('game-update', update);
+      lastEmittedUpdate = update;
+    }
+
+    lastTrackingMode = update?.trackingMode ?? null;
+
+    const intervalSec =
+      update === null
+        ? CONFIG.IDLE_POLL_INTERVAL
+        : update.isDelayed
+          ? CONFIG.IDLE_POLL_INTERVAL
+          : update.trackingMode === 'between-innings'
+            ? (update.inningBreakLength ?? 120) + CONFIG.BETWEEN_INNINGS_BUFFER_S
+            : update.trackingMode === 'batting'
+              ? CONFIG.BATTING_POLL_INTERVAL
+              : CONFIG.ACTIVE_POLL_INTERVAL;
 
     logger.info(`Next tick in ${intervalSec}s`);
     timer = setTimeout(() => {
@@ -80,6 +116,9 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         timer = null;
       }
       logger.info('Scheduler stopped');
+    },
+    getLastUpdate() {
+      return lastEmittedUpdate;
     },
   };
 }

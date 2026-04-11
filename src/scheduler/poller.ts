@@ -24,6 +24,8 @@ export interface ScheduleGame {
     away: ScheduleTeamEntry;
     home: ScheduleTeamEntry;
   };
+  /** Standard between-half-inning break duration in seconds (usually 120). May be absent for older games. */
+  inningBreakLength?: number;
   linescore?: Linescore;
 }
 
@@ -43,7 +45,13 @@ export interface ScheduleTeamEntry {
 export interface Linescore {
   currentInning: number;
   currentInningOrdinal: string;
-  inningState: "Top" | "Bottom";
+  /**
+   * 'Top'    – away batting, home defending
+   * 'Middle' – between Top and Bottom (after top 3rd out)
+   * 'Bottom' – home batting, away defending
+   * 'End'    – between Bottom and next Top (after bottom 3rd out)
+   */
+  inningState: "Top" | "Middle" | "Bottom" | "End";
   scheduledInnings: number;
   outs: number;
   balls: number;
@@ -51,6 +59,9 @@ export interface Linescore {
   teams: {
     home: { runs: number; hits: number; errors: number };
     away: { runs: number; hits: number; errors: number };
+  };
+  defense?: {
+    pitcher: { id: number; fullName: string };
   };
 }
 

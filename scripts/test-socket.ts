@@ -34,25 +34,41 @@ socket.on('game-update', (update) => {
     inning,
     outs,
     defendingTeam,
+    battingTeam,
     trackingMode,
     outsRemaining,
+    totalOutsRemaining,
     runsNeeded,
     isExtraInnings,
+    isDelayed,
+    delayDescription,
+    currentPitcher,
+    pitchingChange,
+    inningBreakLength,
   } = update;
 
   const scoreStr = `${teams.away.abbreviation} ${score.away} – ${teams.home.abbreviation} ${score.home}`;
   const inningStr = `${inning.half} ${inning.ordinal}${isExtraInnings ? ' [EXTRAS]' : ''}`;
+  const totalStr = totalOutsRemaining !== null ? ` - ${totalOutsRemaining} outs remaining` : '';
+  const delayStr = isDelayed ? ` ⚠️  ${delayDescription ?? 'Delayed'}` : '';
 
-  console.log(`⚾ ${scoreStr} | ${inningStr}`);
+  console.log(`⚾ ${scoreStr} | ${inningStr}${totalStr}${delayStr}`);
 
   if (trackingMode === 'outs') {
+    const pitcherStr = currentPitcher ? ` | P: ${currentPitcher.fullName}` : '';
+    const changeStr = pitchingChange ? ' 🔄 PITCHING CHANGE' : '';
     console.log(
-      `   🛡️  ${defendingTeam} defending | Outs: ${outs} (${outsRemaining} remaining)\n`
+      `   🛡️  ${defendingTeam} defending | Outs: ${outs} (${outsRemaining} remaining)${pitcherStr}${changeStr}\n`
     );
+  } else if (trackingMode === 'runs') {
+    console.log(
+      `   🏃 ${battingTeam} batting (extras) | Need ${runsNeeded} run${runsNeeded !== 1 ? 's' : ''} to take the lead\n`
+    );
+  } else if (trackingMode === 'between-innings') {
+    const breakStr = inningBreakLength != null ? ` (${inningBreakLength}s break)` : '';
+    console.log(`   ⏸️  Between innings${breakStr}\n`);
   } else {
-    console.log(
-      `   🏃 Batting | Need ${runsNeeded} run${runsNeeded !== 1 ? 's' : ''} to take the lead\n`
-    );
+    console.log(`   🏏 ${battingTeam} batting\n`);
   }
 });
 

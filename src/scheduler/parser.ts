@@ -13,21 +13,29 @@ export interface GameUpdate {
   };
   inning: {
     number: number;
-    half: "Top" | "Bottom";
+    half: "Top" | "Middle" | "Bottom" | "End";
     ordinal: string;
   };
   outs: number;
-  /** Abbreviation of the team currently on defense */
+  /** Abbreviation of the team currently on defense (or defending next, during between-innings) */
   defendingTeam: string;
+  /** Abbreviation of the team currently batting (or batting next, during between-innings) */
+  battingTeam: string;
+  /** true when the game is paused due to a rain delay, suspension, or similar */
+  isDelayed: boolean;
+  /** Human-readable delay reason from the API (e.g. "Delayed: Rain"), null when not delayed */
+  delayDescription: string | null;
   /** true when the current inning exceeds scheduledInnings */
   isExtraInnings: boolean;
   /** Number of innings originally scheduled (usually 9) */
   scheduledInnings: number;
   /**
-   * 'outs' – target team is defending; frontend should show outsRemaining.
-   * 'runs' – target team is batting in extras while tied/losing; show runsNeeded.
+   * 'outs'           – target team is defending; show outsRemaining.
+   * 'runs'           – target team is batting in extras while tied/losing; show runsNeeded.
+   * 'batting'        – target team is batting in regulation; emitted once on transition.
+   * 'between-innings'– half-inning just ended; emitted once, scheduler sleeps for inningBreakLength.
    */
-  trackingMode: "outs" | "runs";
+  trackingMode: "outs" | "runs" | "batting" | "between-innings";
   /** 3 − current outs when defending, null otherwise */
   outsRemaining: number | null;
   /**
@@ -40,6 +48,20 @@ export interface GameUpdate {
   totalOutsRemaining: number | null;
   /** Runs needed for the lead when batting in extras, null otherwise */
   runsNeeded: number | null;
+  /** Current pitcher on the field. null when unavailable or not defending. */
+  currentPitcher: { id: number; fullName: string } | null;
+  /**
+   * true when the pitcher changed since the last emitted update.
+   * Always false from the parser — the scheduler sets this to true when it
+   * detects a change by comparing successive pitcher IDs.
+   */
+  pitchingChange: boolean;
+  /**
+   * Between-inning break duration in seconds as reported by the API (usually 120).
+   * Only set when trackingMode === 'between-innings', null otherwise.
+   * The scheduler uses this (plus a configurable buffer) as its sleep interval.
+   */
+  inningBreakLength: number | null;
 }
 
 export interface TeamInfo {
@@ -48,15 +70,23 @@ export interface TeamInfo {
   abbreviation: string;
 }
 
+/** detailedState values the API uses when the game is paused mid-game */
+function isDelayedState(detailedState: string): boolean {
+  return detailedState.toLowerCase().includes('delay') ||
+    detailedState === 'Suspended';
+}
+
 /**
  * Walks through the schedule response and returns either:
  *   - a GameUpdate when the target team should be tracked, or
- *   - null (no game, game not in progress, or nothing to track)
+ *   - null (no game, game not in valid state, or nothing to track)
  *
  * Tracking rules:
- *   1. Target team is on defense → trackingMode 'outs' (any inning)
- *   2. Target team is batting in extra innings while tied or losing → trackingMode 'runs'
- *   3. Otherwise → null (target team batting in regulation, or batting in extras with a lead)
+ *   1. Between half-innings (Middle/End) → trackingMode 'between-innings', emitted once
+ *   2. Target team is on defense → trackingMode 'outs' (any inning)
+ *   3. Target team is batting in extra innings while tied or losing → trackingMode 'runs'
+ *   4. Target team is batting in regulation → trackingMode 'batting', emitted once on transition
+ *   5. Game is delayed → isDelayed: true on any update
  */
 export function parseGameUpdate(
   schedule: ScheduleResponse,
@@ -72,53 +102,64 @@ export function parseGameUpdate(
   );
   if (!game) return null;
 
-  if (game.status?.detailedState !== 'In Progress') return null;
+  const detailedState = game.status?.detailedState ?? '';
+  const isInProgress = detailedState === 'In Progress';
+  const isDelayed = isDelayedState(detailedState);
+
+  // Only process live and delayed games; ignore Final, Pre-Game, etc.
+  if (!isInProgress && !isDelayed) return null;
 
   const linescore = game.linescore;
   if (!linescore) return null;
 
-  const isHomeDefending = linescore.inningState === 'Top';
-  const defendingEntry = isHomeDefending ? game.teams.home : game.teams.away;
-  const battingEntry = isHomeDefending ? game.teams.away : game.teams.home;
+  const state = linescore.inningState;
+  const isBetweenInnings = state === 'Middle' || state === 'End';
+
+  // Determine defending/batting entries for all 4 inning states.
+  //   Top    – away batting,  home defending
+  //   Middle – home bats next (Bottom starting), away defends next
+  //   Bottom – home batting,  away defending
+  //   End    – away bats next (Top starting),  home defends next
+  const homeBatting = state === 'Bottom' || state === 'Middle';
+  const battingEntry  = homeBatting ? game.teams.home : game.teams.away;
+  const defendingEntry = homeBatting ? game.teams.away : game.teams.home;
 
   const isExtraInnings = linescore.currentInning > linescore.scheduledInnings;
-  const targetIsDefending = defendingEntry.team.id === targetTeamId;
-  const targetIsBatting = battingEntry.team.id === targetTeamId;
+  const currentPitcher = linescore.defense?.pitcher ?? null;
 
-  // Determine whether we should emit an update and which tracking mode to use
-  let trackingMode: 'outs' | 'runs';
+  let trackingMode: GameUpdate['trackingMode'];
   let outsRemaining: number | null = null;
   let totalOutsRemaining: number | null = null;
   let runsNeeded: number | null = null;
+  let inningBreakLength: number | null = null;
 
-  if (targetIsDefending) {
+  if (isBetweenInnings) {
+    trackingMode = 'between-innings';
+    inningBreakLength = game.inningBreakLength ?? 120;
+  } else if (defendingEntry.team.id === targetTeamId) {
     trackingMode = 'outs';
     outsRemaining = 3 - linescore.outs;
     if (!isExtraInnings) {
-      // For the away team (defending the Bottom half), the final scheduled Bottom
-      // inning is skipped when they are currently losing — the home team won't
-      // need to bat to finish the game.
       const awayDefendingAndLosing =
-        !isHomeDefending && defendingEntry.score < battingEntry.score;
+        homeBatting && defendingEntry.score < battingEntry.score;
       const futureHalfInnings =
         linescore.scheduledInnings -
         linescore.currentInning -
         (awayDefendingAndLosing ? 1 : 0);
       totalOutsRemaining = outsRemaining + futureHalfInnings * 3;
     }
-  } else if (targetIsBatting && isExtraInnings) {
+  } else if (battingEntry.team.id === targetTeamId && isExtraInnings) {
     const targetScore = battingEntry.score;
     const opponentScore = defendingEntry.score;
-    // Only track when the target team is tied or losing
     if (targetScore > opponentScore) return null;
     trackingMode = 'runs';
     runsNeeded = opponentScore - targetScore + 1;
   } else {
-    return null;
+    trackingMode = 'batting';
   }
 
   return {
-    gameStatus: game.status.detailedState,
+    gameStatus: detailedState,
     teams: {
       away: {
         id: game.teams.away.team.id,
@@ -142,11 +183,17 @@ export function parseGameUpdate(
     },
     outs: linescore.outs,
     defendingTeam: defendingEntry.team.abbreviation,
+    battingTeam: battingEntry.team.abbreviation,
+    isDelayed,
+    delayDescription: isDelayed ? detailedState : null,
     isExtraInnings,
     scheduledInnings: linescore.scheduledInnings,
     trackingMode,
     outsRemaining,
     totalOutsRemaining,
     runsNeeded,
+    currentPitcher,
+    pitchingChange: false,
+    inningBreakLength,
   };
 }

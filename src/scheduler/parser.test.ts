@@ -8,6 +8,7 @@ function makeGame(overrides: Partial<ScheduleGame> = {}): ScheduleGame {
   return {
     gamePk: 823077,
     status: { detailedState: 'In Progress', abstractGameState: 'Live' },
+    inningBreakLength: 120,
     teams: {
       away: {
         team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
@@ -69,12 +70,22 @@ describe('parseGameUpdate', () => {
     });
   });
 
-  describe('when the target team is batting (not defending)', () => {
-    it('returns null for the away team batting in Top of inning', () => {
+  describe('when the target team is batting in regulation', () => {
+    it('returns a GameUpdate with trackingMode batting', () => {
+      // Top of 5th: away (NYM) batting, home (STL) defending
+      // Target = NYM (batting in regulation)
       const schedule = makeSchedule([makeGame()]);
       const result = parseGameUpdate(schedule, NYM_ID);
 
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('batting');
+      expect(result!.battingTeam).toBe('NYM');
+      expect(result!.defendingTeam).toBe('STL');
+      expect(result!.outsRemaining).toBeNull();
+      expect(result!.totalOutsRemaining).toBeNull();
+      expect(result!.runsNeeded).toBeNull();
+      expect(result!.isExtraInnings).toBe(false);
+      expect(result!.score).toEqual({ away: 2, home: 1 });
     });
   });
 
@@ -105,6 +116,7 @@ describe('parseGameUpdate', () => {
       expect(result!.outsRemaining).toBe(1);
       // Bottom 5th, away winning (2-1): futureHalfInnings=(9-5)=4 → 1 + 12 = 13
       expect(result!.totalOutsRemaining).toBe(13);
+      expect(result!.battingTeam).toBe('STL');
       expect(result!.inning.half).toBe('Bottom');
     });
   });
@@ -337,8 +349,8 @@ describe('parseGameUpdate', () => {
       expect(result!.totalOutsRemaining).toBe(2);
     });
 
-    it('returns null when batting in regulation (not extras)', () => {
-      // Bottom of 7th, STL batting → not extras, should return null
+    it('changes regulation batting from null to batting mode', () => {
+      // Bottom of 7th, STL batting (home team) → regulation, trackingMode batting
       const game = makeGame({
         linescore: {
           currentInning: 7,
@@ -357,7 +369,14 @@ describe('parseGameUpdate', () => {
       const schedule = makeSchedule([game]);
       const result = parseGameUpdate(schedule, STL_ID);
 
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('batting');
+      expect(result!.battingTeam).toBe('STL');
+      expect(result!.defendingTeam).toBe('NYM');
+      expect(result!.outsRemaining).toBeNull();
+      expect(result!.totalOutsRemaining).toBeNull();
+      expect(result!.runsNeeded).toBeNull();
+      expect(result!.isExtraInnings).toBe(false);
     });
 
     it('handles home team batting in bottom of extras while tied', () => {
@@ -472,6 +491,176 @@ describe('parseGameUpdate', () => {
       expect(result!.defendingTeam).toBe('STL');
       // Top 5th, 1 out, home defending: 2 + (9-5)*3 = 14
       expect(result!.totalOutsRemaining).toBe(14);
+    });
+  });
+
+  describe('between-innings states', () => {
+    it('returns between-innings mode on Middle state (after Top half)', () => {
+      const game = makeGame({
+        inningBreakLength: 120,
+        linescore: {
+          currentInning: 3,
+          currentInningOrdinal: '3rd',
+          inningState: 'Middle',
+          scheduledInnings: 9,
+          outs: 3,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 1, hits: 2, errors: 0 },
+            away: { runs: 0, hits: 1, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('between-innings');
+      expect(result!.inningBreakLength).toBe(120);
+      expect(result!.outsRemaining).toBeNull();
+      expect(result!.totalOutsRemaining).toBeNull();
+      expect(result!.runsNeeded).toBeNull();
+      expect(result!.inning.half).toBe('Middle');
+      // Middle: home bats next (Bottom), away defends next
+      expect(result!.battingTeam).toBe('STL');
+      expect(result!.defendingTeam).toBe('NYM');
+    });
+
+    it('returns between-innings mode on End state (after Bottom half)', () => {
+      const game = makeGame({
+        inningBreakLength: 120,
+        linescore: {
+          currentInning: 5,
+          currentInningOrdinal: '5th',
+          inningState: 'End',
+          scheduledInnings: 9,
+          outs: 3,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 2, hits: 4, errors: 0 },
+            away: { runs: 1, hits: 3, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, NYM_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('between-innings');
+      expect(result!.inningBreakLength).toBe(120);
+      expect(result!.inning.half).toBe('End');
+      // End: away bats next (Top), home defends next
+      expect(result!.battingTeam).toBe('NYM');
+      expect(result!.defendingTeam).toBe('STL');
+    });
+
+    it('falls back to 120 when inningBreakLength is absent', () => {
+      const game = makeGame({
+        linescore: {
+          currentInning: 7,
+          currentInningOrdinal: '7th',
+          inningState: 'Middle',
+          scheduledInnings: 9,
+          outs: 3,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 3, hits: 5, errors: 0 },
+            away: { runs: 2, hits: 4, errors: 0 },
+          },
+        },
+      });
+      delete (game as any).inningBreakLength;
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('between-innings');
+      expect(result!.inningBreakLength).toBe(120);
+    });
+  });
+
+  describe('delay detection', () => {
+    it('returns an update with isDelayed true for a rain delay', () => {
+      const game = makeGame({
+        status: { detailedState: 'Delayed: Rain', abstractGameState: 'Live' },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.isDelayed).toBe(true);
+      expect(result!.delayDescription).toBe('Delayed: Rain');
+    });
+
+    it('returns an update with isDelayed true for a suspended game', () => {
+      const game = makeGame({
+        status: { detailedState: 'Suspended', abstractGameState: 'Live' },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.isDelayed).toBe(true);
+      expect(result!.delayDescription).toBe('Suspended');
+    });
+
+    it('returns null for a postponed game', () => {
+      const game = makeGame({
+        status: { detailedState: 'Postponed', abstractGameState: 'Final' },
+      });
+      const schedule = makeSchedule([game]);
+
+      expect(parseGameUpdate(schedule, STL_ID)).toBeNull();
+    });
+
+    it('isDelayed is false and delayDescription is null for an in-progress game', () => {
+      const schedule = makeSchedule([makeGame()]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.isDelayed).toBe(false);
+      expect(result!.delayDescription).toBeNull();
+    });
+  });
+
+  describe('pitcher detection', () => {
+    it('extracts currentPitcher from linescore.defense when present', () => {
+      const game = makeGame({
+        linescore: {
+          ...makeGame().linescore!,
+          defense: { pitcher: { id: 12345, fullName: 'Max Scherzer' } },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.currentPitcher).toEqual({ id: 12345, fullName: 'Max Scherzer' });
+    });
+
+    it('sets currentPitcher to null when defense is absent', () => {
+      const schedule = makeSchedule([makeGame()]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.currentPitcher).toBeNull();
+    });
+
+    it('always sets pitchingChange to false (scheduler responsibility)', () => {
+      const game = makeGame({
+        linescore: {
+          ...makeGame().linescore!,
+          defense: { pitcher: { id: 42, fullName: 'Test Pitcher' } },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.pitchingChange).toBe(false);
     });
   });
 });
