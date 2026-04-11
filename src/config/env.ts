@@ -42,7 +42,7 @@ function resolveTeamId(): number {
 }
 
 export const CONFIG = {
-  PORT: process.env.PORT ?? _env.PORT,
+  PORT: _env.PORT,
   CORS_ORIGIN: _env.CORS_ORIGIN,
 
   /** MLB team ID – resolved from TEAM abbreviation or TEAM_ID env var */
