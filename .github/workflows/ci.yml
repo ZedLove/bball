@@ -24,13 +24,32 @@ jobs:
 
       - run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Type-check
         run: npx tsc --noEmit
 
-      - name: Test
-        run: npm run test:ci
+      - name: Test with coverage
+        run: npm run test:coverage
         env:
           TEAM_ID: 141
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          name: node-${{ matrix.node-version }}
+          fail_ci_if_error: false
+
       - name: Build
         run: npm run build
+
+      - name: Upload coverage artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-node-${{ matrix.node-version }}
+          path: coverage/
+          retention-days: 5
