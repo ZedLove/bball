@@ -8,7 +8,7 @@ describe('logUpdate', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    logSpy = vi.spyOn(logger, 'info').mockImplementation(() => {});
+    logSpy = vi.spyOn(logger, 'info' as any).mockImplementation(() => logger);
   });
 
   const makeUpdate = (overrides: Partial<GameUpdate> = {}): GameUpdate => ({
@@ -47,7 +47,10 @@ describe('logUpdate', () => {
     });
 
     it('includes total outs remaining when available', () => {
-      const update = makeUpdate({ trackingMode: 'outs', totalOutsRemaining: 14 });
+      const update = makeUpdate({
+        trackingMode: 'outs',
+        totalOutsRemaining: 14,
+      });
       logUpdate(update);
       const calls = logSpy.mock.calls[0];
       const allArgs = calls.map(String).join('');
@@ -55,7 +58,10 @@ describe('logUpdate', () => {
     });
 
     it('excludes total outs remaining when null', () => {
-      const update = makeUpdate({ trackingMode: 'outs', totalOutsRemaining: null });
+      const update = makeUpdate({
+        trackingMode: 'outs',
+        totalOutsRemaining: null,
+      });
       logUpdate(update);
       const calls = logSpy.mock.calls[0];
       const allArgs = calls.map(String).join('');
@@ -117,7 +123,11 @@ describe('logUpdate', () => {
     });
 
     it('includes [DELAYED] flag when delayed', () => {
-      const update = makeUpdate({ trackingMode: 'runs', isDelayed: true, isExtraInnings: true });
+      const update = makeUpdate({
+        trackingMode: 'runs',
+        isDelayed: true,
+        isExtraInnings: true,
+      });
       logUpdate(update);
       const calls = logSpy.mock.calls[0];
       const allArgs = calls.map(String).join('');
@@ -150,7 +160,10 @@ describe('logUpdate', () => {
     });
 
     it('includes [DELAYED] flag when delayed', () => {
-      const update = makeUpdate({ trackingMode: 'between-innings', isDelayed: true });
+      const update = makeUpdate({
+        trackingMode: 'between-innings',
+        isDelayed: true,
+      });
       logUpdate(update);
       const calls = logSpy.mock.calls[0];
       const allArgs = calls.map(String).join('');
@@ -173,7 +186,10 @@ describe('logUpdate', () => {
 
   describe('when trackingMode is "batting"', () => {
     it('logs batting team, inning, and score', () => {
-      const update = makeUpdate({ trackingMode: 'batting', battingTeam: 'STL' });
+      const update = makeUpdate({
+        trackingMode: 'batting',
+        battingTeam: 'STL',
+      });
       logUpdate(update);
       const calls = logSpy.mock.calls[0];
       const allArgs = calls.map(String).join('');

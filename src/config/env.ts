@@ -1,12 +1,12 @@
-import * as dotenv from "dotenv";
-import { z } from "zod";
-import { TEAMS } from "./teams.ts";
+import * as dotenv from 'dotenv';
+import { z } from 'zod';
+import { TEAMS } from './teams.ts';
 
 dotenv.config();
 
 const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
-  CORS_ORIGIN: z.string().default("*"),
+  CORS_ORIGIN: z.string().default('*'),
 
   // MLB scheduler settings
   // TEAM_ID can be set directly, or resolved via the TEAM abbreviation (e.g. TEAM=NYM).
@@ -29,7 +29,9 @@ function resolveTeamId(): number {
     const team = TEAMS[abbrev];
     if (!team) {
       const valid = Object.keys(TEAMS).sort().join(', ');
-      throw new Error(`Unknown team abbreviation "${abbrev}". Valid options: ${valid}`);
+      throw new Error(
+        `Unknown team abbreviation "${abbrev}". Valid options: ${valid}`
+      );
     }
     return team.id;
   }
@@ -37,7 +39,7 @@ function resolveTeamId(): number {
     return _env.TEAM_ID;
   }
   throw new Error(
-    'No team configured. Set TEAM_ID in .env or pass TEAM=<abbreviation> (e.g. TEAM=TOR npm run dev)',
+    'No team configured. Set TEAM_ID in .env or pass TEAM=<abbreviation> (e.g. TEAM=TOR npm run dev)'
   );
 }
 

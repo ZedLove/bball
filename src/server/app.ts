@@ -1,24 +1,24 @@
 import express from 'express';
-import type { Request, Response, NextFunction } from "express";
-import cors from "cors";
-import { healthRouter } from "../routes/health.ts";
-import { logger } from "../config/logger.ts";
-import { CONFIG } from "../config/env.ts";
+import type { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
+import { healthRouter } from '../routes/health.ts';
+import { logger } from '../config/logger.ts';
+import { CONFIG } from '../config/env.ts';
 
 export function createApp(): express.Application {
   const app = express();
 
   // ----- Global middlewares -------------------------------------------------
-  app.use(cors({ origin: CONFIG.CORS_ORIGIN, methods: ["GET", "POST"] }));
+  app.use(cors({ origin: CONFIG.CORS_ORIGIN, methods: ['GET', 'POST'] }));
   app.use(express.json());
 
   // ----- Routes -------------------------------------------------------------
-  app.use("/", healthRouter);
+  app.use('/', healthRouter);
   // future: app.use("/users", usersRouter); etc.
 
   // ----- 404 handler --------------------------------------------------------
   app.use((_req: Request, _res: Response, next: NextFunction) => {
-    const err = new Error("Not Found");
+    const err = new Error('Not Found');
     // @ts-ignore – we add a status property for the error‑handler below
     (err as any).status = 404;
     next(err);
@@ -28,10 +28,10 @@ export function createApp(): express.Application {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || 500;
-    logger.error("❗  %s – %s", err.message, err.stack);
+    logger.error('❗  %s – %s', err.message, err.stack);
     res.status(status).json({
       error: err.message,
-      ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     });
   });
 

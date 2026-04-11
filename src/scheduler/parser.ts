@@ -13,7 +13,7 @@ export interface GameUpdate {
   };
   inning: {
     number: number;
-    half: "Top" | "Middle" | "Bottom" | "End";
+    half: 'Top' | 'Middle' | 'Bottom' | 'End';
     ordinal: string;
   };
   outs: number;
@@ -36,7 +36,7 @@ export interface GameUpdate {
    * 'between-innings'– half-inning just ended; emitted once, scheduler sleeps for inningBreakLength.
    * 'final'          – game has ended; emitted once, scheduler transitions to idle polling.
    */
-  trackingMode: "outs" | "runs" | "batting" | "between-innings" | "final";
+  trackingMode: 'outs' | 'runs' | 'batting' | 'between-innings' | 'final';
   /** 3 − current outs when defending, null otherwise */
   outsRemaining: number | null;
   /**
@@ -73,8 +73,10 @@ export interface TeamInfo {
 
 /** detailedState values the API uses when the game is paused mid-game */
 function isDelayedState(detailedState: string): boolean {
-  return detailedState.toLowerCase().includes('delay') ||
-    detailedState === 'Suspended';
+  return (
+    detailedState.toLowerCase().includes('delay') ||
+    detailedState === 'Suspended'
+  );
 }
 
 /**
@@ -92,7 +94,7 @@ function isDelayedState(detailedState: string): boolean {
  */
 export function parseGameUpdate(
   schedule: ScheduleResponse,
-  targetTeamId: number,
+  targetTeamId: number
 ): GameUpdate | null {
   const today = schedule.dates?.[0];
   if (!today) return null;
@@ -100,7 +102,7 @@ export function parseGameUpdate(
   const game = today.games.find(
     (g) =>
       g.teams?.away?.team?.id === targetTeamId ||
-      g.teams?.home?.team?.id === targetTeamId,
+      g.teams?.home?.team?.id === targetTeamId
   );
   if (!game) return null;
 
@@ -124,7 +126,7 @@ export function parseGameUpdate(
   //   Bottom – home batting,  away defending
   //   End    – away bats next (Top starting),  home defends next
   const homeBatting = state === 'Bottom' || state === 'Middle';
-  const battingEntry  = homeBatting ? game.teams.home : game.teams.away;
+  const battingEntry = homeBatting ? game.teams.home : game.teams.away;
   const defendingEntry = homeBatting ? game.teams.away : game.teams.home;
 
   const isExtraInnings = linescore.currentInning > linescore.scheduledInnings;

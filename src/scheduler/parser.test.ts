@@ -131,7 +131,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 3,
             leagueRecord: { wins: 2, losses: 2 },
           },
@@ -171,7 +175,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 5,
             leagueRecord: { wins: 2, losses: 2 },
           },
@@ -209,7 +217,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 3,
             leagueRecord: { wins: 2, losses: 2 },
           },
@@ -244,7 +256,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 3,
             leagueRecord: { wins: 2, losses: 2 },
           },
@@ -285,7 +301,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 2,
             leagueRecord: { wins: 2, losses: 2 },
           },
@@ -322,7 +342,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 3,
             leagueRecord: { wins: 2, losses: 2 },
           },
@@ -388,7 +412,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 4,
             leagueRecord: { wins: 2, losses: 2 },
           },
@@ -483,8 +511,16 @@ describe('parseGameUpdate', () => {
 
     it('picks the correct game when multiple games exist', () => {
       const otherGame = makeGame();
-      otherGame.teams.away.team = { id: 999, name: 'Other', abbreviation: 'OTH' };
-      otherGame.teams.home.team = { id: 998, name: 'Another', abbreviation: 'ANO' };
+      otherGame.teams.away.team = {
+        id: 999,
+        name: 'Other',
+        abbreviation: 'OTH',
+      };
+      otherGame.teams.home.team = {
+        id: 998,
+        name: 'Another',
+        abbreviation: 'ANO',
+      };
 
       const targetGame = makeGame();
       const schedule = makeSchedule([otherGame, targetGame]);
@@ -641,7 +677,10 @@ describe('parseGameUpdate', () => {
       const result = parseGameUpdate(schedule, STL_ID);
 
       expect(result).not.toBeNull();
-      expect(result!.currentPitcher).toEqual({ id: 12345, fullName: 'Max Scherzer' });
+      expect(result!.currentPitcher).toEqual({
+        id: 12345,
+        fullName: 'Max Scherzer',
+      });
     });
 
     it('sets currentPitcher to null when defense is absent', () => {
@@ -677,7 +716,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 4,
             leagueRecord: { wins: 2, losses: 2 },
           },
@@ -718,7 +761,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 3,
             leagueRecord: { wins: 2, losses: 2 },
           },
@@ -756,7 +803,11 @@ describe('parseGameUpdate', () => {
             leagueRecord: { wins: 3, losses: 1 },
           },
           home: {
-            team: { id: STL_ID, name: 'St. Louis Cardinals', abbreviation: 'STL' },
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
             score: 5,
             leagueRecord: { wins: 2, losses: 2 },
           },

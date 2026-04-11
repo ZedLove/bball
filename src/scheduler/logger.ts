@@ -11,10 +11,13 @@ export function logUpdate(update: GameUpdate): void {
   const delayPrefix = update.isDelayed ? ' [DELAYED]' : '';
 
   if (update.trackingMode === 'outs') {
-    const totalStr = update.totalOutsRemaining !== null
-      ? ` / ${update.totalOutsRemaining} total`
+    const totalStr =
+      update.totalOutsRemaining !== null
+        ? ` / ${update.totalOutsRemaining} total`
+        : '';
+    const pitcherStr = update.currentPitcher
+      ? ` | P: ${update.currentPitcher.fullName}`
       : '';
-    const pitcherStr = update.currentPitcher ? ` | P: ${update.currentPitcher.fullName}` : '';
     const pitchingChangeStr = update.pitchingChange ? ' [PITCHING CHANGE]' : '';
     logger.info(
       '%s defending | %s | Outs: %d (remaining: %d%s)%s | %s%s%s%s',
@@ -27,7 +30,7 @@ export function logUpdate(update: GameUpdate): void {
       scoreLine,
       update.isExtraInnings ? ' [EXTRAS]' : '',
       pitchingChangeStr,
-      delayPrefix,
+      delayPrefix
     );
   } else if (update.trackingMode === 'runs') {
     logger.info(
@@ -35,32 +38,33 @@ export function logUpdate(update: GameUpdate): void {
       inningLine,
       update.runsNeeded,
       scoreLine,
-      delayPrefix,
+      delayPrefix
     );
   } else if (update.trackingMode === 'between-innings') {
-    const breakStr = update.inningBreakLength != null ? ` (${update.inningBreakLength}s break)` : '';
-    const pitcherStr = update.currentPitcher ? ` | Last P: ${update.currentPitcher.fullName}` : '';
+    const breakStr =
+      update.inningBreakLength != null
+        ? ` (${update.inningBreakLength}s break)`
+        : '';
+    const pitcherStr = update.currentPitcher
+      ? ` | Last P: ${update.currentPitcher.fullName}`
+      : '';
     logger.info(
       'Between innings | %s%s | %s%s%s',
       inningLine,
       breakStr,
       scoreLine,
       pitcherStr,
-      delayPrefix,
+      delayPrefix
     );
   } else if (update.trackingMode === 'final') {
-    logger.info(
-      'Game Final | %s | %s [FINAL]',
-      inningLine,
-      scoreLine,
-    );
+    logger.info('Game Final | %s | %s [FINAL]', inningLine, scoreLine);
   } else {
     logger.info(
       '%s batting | %s | %s%s',
       update.battingTeam,
       inningLine,
       scoreLine,
-      delayPrefix,
+      delayPrefix
     );
   }
 }

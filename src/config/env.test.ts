@@ -4,7 +4,7 @@ describe('env configuration (static checks)', () => {
   describe('CONFIG values', () => {
     it('should have valid CONFIG export with all required fields', async () => {
       const { CONFIG } = await import('./env.ts');
-      
+
       expect(CONFIG).toBeDefined();
       expect(CONFIG.PORT).toBeDefined();
       expect(typeof CONFIG.PORT).toBe('number');
@@ -80,4 +80,3 @@ describe('env configuration (static checks)', () => {
     });
   });
 });
-

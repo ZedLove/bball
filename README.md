@@ -23,14 +23,14 @@ Copy the example env file and adjust values:
 cp .env.example .env
 ```
 
-| Variable | Description | Default |
-|---|---|---|
-| `PORT` | HTTP server port | `4000` |
-| `TEAM_ID` | MLB team ID ([lookup](https://statsapi.mlb.com/api/v1/teams?sportId=1)) | — |
-| `IDLE_POLL_INTERVAL` | Seconds between polls when no game is active | `60` |
-| `ACTIVE_POLL_INTERVAL` | Seconds between polls during a live game | `30` |
-| `MAX_RETRIES` | Retry attempts per poll tick on network error | `3` |
-| `RETRY_BACKOFF_MS` | Base back-off in ms (doubled each retry) | `500` |
+| Variable               | Description                                                             | Default |
+| ---------------------- | ----------------------------------------------------------------------- | ------- |
+| `PORT`                 | HTTP server port                                                        | `4000`  |
+| `TEAM_ID`              | MLB team ID ([lookup](https://statsapi.mlb.com/api/v1/teams?sportId=1)) | —       |
+| `IDLE_POLL_INTERVAL`   | Seconds between polls when no game is active                            | `60`    |
+| `ACTIVE_POLL_INTERVAL` | Seconds between polls during a live game                                | `30`    |
+| `MAX_RETRIES`          | Retry attempts per poll tick on network error                           | `3`     |
+| `RETRY_BACKOFF_MS`     | Base back-off in ms (doubled each retry)                                | `500`   |
 
 ### Run
 
@@ -60,15 +60,15 @@ npm run test:coverage
 
 ### Socket.IO Events
 
-| Event | Direction | Payload |
-|---|---|---|
+| Event         | Direction       | Payload                                                     |
+| ------------- | --------------- | ----------------------------------------------------------- |
 | `game-update` | Server → Client | `{ gameStatus, teams, score, inning, outs, defendingTeam }` |
 
 ### API Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/health` | Health check — returns `{ "status": "ok" }` |
+| Method | Path      | Description                                 |
+| ------ | --------- | ------------------------------------------- |
+| `GET`  | `/health` | Health check — returns `{ "status": "ok" }` |
 
 ## Project Structure
 

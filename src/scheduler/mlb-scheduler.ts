@@ -22,7 +22,7 @@ async function fetchUpdate(): Promise<GameUpdate | null> {
       const backoff = CONFIG.RETRY_BACKOFF_MS * 2 ** (attempt - 1);
       logger.error(
         `Fetch failed (attempt ${attempt}/${CONFIG.MAX_RETRIES}) – %s`,
-        err,
+        err
       );
       if (attempt > CONFIG.MAX_RETRIES) {
         logger.error('Giving up on this tick, will try again later.');
@@ -60,7 +60,8 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     let update = rawUpdate;
     if (update?.currentPitcher) {
       const pitcher = update.currentPitcher;
-      const pitchingChange = lastPitcherId !== null && pitcher.id !== lastPitcherId;
+      const pitchingChange =
+        lastPitcherId !== null && pitcher.id !== lastPitcherId;
       if (pitchingChange) {
         update = { ...update, pitchingChange: true };
       }
@@ -74,7 +75,8 @@ export function startScheduler(io: SocketIOServer): Scheduler {
 
     const shouldEmit =
       update !== null &&
-      (!isTransitionMode(update.trackingMode) || lastTrackingMode !== update.trackingMode);
+      (!isTransitionMode(update.trackingMode) ||
+        lastTrackingMode !== update.trackingMode);
 
     if (shouldEmit && update !== null) {
       logUpdate(update);
@@ -92,16 +94,15 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           : update.trackingMode === 'final'
             ? CONFIG.IDLE_POLL_INTERVAL
             : update.trackingMode === 'between-innings'
-              ? (update.inningBreakLength ?? 120) + CONFIG.BETWEEN_INNINGS_BUFFER_S
+              ? (update.inningBreakLength ?? 120) +
+                CONFIG.BETWEEN_INNINGS_BUFFER_S
               : update.trackingMode === 'batting'
                 ? CONFIG.BATTING_POLL_INTERVAL
-              : CONFIG.ACTIVE_POLL_INTERVAL;
+                : CONFIG.ACTIVE_POLL_INTERVAL;
 
     logger.info(`Next tick in ${intervalSec}s`);
     timer = setTimeout(() => {
-      loop().catch((err) =>
-        logger.error('Scheduler loop error: %s', err),
-      );
+      loop().catch((err) => logger.error('Scheduler loop error: %s', err));
     }, intervalSec * 1_000);
   };
 

@@ -1,7 +1,7 @@
 /**
  * Socket.IO client for testing game-update events during development.
  * Usage: npm run test:socket
- * 
+ *
  * Connect to the backend's Socket.IO server and log all game-update events
  * in a formatted, readable way. Useful for testing during actual MLB games.
  */
@@ -49,7 +49,10 @@ socket.on('game-update', (update) => {
 
   const scoreStr = `${teams.away.abbreviation} ${score.away} – ${teams.home.abbreviation} ${score.home}`;
   const inningStr = `${inning.half} ${inning.ordinal}${isExtraInnings ? ' [EXTRAS]' : ''}`;
-  const totalStr = totalOutsRemaining !== null ? ` - ${totalOutsRemaining} outs remaining` : '';
+  const totalStr =
+    totalOutsRemaining !== null
+      ? ` - ${totalOutsRemaining} outs remaining`
+      : '';
   const delayStr = isDelayed ? ` ⚠️  ${delayDescription ?? 'Delayed'}` : '';
 
   console.log(`⚾ ${scoreStr} | ${inningStr}${totalStr}${delayStr}`);
@@ -65,7 +68,8 @@ socket.on('game-update', (update) => {
       `   🏃 ${battingTeam} batting (extras) | Need ${runsNeeded} run${runsNeeded !== 1 ? 's' : ''} to take the lead\n`
     );
   } else if (trackingMode === 'between-innings') {
-    const breakStr = inningBreakLength != null ? ` (${inningBreakLength}s break)` : '';
+    const breakStr =
+      inningBreakLength != null ? ` (${inningBreakLength}s break)` : '';
     console.log(`   ⏸️  Between innings${breakStr}\n`);
   } else if (trackingMode === 'final') {
     console.log(`   🏁 Game Final\n`);

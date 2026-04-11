@@ -51,7 +51,7 @@ export interface Linescore {
    * 'Bottom' – home batting, away defending
    * 'End'    – between Bottom and next Top (after bottom 3rd out)
    */
-  inningState: "Top" | "Middle" | "Bottom" | "End";
+  inningState: 'Top' | 'Middle' | 'Bottom' | 'End';
   scheduledInnings: number;
   outs: number;
   balls: number;
