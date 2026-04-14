@@ -40,9 +40,9 @@ describe('EVENT_TYPE_CATEGORY_MAP', () => {
     });
   });
 
-  describe('excluded action types', () => {
+  describe('suppressed action types', () => {
     it.each(['game_advisory', 'batter_timeout', 'mound_visit', 'defensive_indiff'])(
-      'returns undefined for excluded type "%s"',
+      'returns undefined for suppressed type "%s"',
       (eventType) => {
         expect(EVENT_TYPE_CATEGORY_MAP.get(eventType)).toBeUndefined();
       },

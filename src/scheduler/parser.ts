@@ -110,11 +110,12 @@ export function parseGameUpdate(
   if (!game) return null;
 
   const detailedState = game.status?.detailedState ?? '';
-  const isInProgress = detailedState === 'In Progress';
+  const isInProgress = detailedState.startsWith('In Progress');
   const isFinal = detailedState === 'Final';
   const isDelayed = isDelayedState(detailedState);
 
   // Only process live, delayed, and final games; ignore Pre-Game, Scheduled, etc.
+  // "In Progress" catches both standard play and replay reviews (e.g., "In Progress - Review")
   if (!isInProgress && !isDelayed && !isFinal) return null;
 
   const linescore = game.linescore;

@@ -78,12 +78,15 @@ export function parseFeedEvents(
       const category = EVENT_TYPE_CATEGORY_MAP.get(eventType);
 
       if (!category) {
-        // Excluded noise types (game_advisory, batter_timeout, mound_visit, etc.)
-        logger.debug('Action event type suppressed — not in known-event catalog', {
-          gamePk,
-          atBatIndex,
-          eventType,
-        });
+        if (SUPPRESSED_ACTION_TYPES.has(eventType)) {
+          logger.debug('Action event type suppressed', { gamePk, atBatIndex, eventType });
+        } else {
+          logger.warn('Unknown action event type — not in catalog or suppressed list', {
+            gamePk,
+            atBatIndex,
+            eventType,
+          });
+        }
         continue;
       }
 

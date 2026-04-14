@@ -16,6 +16,8 @@ export interface ScheduleDate {
 
 export interface ScheduleGame {
   gamePk: number;
+  /** ISO 8601 UTC game start time (e.g. "2026-04-15T22:10:00Z"). */
+  gameDate: string;
   status: {
     detailedState: string;
     abstractGameState: string;

@@ -7,6 +7,7 @@ const STL_ID = 138;
 function makeGame(overrides: Partial<ScheduleGame> = {}): ScheduleGame {
   return {
     gamePk: 823077,
+    gameDate: '2026-03-31T18:05:00Z',
     status: { detailedState: 'In Progress', abstractGameState: 'Live' },
     inningBreakLength: 120,
     teams: {
@@ -662,6 +663,22 @@ describe('parseGameUpdate', () => {
       expect(result).not.toBeNull();
       expect(result!.isDelayed).toBe(false);
       expect(result!.delayDescription).toBeNull();
+    });
+
+    it('tracks a replay review as an in-progress game', () => {
+      const game = makeGame({
+        status: { detailedState: 'In Progress - Review', abstractGameState: 'Live' },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.gameStatus).toBe('In Progress - Review');
+      expect(result!.isDelayed).toBe(false);
+      expect(result!.delayDescription).toBeNull();
+      expect(result!.trackingMode).toBe('outs');
+      expect(result!.defendingTeam).toBe('STL');
+      expect(result!.outs).toBe(1);
     });
   });
 

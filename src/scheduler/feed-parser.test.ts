@@ -172,7 +172,7 @@ describe('parseFeedEvents', () => {
         liveData: {
           ...response.liveData,
           plays: {
-            allPlays: response.liveData.plays.allPlays.map((p) =>
+            allPlays: response.liveData.plays.allPlays!.map((p) =>
               p.atBatIndex === 0 ? { ...p, about: { ...p.about, isComplete: false } } : p,
             ),
           },
@@ -194,7 +194,7 @@ describe('parseFeedEvents', () => {
         liveData: {
           ...response.liveData,
           plays: {
-            allPlays: response.liveData.plays.allPlays.map((p) =>
+            allPlays: response.liveData.plays.allPlays!.map((p) =>
               p.atBatIndex === 0
                 ? { ...p, result: { ...p.result, eventType: 'unknown_play_type' } }
                 : p,
@@ -380,7 +380,7 @@ describe('parseFeedEvents', () => {
         liveData: {
           ...response.liveData,
           plays: {
-            allPlays: response.liveData.plays.allPlays.map((p) => {
+            allPlays: response.liveData.plays.allPlays!.map((p) => {
               if (p.atBatIndex !== 0) return p;
               return {
                 ...p,

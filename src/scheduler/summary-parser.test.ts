@@ -269,6 +269,89 @@ describe('buildGameSummary', () => {
 
       expect(summary.nextGame).toBeNull();
     });
+
+    it('skips the just-completed game when it appears first in the response', () => {
+      // Doubleheader / timezone edge case: today's response includes the current
+      // game (GAME_PK) followed by a second game (824693).
+      const withCurrentGameFirst: NextGameScheduleResponse = {
+        dates: [{
+          games: [
+            {
+              gamePk: GAME_PK, // the game that just ended — should be skipped
+              gameDate: '2026-04-15T17:05:00Z',
+              venue: { name: 'Dodger Stadium' },
+              teams: {
+                away: {
+                  team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+                  probablePitcher: null,
+                },
+                home: {
+                  team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
+                  probablePitcher: null,
+                },
+              },
+            },
+            {
+              gamePk: 824693, // the next game
+              gameDate: '2026-04-17T18:20:00Z',
+              venue: { name: 'Wrigley Field' },
+              teams: {
+                away: {
+                  team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+                  probablePitcher: null,
+                },
+                home: {
+                  team: { id: CHC_ID, name: 'Chicago Cubs', abbreviation: 'CHC' },
+                  probablePitcher: null,
+                },
+              },
+            },
+          ],
+        }],
+      };
+
+      const summary = buildGameSummary(
+        GAME_PK, FINAL_SCORE, 9, false,
+        feedResponse, boxscoreResponse, withCurrentGameFirst, NYM_ID,
+      );
+
+      expect(summary.nextGame).not.toBeNull();
+      expect(summary.nextGame!.gamePk).toBe(824693);
+      expect(summary.nextGame!.opponent).toEqual({
+        id: CHC_ID,
+        name: 'Chicago Cubs',
+        abbreviation: 'CHC',
+      });
+    });
+
+    it('sets nextGame to null when the only game in the response is the current game', () => {
+      const onlyCurrentGame: NextGameScheduleResponse = {
+        dates: [{
+          games: [{
+            gamePk: GAME_PK,
+            gameDate: '2026-04-15T17:05:00Z',
+            venue: { name: 'Dodger Stadium' },
+            teams: {
+              away: {
+                team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+                probablePitcher: null,
+              },
+              home: {
+                team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
+                probablePitcher: null,
+              },
+            },
+          }],
+        }],
+      };
+
+      const summary = buildGameSummary(
+        GAME_PK, FINAL_SCORE, 9, false,
+        feedResponse, boxscoreResponse, onlyCurrentGame, NYM_ID,
+      );
+
+      expect(summary.nextGame).toBeNull();
+    });
   });
 
   describe('extra-innings game', () => {
