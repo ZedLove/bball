@@ -37,6 +37,14 @@ describe('fetchGameFeed', () => {
     expect(result).toEqual(mockData);
   });
 
+  it('returns null when the API returns an empty array (no new events since cursor)', async () => {
+    mockGet.mockResolvedValueOnce({ data: [] });
+
+    const result = await fetchGameFeed(823963, '20260415_000000');
+
+    expect(result).toBeNull();
+  });
+
   it('propagates axios errors to the caller', async () => {
     mockGet.mockRejectedValueOnce(new Error('network timeout'));
 

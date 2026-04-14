@@ -98,9 +98,25 @@ export const KNOWN_EVENT_CATALOG: readonly CatalogEntry[] = [
 
 /**
  * O(1) lookup map from raw MLB eventType string to its catalog category.
- * Returns `undefined` for unknown or excluded event types — those are logged
+ * Returns `undefined` for unknown or suppressed event types — those are logged
  * and suppressed before emission.
  */
 export const EVENT_TYPE_CATEGORY_MAP: ReadonlyMap<string, EventCategory> = new Map(
   KNOWN_EVENT_CATALOG.map((entry) => [entry.eventType, entry.category])
 );
+
+/**
+ * Action event types that appear regularly in live game feeds but carry no
+ * information relevant to our clients.  They are expected noise and should be
+ * silently suppressed with a debug-level log.
+ *
+ * Any action event type that is NOT in either this set or `EVENT_TYPE_CATEGORY_MAP`
+ * is genuinely unknown and should be logged at warn level so it can be
+ * investigated and added to one of the two lists.
+ */
+export const SUPPRESSED_ACTION_TYPES: ReadonlySet<string> = new Set([
+  'batter_timeout',   // pitch-clock violation or batter stepping out
+  'game_advisory',    // weather delays, official reviews, etc.
+  'mound_visit',      // coaching visit without pitching change
+  'defensive_indiff', // runner advances unopposed late in a blowout
+]);

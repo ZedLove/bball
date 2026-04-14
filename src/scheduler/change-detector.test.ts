@@ -58,16 +58,19 @@ describe('hasLinescoreDelta', () => {
       expect(hasLinescoreDelta(current, previous)).toBe(true);
     });
 
-    it('returns true when the inning state advances (Top → Middle)', () => {
+    // inningState (Top / Middle / Bottom / End) is intentionally excluded from
+    // the signal.  In practice, inningState transitions always coincide with an
+    // outs change or a batter change, which are already in the signal.
+    it('returns false when only inningState changes (Top → Middle)', () => {
       const previous = makeLinescore({ inningState: 'Top' });
       const current = makeLinescore({ inningState: 'Middle' });
-      expect(hasLinescoreDelta(current, previous)).toBe(true);
+      expect(hasLinescoreDelta(current, previous)).toBe(false);
     });
 
-    it('returns true when the inning state advances (Bottom → End)', () => {
+    it('returns false when only inningState changes (Bottom → End)', () => {
       const previous = makeLinescore({ inningState: 'Bottom' });
       const current = makeLinescore({ inningState: 'End' });
-      expect(hasLinescoreDelta(current, previous)).toBe(true);
+      expect(hasLinescoreDelta(current, previous)).toBe(false);
     });
   });
 
@@ -110,6 +113,28 @@ describe('hasLinescoreDelta', () => {
       const previous = makeLinescore({ defense: { pitcher: { id: 660271, fullName: 'Shohei Ohtani' } } });
       const current = makeLinescore({ defense: { pitcher: { id: 668964, fullName: 'Tobias Myers' } } });
       expect(hasLinescoreDelta(current, previous)).toBe(true);
+    });
+  });
+
+  // Balls and strikes change on every pitch.  Excluding them prevents enrichment
+  // from firing 5-7× per at-bat instead of once per completed play.
+  describe('per-pitch noise (must not trigger)', () => {
+    it('returns false when only balls count changes', () => {
+      const previous = makeLinescore({ balls: 0 });
+      const current = makeLinescore({ balls: 1 });
+      expect(hasLinescoreDelta(current, previous)).toBe(false);
+    });
+
+    it('returns false when only strikes count changes', () => {
+      const previous = makeLinescore({ strikes: 0 });
+      const current = makeLinescore({ strikes: 1 });
+      expect(hasLinescoreDelta(current, previous)).toBe(false);
+    });
+
+    it('returns false when both balls and strikes change but no signal field changes', () => {
+      const previous = makeLinescore({ balls: 1, strikes: 1 });
+      const current = makeLinescore({ balls: 2, strikes: 1 });
+      expect(hasLinescoreDelta(current, previous)).toBe(false);
     });
   });
 });

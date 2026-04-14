@@ -43,7 +43,7 @@ export function buildGameSummary(
 ): GameSummary {
   const decisions = parseDecisions(gamePk, feedResponse);
   const topPerformers = parseTopPerformers(gamePk, boxscoreResponse);
-  const nextGame = parseNextGame(nextGameScheduleResponse, trackedTeamId);
+  const nextGame = parseNextGame(nextGameScheduleResponse, trackedTeamId, gamePk);
 
   return {
     gamePk,
@@ -90,10 +90,22 @@ function parseTopPerformers(gamePk: number, boxscoreResponse: BoxscoreResponse):
 function parseNextGame(
   response: NextGameScheduleResponse | null,
   trackedTeamId: number,
+  currentGamePk: number,
 ): NextGame | null {
   if (!response) return null;
 
-  const game = response.dates[0]?.games[0];
+  // Iterate all dates/games to find the first game that is not the just-completed
+  // game. This correctly handles same-day doubleheaders and timezone edge cases
+  // where the current game appears in today's date bucket.
+  let game: (typeof response.dates)[number]['games'][number] | undefined;
+  outer: for (const date of response.dates) {
+    for (const g of date.games) {
+      if (g.gamePk !== currentGamePk) {
+        game = g;
+        break outer;
+      }
+    }
+  }
   if (!game) return null;
 
   const { away, home } = game.teams;
