@@ -46,27 +46,13 @@ export function startScheduler(io: SocketIOServer): Scheduler {
   let stopped = false;
   let lastTrackingMode: GameUpdate['trackingMode'] | null = null;
   let lastEmittedUpdate: GameUpdate | null = null;
-  let lastPitcherId: number | null = null;
 
   const loop = async () => {
     if (stopped) return;
 
-    const rawUpdate = await fetchUpdate();
+    const update = await fetchUpdate();
 
     if (stopped) return;
-
-    // Detect pitching changes by comparing the incoming pitcher ID to the last known one.
-    // The parser always sets pitchingChange: false; we override it here if a change occurred.
-    let update = rawUpdate;
-    if (update?.currentPitcher) {
-      const pitcher = update.currentPitcher;
-      const pitchingChange =
-        lastPitcherId !== null && pitcher.id !== lastPitcherId;
-      if (pitchingChange) {
-        update = { ...update, pitchingChange: true };
-      }
-      lastPitcherId = pitcher.id;
-    }
 
     // Transition-only modes: emit once when entering, then stay quiet until the mode changes.
     // 'outs' and 'runs' emit every tick because their values change continuously.

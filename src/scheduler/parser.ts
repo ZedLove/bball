@@ -3,6 +3,8 @@ import type { ScheduleResponse } from './poller.ts';
 /** Enriched game update emitted via Socket.IO and logged for observability. */
 export interface GameUpdate {
   gameStatus: string;
+  /** MLB game identifier — used by clients to correlate `game-update` with `game-events` batches. */
+  gamePk: number;
   teams: {
     away: TeamInfo;
     home: TeamInfo;
@@ -49,14 +51,15 @@ export interface GameUpdate {
   totalOutsRemaining: number | null;
   /** Runs needed for the lead when batting in extras, null otherwise */
   runsNeeded: number | null;
-  /** Current pitcher on the field. null when unavailable or not defending. */
+  /** Pitcher currently on the mound during active play. null when not defending or during between-innings. */
   currentPitcher: { id: number; fullName: string } | null;
   /**
-   * true when the pitcher changed since the last emitted update.
-   * Always false from the parser — the scheduler sets this to true when it
-   * detects a change by comparing successive pitcher IDs.
+   * Pitcher scheduled to take the mound for the next half-inning.
+   * Sourced from `linescore.defense.pitcher`, which the MLB API rotates to
+   * the next defender as soon as a half-inning ends.
+   * Only set when trackingMode === 'between-innings', null otherwise.
    */
-  pitchingChange: boolean;
+  upcomingPitcher: { id: number; fullName: string } | null;
   /**
    * Between-inning break duration in seconds as reported by the API (usually 120).
    * Only set when trackingMode === 'between-innings', null otherwise.
@@ -130,7 +133,13 @@ export function parseGameUpdate(
   const defendingEntry = homeBatting ? game.teams.away : game.teams.home;
 
   const isExtraInnings = linescore.currentInning > linescore.scheduledInnings;
-  const currentPitcher = linescore.defense?.pitcher ?? null;
+  // The MLB API rotates linescore.defense.pitcher to the next half-inning's
+  // pitcher as soon as the current half ends. We therefore only expose it as
+  // 'currentPitcher' during active play, and as 'upcomingPitcher' between
+  // innings, so consumers always get semantically correct data.
+  const linescorePitcher = linescore.defense?.pitcher ?? null;
+  const currentPitcher = isBetweenInnings ? null : linescorePitcher;
+  const upcomingPitcher = isBetweenInnings ? linescorePitcher : null;
 
   let trackingMode: GameUpdate['trackingMode'];
   let outsRemaining: number | null = null;
@@ -200,7 +209,8 @@ export function parseGameUpdate(
     totalOutsRemaining,
     runsNeeded,
     currentPitcher,
-    pitchingChange: false,
+    upcomingPitcher,
+    gamePk: game.gamePk,
     inningBreakLength,
   };
 }

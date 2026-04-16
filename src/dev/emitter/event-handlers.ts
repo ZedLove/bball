@@ -95,7 +95,7 @@ export function handlePitchingChange(
     fullName: options.pitcherName ?? 'Unknown Pitcher',
   };
   store.setState({ currentPitcher: pitcher });
-  emitUpdate(io, store, 'outs', { pitchingChange: true, currentPitcher: { ...pitcher } });
+  emitUpdate(io, store, 'outs');
 
   return ok(
     `✓ Pitching change: ${pitcher.fullName} (#${pitcher.id}) enters` +
