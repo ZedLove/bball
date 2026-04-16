@@ -1,5 +1,5 @@
 import { parseGameUpdate } from './parser.ts';
-import type { ScheduleResponse, ScheduleGame } from './poller.ts';
+import type { ScheduleResponse, ScheduleGame } from './schedule-client.ts';
 
 const NYM_ID = 121;
 const STL_ID = 138;
