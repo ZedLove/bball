@@ -38,6 +38,27 @@ interface GameEventBase {
 // ---------------------------------------------------------------------------
 
 /**
+ * One pitch within a completed at-bat, in chronological order.
+ * Sourced from `allPlays[].playEvents[]` where `type === "pitch"`.
+ */
+export interface PitchEvent {
+  /** Sequential pitch number within the at-bat. */
+  pitchNumber: number;
+  /** Pitch classification from Statcast (e.g. "Four-Seam Fastball", "Curveball"). */
+  pitchType: string;
+  /** Call result (e.g. "Called Strike", "Ball", "Foul", "In play, run(s)"). */
+  call: string;
+  isBall: boolean;
+  isStrike: boolean;
+  /** true on the final pitch of the at-bat when put in play. */
+  isInPlay: boolean;
+  /** Pitch velocity in mph. null when Statcast tracking data is unavailable. */
+  speedMph: number | null;
+  /** Ball/strike count after this pitch is resolved. */
+  countAfter: { balls: number; strikes: number };
+}
+
+/**
  * Emitted for every completed at-bat (`allPlays[].about.isComplete === true`).
  * Scoring plays are a subset of this category — identified by `isScoringPlay: true`.
  * There is no separate scoring-play event type; clients filter by the boolean flag.
@@ -50,6 +71,11 @@ export interface PlateAppearanceCompletedEvent extends GameEventBase {
   rbi: number;
   batter: { id: number; fullName: string };
   pitcher: { id: number; fullName: string };
+  /**
+   * Full pitch sequence for this at-bat, in chronological order.
+   * Empty array for `intent_walk`, which uses automatic no_pitch events with no velocity data.
+   */
+  pitchSequence: PitchEvent[];
 }
 
 // ---------------------------------------------------------------------------

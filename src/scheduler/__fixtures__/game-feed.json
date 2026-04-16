@@ -1,0 +1,252 @@
+{
+  "metaData": {
+    "timeStamp": "20260416_044805"
+  },
+  "gameData": {
+    "teams": {
+      "away": { "id": 121, "abbreviation": "NYM" },
+      "home": { "id": 119, "abbreviation": "LAD" }
+    },
+    "players": {
+      "ID596019": { "id": 596019, "fullName": "Francisco Lindor" },
+      "ID660271": { "id": 660271, "fullName": "Shohei Ohtani" },
+      "ID808975": { "id": 808975, "fullName": "Hyeseong Kim" },
+      "ID605280": { "id": 605280, "fullName": "Clay Holmes" },
+      "ID606192": { "id": 606192, "fullName": "Teoscar Hernández" },
+      "ID668964": { "id": 668964, "fullName": "Tobias Myers" }
+    }
+  },
+  "liveData": {
+    "plays": {
+      "allPlays": [
+        {
+          "atBatIndex": 0,
+          "result": {
+            "eventType": "strikeout",
+            "description": "Francisco Lindor strikes out swinging.",
+            "rbi": 0
+          },
+          "about": {
+            "atBatIndex": 0,
+            "halfInning": "top",
+            "inning": 1,
+            "isComplete": true,
+            "isScoringPlay": false
+          },
+          "matchup": {
+            "batter": { "id": 596019, "fullName": "Francisco Lindor" },
+            "pitcher": { "id": 660271, "fullName": "Shohei Ohtani" }
+          },
+          "playEvents": [
+            {
+              "details": {
+                "description": "Status Change - Pre-Game",
+                "eventType": "game_advisory"
+              },
+              "type": "action",
+              "isSubstitution": false,
+              "player": { "id": 596019 }
+            },
+            {
+              "details": {
+                "description": "Batter Timeout.",
+                "eventType": "batter_timeout"
+              },
+              "type": "action",
+              "isSubstitution": false,
+              "player": { "id": 596019 }
+            },
+            {
+              "type": "pitch",
+              "isPitch": true,
+              "pitchNumber": 1,
+              "details": {
+                "description": "Called Strike",
+                "type": { "description": "Four-Seam Fastball" },
+                "isBall": false,
+                "isStrike": true,
+                "isInPlay": false
+              },
+              "count": { "balls": 0, "strikes": 1 },
+              "pitchData": { "startSpeed": 96.0 }
+            },
+            {
+              "type": "pitch",
+              "isPitch": true,
+              "pitchNumber": 2,
+              "details": {
+                "description": "Ball",
+                "type": { "description": "Curveball" },
+                "isBall": true,
+                "isStrike": false,
+                "isInPlay": false
+              },
+              "count": { "balls": 1, "strikes": 1 },
+              "pitchData": { "startSpeed": 78.5 }
+            },
+            {
+              "type": "pitch",
+              "isPitch": true,
+              "pitchNumber": 3,
+              "details": {
+                "description": "Foul",
+                "type": { "description": "Cutter" },
+                "isBall": false,
+                "isStrike": true,
+                "isInPlay": false
+              },
+              "count": { "balls": 1, "strikes": 2 },
+              "pitchData": { "startSpeed": 91.3 }
+            },
+            {
+              "type": "pitch",
+              "isPitch": true,
+              "pitchNumber": 4,
+              "details": {
+                "description": "Swinging Strike",
+                "type": { "description": "Four-Seam Fastball" },
+                "isBall": false,
+                "isStrike": true,
+                "isInPlay": false
+              },
+              "count": { "balls": 1, "strikes": 3 },
+              "pitchData": { "startSpeed": 97.1 }
+            }
+          ]
+        },
+        {
+          "atBatIndex": 13,
+          "result": {
+            "eventType": "home_run",
+            "description": "Hyeseong Kim homers (1) on a fly ball to right center field. Dalton Rushing scores.",
+            "rbi": 2
+          },
+          "about": {
+            "atBatIndex": 13,
+            "halfInning": "bottom",
+            "inning": 2,
+            "isComplete": true,
+            "isScoringPlay": true
+          },
+          "matchup": {
+            "batter": { "id": 808975, "fullName": "Hyeseong Kim" },
+            "pitcher": { "id": 605280, "fullName": "Clay Holmes" }
+          },
+          "playEvents": [
+            {
+              "type": "pickoff",
+              "isPitch": false,
+              "details": {
+                "description": "Pickoff Attempt 1B"
+              }
+            },
+            {
+              "type": "pitch",
+              "isPitch": true,
+              "pitchNumber": 1,
+              "details": {
+                "description": "Ball",
+                "type": { "description": "Sinker" },
+                "isBall": true,
+                "isStrike": false,
+                "isInPlay": false
+              },
+              "count": { "balls": 1, "strikes": 0 },
+              "pitchData": { "startSpeed": 93.2 }
+            },
+            {
+              "type": "pitch",
+              "isPitch": true,
+              "pitchNumber": 2,
+              "details": {
+                "description": "Called Strike",
+                "type": { "description": "Slider" },
+                "isBall": false,
+                "isStrike": true,
+                "isInPlay": false
+              },
+              "count": { "balls": 1, "strikes": 1 },
+              "pitchData": { "startSpeed": 84.5 }
+            },
+            {
+              "type": "pitch",
+              "isPitch": true,
+              "pitchNumber": 3,
+              "details": {
+                "description": "In play, run(s)",
+                "type": { "description": "Four-Seam Fastball" },
+                "isBall": false,
+                "isStrike": false,
+                "isInPlay": true
+              },
+              "count": { "balls": 1, "strikes": 1 },
+              "pitchData": { "startSpeed": 94.8 }
+            }
+          ]
+        },
+        {
+          "atBatIndex": 43,
+          "result": {
+            "eventType": "home_run",
+            "description": "Teoscar Hernández homers (4) on a fly ball to right center field.",
+            "rbi": 1
+          },
+          "about": {
+            "atBatIndex": 43,
+            "halfInning": "bottom",
+            "inning": 6,
+            "isComplete": true,
+            "isScoringPlay": true
+          },
+          "matchup": {
+            "batter": { "id": 606192, "fullName": "Teoscar Hernández" },
+            "pitcher": { "id": 668964, "fullName": "Tobias Myers" }
+          },
+          "playEvents": [
+            {
+              "details": {
+                "description": "Pitching Change: Tobias Myers replaces Clay Holmes.",
+                "eventType": "pitching_substitution"
+              },
+              "type": "action",
+              "isSubstitution": true,
+              "player": { "id": 668964 }
+            },
+            {
+              "type": "pitch",
+              "isPitch": true,
+              "pitchNumber": 1,
+              "details": {
+                "description": "Ball",
+                "type": { "description": "Curveball" },
+                "isBall": true,
+                "isStrike": false,
+                "isInPlay": false
+              },
+              "count": { "balls": 1, "strikes": 0 },
+              "pitchData": { "startSpeed": 81.2 }
+            },
+            {
+              "type": "pitch",
+              "isPitch": true,
+              "pitchNumber": 2,
+              "details": {
+                "description": "In play, run(s)",
+                "type": { "description": "Four-Seam Fastball" },
+                "isBall": false,
+                "isStrike": false,
+                "isInPlay": true
+              },
+              "count": { "balls": 1, "strikes": 0 },
+              "pitchData": { "startSpeed": 94.1 }
+            }
+          ]
+        }
+      ]
+    },
+    "decisions": {
+      "winner": { "id": 660271, "fullName": "Shohei Ohtani" },
+      "loser": { "id": 605280, "fullName": "Clay Holmes" }
+    }
+  }
+}

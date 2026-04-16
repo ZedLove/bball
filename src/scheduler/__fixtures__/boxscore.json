@@ -1,0 +1,31 @@
+{
+  "topPerformers": [
+    {
+      "player": {
+        "person": { "id": 660271, "fullName": "Shohei Ohtani" },
+        "stats": {
+          "batting": { "summary": null },
+          "pitching": { "summary": "6.0 IP, ER, 10 K, 2 BB" }
+        }
+      }
+    },
+    {
+      "player": {
+        "person": { "id": 687221, "fullName": "Dalton Rushing" },
+        "stats": {
+          "batting": { "summary": "2-4 | HR, 2B, 2 K" },
+          "pitching": { "summary": null }
+        }
+      }
+    },
+    {
+      "player": {
+        "person": { "id": 606192, "fullName": "Teoscar Hernández" },
+        "stats": {
+          "batting": { "summary": "2-4 | HR, RBI, 2 R" },
+          "pitching": { "summary": null }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "dates": [
+    {
+      "games": [
+        {
+          "gamePk": 824693,
+          "gameDate": "2026-04-17T18:20:00Z",
+          "venue": { "name": "Wrigley Field" },
+          "teams": {
+            "away": {
+              "team": {
+                "id": 121,
+                "name": "New York Mets",
+                "abbreviation": "NYM"
+              },
+              "probablePitcher": {
+                "id": 673540,
+                "fullName": "Kodai Senga"
+              }
+            },
+            "home": {
+              "team": {
+                "id": 112,
+                "name": "Chicago Cubs",
+                "abbreviation": "CHC"
+              },
+              "probablePitcher": {
+                "id": 665795,
+                "fullName": "Edward Cabrera"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
