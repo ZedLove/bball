@@ -33,7 +33,13 @@ export interface GameFeedResponse {
   };
   liveData: {
     plays: {
-      allPlays: AllPlay[];
+      /**
+       * Completed plays since the requested timecode.
+       * The MLB diffPatch endpoint may omit or null this on some edge-case
+       * delta responses (e.g. very early timecodes or partial payloads).
+       * Treat as empty when absent.
+       */
+      allPlays: AllPlay[] | null;
     };
     /**
      * Present in the final game feed response.
@@ -85,14 +91,47 @@ export interface AllPlay {
 }
 
 export interface PlayEvent {
+  /**
+   * "pitch" | "action" | "pickoff" | "no_pitch".
+   * We process "pitch" for pitch sequences and "action" for substitutions.
+   */
+  type: string;
+  /**
+   * true when this event is a pitched ball (type === "pitch").
+   * Matches `type === "pitch"` exactly — either can be used as a filter.
+   */
+  isPitch?: boolean;
   details: {
     /** Human-readable description of this in-at-bat event. */
     description: string;
-    /** Raw MLB event type string for this event (e.g. "pitching_substitution"). */
-    eventType: string;
+    /**
+     * Raw MLB event type string for action events (e.g. "pitching_substitution").
+     * Absent on pitch and pickoff events.
+     */
+    eventType?: string;
+    // Pitch-specific fields — present when type === "pitch"
+    /**
+     * Pitch classification from the MLB Statcast system.
+     * e.g. { description: "Four-Seam Fastball" }, { description: "Curveball" }.
+     * Absent on action and pickoff events.
+     */
+    type?: { description: string };
+    /** true when the call was a ball. */
+    isBall?: boolean;
+    /** true when the call was a strike (including foul balls that do not advance the count). */
+    isStrike?: boolean;
+    /** true for the final pitch of an at-bat that is put in play. */
+    isInPlay?: boolean;
   };
-  /** "pitch" | "action" | "pickoff" — we only process type === "action". */
-  type: string;
+  /** Sequential pitch number within the at-bat. Present when type === "pitch". */
+  pitchNumber?: number;
+  /** Ball/strike count after this pitch is resolved. Present when type === "pitch" or "no_pitch". */
+  count?: { balls: number; strikes: number };
+  /** Pitch tracking data. Present when type === "pitch". */
+  pitchData?: {
+    /** Pitch velocity in mph from Statcast tracking. null when tracking data is unavailable. */
+    startSpeed: number | null;
+  };
   isSubstitution?: boolean;
   /**
    * Present on action-type events that involve a specific player
