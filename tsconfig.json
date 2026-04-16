@@ -12,8 +12,8 @@
     "declaration": true,
     "declarationMap": true,
     "rewriteRelativeImportExtensions": true,
-    "types": ["vitest/globals"]
+    "types": ["vitest/globals", "node"]
   },
-  "include": ["src"],
+  "include": ["src", "scripts"],
   "exclude": ["node_modules"]
 }
