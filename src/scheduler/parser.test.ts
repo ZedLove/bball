@@ -666,7 +666,7 @@ describe('parseGameUpdate', () => {
   });
 
   describe('pitcher detection', () => {
-    it('extracts currentPitcher from linescore.defense when present', () => {
+    it('extracts currentPitcher from linescore.defense during active play', () => {
       const game = makeGame({
         linescore: {
           ...makeGame().linescore!,
@@ -681,28 +681,74 @@ describe('parseGameUpdate', () => {
         id: 12345,
         fullName: 'Max Scherzer',
       });
+      expect(result!.upcomingPitcher).toBeNull();
     });
 
-    it('sets currentPitcher to null when defense is absent', () => {
+    it('sets currentPitcher to null when defense is absent during active play', () => {
       const schedule = makeSchedule([makeGame()]);
       const result = parseGameUpdate(schedule, STL_ID);
 
       expect(result).not.toBeNull();
       expect(result!.currentPitcher).toBeNull();
+      expect(result!.upcomingPitcher).toBeNull();
     });
 
-    it('always sets pitchingChange to false (scheduler responsibility)', () => {
+    it('exposes upcoming pitcher in upcomingPitcher (not currentPitcher) during between-innings', () => {
+      // Middle state: the MLB API has already rotated linescore.defense.pitcher
+      // to the next half-inning's pitcher. It must not appear as currentPitcher.
       const game = makeGame({
+        inningBreakLength: 120,
         linescore: {
-          ...makeGame().linescore!,
-          defense: { pitcher: { id: 42, fullName: 'Test Pitcher' } },
+          currentInning: 3,
+          currentInningOrdinal: '3rd',
+          inningState: 'Middle',
+          scheduledInnings: 9,
+          outs: 3,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 1, hits: 2, errors: 0 },
+            away: { runs: 0, hits: 1, errors: 0 },
+          },
+          defense: { pitcher: { id: 99999, fullName: 'Patrick Corbin' } },
         },
       });
       const schedule = makeSchedule([game]);
       const result = parseGameUpdate(schedule, STL_ID);
 
       expect(result).not.toBeNull();
-      expect(result!.pitchingChange).toBe(false);
+      expect(result!.trackingMode).toBe('between-innings');
+      expect(result!.currentPitcher).toBeNull();
+      expect(result!.upcomingPitcher).toEqual({
+        id: 99999,
+        fullName: 'Patrick Corbin',
+      });
+    });
+
+    it('sets both pitcher fields to null when defense is absent during between-innings', () => {
+      const game = makeGame({
+        inningBreakLength: 120,
+        linescore: {
+          currentInning: 3,
+          currentInningOrdinal: '3rd',
+          inningState: 'Middle',
+          scheduledInnings: 9,
+          outs: 3,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 1, hits: 2, errors: 0 },
+            away: { runs: 0, hits: 1, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('between-innings');
+      expect(result!.currentPitcher).toBeNull();
+      expect(result!.upcomingPitcher).toBeNull();
     });
   });
 

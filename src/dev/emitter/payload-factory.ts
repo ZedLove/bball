@@ -33,6 +33,7 @@ export function buildPayload(
 
   const base: GameUpdate = {
     gameStatus: state.gameEnded ? 'Final' : 'In Progress',
+    gamePk: state.gamePk,
     teams: {
       away: { ...state.teams.away },
       home: { ...state.teams.home },
@@ -50,8 +51,8 @@ export function buildPayload(
     delayDescription: state.delayDescription,
     isExtraInnings,
     scheduledInnings: state.scheduledInnings,
-    currentPitcher: state.currentPitcher ? { ...state.currentPitcher } : null,
-    pitchingChange: false,
+    currentPitcher: trackingMode === 'between-innings' ? null : (state.currentPitcher ? { ...state.currentPitcher } : null),
+    upcomingPitcher: trackingMode === 'between-innings' ? (state.currentPitcher ? { ...state.currentPitcher } : null) : null,
     trackingMode,
     outsRemaining,
     totalOutsRemaining,

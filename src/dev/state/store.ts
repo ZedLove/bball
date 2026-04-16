@@ -16,6 +16,7 @@ const DEFAULT_STATE: SimulationState = {
   scheduledInnings: 9,
   gameStarted: false,
   gameEnded: false,
+  gamePk: 0,
 };
 
 export interface StateStore {

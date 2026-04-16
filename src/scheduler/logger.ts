@@ -18,9 +18,8 @@ export function logUpdate(update: GameUpdate): void {
     const pitcherStr = update.currentPitcher
       ? ` | P: ${update.currentPitcher.fullName}`
       : '';
-    const pitchingChangeStr = update.pitchingChange ? ' [PITCHING CHANGE]' : '';
     logger.info(
-      '%s defending | %s | Outs: %d (remaining: %d%s)%s | %s%s%s%s',
+      '%s defending | %s | Outs: %d (remaining: %d%s)%s | %s%s%s',
       update.defendingTeam,
       inningLine,
       update.outs,
@@ -29,7 +28,6 @@ export function logUpdate(update: GameUpdate): void {
       pitcherStr,
       scoreLine,
       update.isExtraInnings ? ' [EXTRAS]' : '',
-      pitchingChangeStr,
       delayPrefix
     );
   } else if (update.trackingMode === 'runs') {
@@ -45,8 +43,8 @@ export function logUpdate(update: GameUpdate): void {
       update.inningBreakLength !== null
         ? ` (${update.inningBreakLength}s break)`
         : '';
-    const pitcherStr = update.currentPitcher
-      ? ` | Last P: ${update.currentPitcher.fullName}`
+    const pitcherStr = update.upcomingPitcher
+      ? ` | Next P: ${update.upcomingPitcher.fullName}`
       : '';
     logger.info(
       'Between innings | %s%s | %s%s%s',

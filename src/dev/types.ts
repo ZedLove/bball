@@ -34,6 +34,8 @@ export interface SimulationState {
   scheduledInnings: number;
   gameStarted: boolean;
   gameEnded: boolean;
+  /** Placeholder game identifier used to shape-match production `game-update` payloads. */
+  gamePk: number;
 }
 
 export interface HandlerResult {

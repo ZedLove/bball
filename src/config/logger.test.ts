@@ -13,6 +13,7 @@ describe('logUpdate', () => {
 
   const makeUpdate = (overrides: Partial<GameUpdate> = {}): GameUpdate => ({
     gameStatus: 'In Progress',
+    gamePk: 823077,
     teams: {
       away: { id: 121, name: 'New York Mets', abbreviation: 'NYM' },
       home: { id: 138, name: 'St. Louis Cardinals', abbreviation: 'STL' },
@@ -31,7 +32,7 @@ describe('logUpdate', () => {
     totalOutsRemaining: 14,
     runsNeeded: null,
     currentPitcher: null,
-    pitchingChange: false,
+    upcomingPitcher: null,
     inningBreakLength: null,
     ...overrides,
   });
@@ -79,17 +80,6 @@ describe('logUpdate', () => {
       expect(allArgs).toContain('Max Scherzer');
     });
 
-    it('flags pitching changes', () => {
-      const update = makeUpdate({
-        trackingMode: 'outs',
-        pitchingChange: true,
-        currentPitcher: { id: 12345, fullName: 'New Pitcher' },
-      });
-      logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
-      expect(allArgs).toContain('PITCHING CHANGE');
-    });
 
     it('includes [EXTRAS] flag for extra innings', () => {
       const update = makeUpdate({ trackingMode: 'outs', isExtraInnings: true });
@@ -148,15 +138,26 @@ describe('logUpdate', () => {
       expect(allArgs).toContain('Between innings');
     });
 
-    it('includes pitcher name when available', () => {
+    it('includes upcoming pitcher name when available', () => {
       const update = makeUpdate({
         trackingMode: 'between-innings',
-        currentPitcher: { id: 12345, fullName: 'Max Scherzer' },
+        upcomingPitcher: { id: 12345, fullName: 'Max Scherzer' },
       });
       logUpdate(update);
       const calls = logSpy.mock.calls[0];
       const allArgs = calls.map(String).join('');
       expect(allArgs).toContain('Max Scherzer');
+    });
+
+    it('does not include pitcher info when upcomingPitcher is null', () => {
+      const update = makeUpdate({
+        trackingMode: 'between-innings',
+        upcomingPitcher: null,
+      });
+      logUpdate(update);
+      const calls = logSpy.mock.calls[0];
+      const allArgs = calls.map(String).join('');
+      expect(allArgs).not.toContain('Next P:');
     });
 
     it('includes [DELAYED] flag when delayed', () => {
