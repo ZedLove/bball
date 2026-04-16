@@ -1,6 +1,6 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { CONFIG } from '../config/env.ts';
-import { fetchSchedule } from './poller.ts';
+import { fetchSchedule } from './schedule-client.ts';
 import { parseGameUpdate } from './parser.ts';
 import { logUpdate } from './logger.ts';
 import type { GameUpdate } from './parser.ts';

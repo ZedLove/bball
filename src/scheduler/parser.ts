@@ -1,4 +1,4 @@
-import type { ScheduleResponse } from './poller.ts';
+import type { ScheduleResponse } from './schedule-client.ts';
 
 /** Enriched game update emitted via Socket.IO and logged for observability. */
 export interface GameUpdate {

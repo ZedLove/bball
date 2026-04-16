@@ -1,4 +1,4 @@
-import type { Linescore } from './poller.ts';
+import type { Linescore } from './schedule-client.ts';
 
 /**
  * Per-game enrichment cursor state owned by the scheduler.

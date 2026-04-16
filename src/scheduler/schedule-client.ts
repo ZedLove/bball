@@ -63,6 +63,14 @@ export interface Linescore {
   defense?: {
     pitcher: { id: number; fullName: string };
   };
+  /**
+   * Present when the game is live (inningState: 'Top' or 'Bottom').
+   * Used by the change-detector to determine when a new batter has stepped up,
+   * which signals that the previous at-bat completed and enrichment may be needed.
+   */
+  offense?: {
+    batter?: { id: number; fullName: string };
+  };
 }
 
 const MLB_SCHEDULE_ENDPOINT = 'https://statsapi.mlb.com/api/v1/schedule';
