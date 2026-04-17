@@ -1,7 +1,13 @@
 import readline from 'readline';
 import type { Server as SocketIOServer } from 'socket.io';
 import type { StateStore } from '../state/store.ts';
-import type { PitchingChangeOptions, DelayOptions } from '../types.ts';
+import type {
+  PitchingChangeOptions,
+  PlateAppearanceOptions,
+  ScoreOptions,
+  SubstitutionOptions,
+  DelayOptions,
+} from '../types.ts';
 import { renderMenu, renderState } from './renderer.ts';
 import {
   handleGameStart,
@@ -16,6 +22,11 @@ import {
   handleSetInning,
   handleSetScore,
   handleSetTeamBatting,
+  handlePlateAppearance,
+  handleScore,
+  handleOffensiveSub,
+  handleDefensiveSub,
+  handleSimGameSummary,
 } from '../emitter/event-handlers.ts';
 
 // Maps numeric menu selections (1-based) to command names.
@@ -29,6 +40,11 @@ const NUMBERED_COMMANDS = [
   'between-innings',
   'delay',
   'clear-delay',
+  'plate-appearance',
+  'score',
+  'offensive-sub',
+  'defensive-sub',
+  'game-summary',
   'set-inning',
   'set-score',
   'set-team-batting',
@@ -267,6 +283,55 @@ async function dispatch(
 
     case 'set-team-batting': {
       print(handleSetTeamBatting(store).message);
+      break;
+    }
+
+    case 'plate-appearance': {
+      const opts: PlateAppearanceOptions = {};
+      if (args['type']) {
+        opts.type = args['type'];
+      }
+      print(handlePlateAppearance(store, io, opts).message);
+      break;
+    }
+
+    case 'score': {
+      const opts: ScoreOptions = {};
+      if (args['type']) opts.type = args['type'];
+      if (args['runs']) {
+        const r = parseInt(args['runs'], 10);
+        if (!isNaN(r)) opts.runs = r;
+      }
+      print(handleScore(store, io, opts).message);
+      break;
+    }
+
+    case 'offensive-sub': {
+      const opts: SubstitutionOptions = {};
+      if (args['name']) {
+        opts.playerName = args['name'];
+      } else {
+        const name = await ask(rl, '  Player name (Enter to skip): ');
+        if (name.trim()) opts.playerName = name.trim();
+      }
+      print(handleOffensiveSub(store, io, opts).message);
+      break;
+    }
+
+    case 'defensive-sub': {
+      const opts: SubstitutionOptions = {};
+      if (args['name']) {
+        opts.playerName = args['name'];
+      } else {
+        const name = await ask(rl, '  Player name (Enter to skip): ');
+        if (name.trim()) opts.playerName = name.trim();
+      }
+      print(handleDefensiveSub(store, io, opts).message);
+      break;
+    }
+
+    case 'game-summary': {
+      print(handleSimGameSummary(store, io).message);
       break;
     }
 

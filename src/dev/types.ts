@@ -11,7 +11,12 @@ export type EventType =
   | 'batting-ends'
   | 'between-innings'
   | 'delay'
-  | 'clear-delay';
+  | 'clear-delay'
+  | 'plate-appearance'
+  | 'score'
+  | 'offensive-sub'
+  | 'defensive-sub'
+  | 'game-summary';
 
 export interface SimulationState {
   teams: {
@@ -46,6 +51,23 @@ export interface HandlerResult {
 export interface PitchingChangeOptions {
   pitcherId?: number;
   pitcherName?: string;
+}
+
+export interface PlateAppearanceOptions {
+  /** Override the randomly selected out-type with any catalogued eventType. */
+  type?: string;
+}
+
+export interface ScoreOptions {
+  /** Override the randomly selected scoring eventType. */
+  type?: string;
+  /** Number of runs to add (default: 1). */
+  runs?: number;
+}
+
+export interface SubstitutionOptions {
+  playerName?: string;
+  playerId?: number;
 }
 
 export interface DelayOptions {

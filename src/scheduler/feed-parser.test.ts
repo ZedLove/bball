@@ -4,6 +4,8 @@ import type { GameFeedResponse } from './game-feed-types.ts';
 import type {
   PlateAppearanceCompletedEvent,
   PitchingSubstitutionEvent,
+  OffensiveSubstitutionEvent,
+  DefensiveSubstitutionEvent,
   PitchEvent,
 } from '../server/socket-events.ts';
 

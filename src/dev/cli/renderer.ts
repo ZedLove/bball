@@ -11,23 +11,30 @@ export function renderMenu(state: SimulationState): string {
 
   Current state: ${statusLine}
 
-  Game Events:
+  Game Lifecycle:
     1.  game-start        – Begin game (inning 1, top)
     2.  game-end          – End game (mark final)
     3.  out               – Record an out (0→1→2→3)
-    4.  pitching-change   – Swap pitcher
+    4.  pitching-change   – Swap pitcher (co-emits game-events)
     5.  batting-begins    – Advance to next half-inning, emit batting
     6.  batting-ends      – End current half, emit between-innings
     7.  between-innings   – Explicitly emit between-innings
     8.  delay             – Trigger a game delay
     9.  clear-delay       – Resume from delay
 
+  Rich Events (game-events / game-summary):
+    10. plate-appearance  – Emit an out-type plate appearance [--type <eventType>]
+    11. score             – Scoring play + increment score [--type <t>] [--runs <n>]
+    12. offensive-sub     – Pinch hitter/runner [--name "Player Name"]
+    13. defensive-sub     – Defensive substitution [--name "Player Name"]
+    14. game-summary      – Emit a simulated game-summary event
+
   State Control:
-    10. set-inning        – Jump to a specific inning
-    11. set-score         – Set team scores
-    12. set-team-batting  – Swap batting/defending sides
-    13. state             – Show full current game state
-    14. reset             – Reset everything to defaults
+    15. set-inning        – Jump to a specific inning
+    16. set-score         – Set team scores
+    17. set-team-batting  – Swap batting/defending sides
+    18. state             – Show full current game state
+    19. reset             – Reset everything to defaults
 
   ?, help                 – Show this menu
   q, exit                 – Quit simulator

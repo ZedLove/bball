@@ -58,6 +58,13 @@ export default tseslint.config(
     },
   },
   {
+    // Dev CLI writes directly to stdout — console.log is intentional here
+    files: ['src/dev/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     files: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'scripts/**/*.ts'],
     languageOptions: {
       globals: {
