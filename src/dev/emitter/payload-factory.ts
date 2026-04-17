@@ -65,8 +65,13 @@ export function buildPayload(
 
 function computeTotalOutsRemaining(state: SimulationState): number | null {
   if (state.inning.number > state.scheduledInnings) return null;
+  // When the away team is defending the final half-inning and the home team is
+  // winning, the bottom of that inning won't be played — subtract one half.
+  const awayDefendingAndLosing =
+    state.inning.half === 'Bottom' && state.score.away < state.score.home;
   const remainingInnings = state.scheduledInnings - state.inning.number;
-  return 3 - state.outs + remainingInnings * 3;
+  const adjustment = awayDefendingAndLosing ? 1 : 0;
+  return 3 - state.outs + (remainingInnings - adjustment) * 3;
 }
 
 function computeRunsNeeded(state: SimulationState): number {

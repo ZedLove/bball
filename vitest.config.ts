@@ -6,6 +6,9 @@ export default defineConfig({
     environment: 'node',
     coverage: {
       reporter: ['text', 'html', 'json'],
+      // Exclude dev-only tooling (simulator, CLI) — it is not production code
+      // and its contract tests live in event-handlers.test.ts.
+      exclude: ['src/dev/**'],
       thresholds: {
         lines: 93,
         functions: 91,

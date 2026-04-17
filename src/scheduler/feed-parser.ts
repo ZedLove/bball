@@ -48,7 +48,14 @@ export function parseFeedEvents(
 
   for (const play of allPlays) {
     if (!play.about.isComplete) continue;
-    if (play.about.atBatIndex <= lastProcessedAtBatIndex) continue;
+    if (play.about.atBatIndex <= lastProcessedAtBatIndex) {
+      logger.debug('Play deduplicated — atBatIndex already processed', {
+        gamePk,
+        atBatIndex: play.about.atBatIndex,
+        lastProcessedAtBatIndex,
+      });
+      continue;
+    }
 
     const { atBatIndex, halfInning, inning, isScoringPlay } = play.about;
     const battingTeam =

@@ -794,3 +794,185 @@ describe('toTimecode', () => {
     expect(toTimecode('2026-12-31T23:59:59Z')).toBe('20261231_235959');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Scheduler API — getLastUpdate
+// ---------------------------------------------------------------------------
+
+describe('getLastUpdate', () => {
+  it('returns null before any game-update is emitted', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeEmptySchedule());
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    expect(scheduler.getLastUpdate()).toBeNull();
+    scheduler.stop();
+  });
+
+  it('returns the most recently emitted game-update payload', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    const lastUpdate = scheduler.getLastUpdate();
+    expect(lastUpdate).not.toBeNull();
+    expect(lastUpdate?.gamePk).toBe(GAME_PK);
+    expect(lastUpdate?.trackingMode).toBe('outs');
+    scheduler.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Poll interval scheduling
+// ---------------------------------------------------------------------------
+
+/** Schedule fixture that puts NYM (home, 121) in a between-innings state. */
+function makeBetweenInningsSchedule(): ScheduleResponse {
+  return {
+    dates: [{
+      date: '2026-04-15',
+      games: [{
+        gamePk: GAME_PK,
+        gameDate: GAME_DATE,
+        status: { detailedState: 'In Progress', abstractGameState: 'Live' },
+        inningBreakLength: 120,
+        teams: {
+          away: {
+            team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
+            score: 0,
+            leagueRecord: { wins: 3, losses: 2 },
+          },
+          home: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 0,
+            leagueRecord: { wins: 3, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 3,
+          currentInningOrdinal: '3rd',
+          inningState: 'Middle',        // ← between-innings
+          scheduledInnings: 9,
+          outs: 3,
+          balls: 0,
+          strikes: 0,
+          teams: { home: { runs: 0, hits: 0, errors: 0 }, away: { runs: 0, hits: 0, errors: 0 } },
+          defense: { pitcher: { id: 660271, fullName: 'Shohei Ohtani' } },
+        },
+      }],
+    }],
+  };
+}
+
+/** Schedule fixture where NYM (home, 121) is batting in regular innings. */
+function makeBattingSchedule(): ScheduleResponse {
+  return {
+    dates: [{
+      date: '2026-04-15',
+      games: [{
+        gamePk: GAME_PK,
+        gameDate: GAME_DATE,
+        status: { detailedState: 'In Progress', abstractGameState: 'Live' },
+        inningBreakLength: 120,
+        teams: {
+          away: {
+            team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
+            score: 0,
+            leagueRecord: { wins: 3, losses: 2 },
+          },
+          home: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 0,
+            leagueRecord: { wins: 3, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 3,
+          currentInningOrdinal: '3rd',
+          inningState: 'Bottom',         // ← NYM (home) batting
+          scheduledInnings: 9,
+          outs: 1,
+          balls: 0,
+          strikes: 0,
+          teams: { home: { runs: 0, hits: 0, errors: 0 }, away: { runs: 0, hits: 0, errors: 0 } },
+          defense: { pitcher: { id: 596019, fullName: 'Francisco Lindor' } },
+          offense: { batter: { id: 660271, fullName: 'Shohei Ohtani' } },
+        },
+      }],
+    }],
+  };
+}
+
+describe('poll interval scheduling', () => {
+  it('schedules next tick at between-innings interval when trackingMode is between-innings', async () => {
+    // inningBreakLength:120 + BETWEEN_INNINGS_BUFFER_S:15 = 135s
+    mockFetchSchedule.mockResolvedValue(makeBetweenInningsSchedule());
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // first tick settles
+    expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
+
+    // Advance to just before the 135s threshold — second tick must not have fired
+    vi.advanceTimersByTime(134_999);
+    await drainMicrotasks();
+    expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
+
+    // Cross the threshold — second tick fires
+    vi.advanceTimersByTime(1);
+    await drainMicrotasks();
+    expect(mockFetchSchedule).toHaveBeenCalledTimes(2);
+
+    scheduler.stop();
+  });
+
+  it('schedules next tick at batting interval when trackingMode is batting', async () => {
+    // BATTING_POLL_INTERVAL: 30s
+    mockFetchSchedule.mockResolvedValue(makeBattingSchedule());
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+    expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(29_999);
+    await drainMicrotasks();
+    expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1);
+    await drainMicrotasks();
+    expect(mockFetchSchedule).toHaveBeenCalledTimes(2);
+
+    scheduler.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Error handling — initial tick failure
+// ---------------------------------------------------------------------------
+
+describe('error handling', () => {
+  it('swallows an unhandled error thrown during the initial loop tick', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    const io = createMockIo();
+
+    // Make io.emit throw on its very first call (the game-update emission).
+    // This simulates a broken socket connection on startup, causing loop() to
+    // reject and triggering the outer catch at the bottom of startScheduler().
+    (io.emit as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+      throw new Error('socket broken');
+    });
+
+    // startScheduler must not throw; the error is caught internally
+    expect(() => startScheduler(io)).not.toThrow();
+    const scheduler = startScheduler(io);
+    await drainMicrotasks();
+
+    // Stop the second scheduler (which ran cleanly) without error
+    scheduler.stop();
+  });
+});
