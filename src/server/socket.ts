@@ -3,6 +3,7 @@ import type { Server as HttpServer } from 'http';
 import { logger } from '../config/logger.ts';
 import { CONFIG } from '../config/env.ts';
 import type { Scheduler } from '../scheduler/mlb-scheduler.ts';
+import { SOCKET_EVENTS } from './socket-events.ts';
 
 export function attachSocketServer(httpServer: HttpServer): SocketIOServer {
   const io = new SocketIOServer(httpServer, {
@@ -29,7 +30,7 @@ export function registerConnectionHandlers(
     // don't wait for the next transition to receive an update.
     const lastUpdate = scheduler.getLastUpdate();
     if (lastUpdate) {
-      socket.emit('game-update', lastUpdate);
+      socket.emit(SOCKET_EVENTS.GAME_UPDATE, lastUpdate);
     }
 
     socket.on('disconnect', () => {

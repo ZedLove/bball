@@ -28,6 +28,7 @@ import { fetchSchedule } from './schedule-client.ts';
 import { fetchGameFeed } from './game-feed-client.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
+import * as summaryParserModule from './summary-parser.ts';
 import type { ScheduleResponse } from './schedule-client.ts';
 import type { GameFeedResponse, BoxscoreResponse, NextGameScheduleResponse } from './game-feed-types.ts';
 
@@ -710,6 +711,28 @@ describe('final game handling', () => {
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
     mockFetchSchedule.mockResolvedValueOnce(makeFinalSchedule());
     mockFetchGameFeed.mockRejectedValueOnce(new Error('feed unavailable'));
+    mockFetchBoxscore.mockResolvedValueOnce(makeBoxscoreResponse());
+    mockFetchNextGame.mockResolvedValueOnce(makeNextGameResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks();
+
+    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_SUMMARY, expect.anything());
+    scheduler.stop();
+  });
+
+  it('does not emit game-summary when buildGameSummary throws', async () => {
+    vi.spyOn(summaryParserModule, 'buildGameSummary').mockImplementationOnce(() => {
+      throw new Error('parse error');
+    });
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    mockFetchSchedule.mockResolvedValueOnce(makeFinalSchedule());
+    mockFetchGameFeed.mockResolvedValueOnce(makeFeedResponse(5));
     mockFetchBoxscore.mockResolvedValueOnce(makeBoxscoreResponse());
     mockFetchNextGame.mockResolvedValueOnce(makeNextGameResponse());
 

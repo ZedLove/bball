@@ -2,6 +2,7 @@ import type { Server as SocketIOServer } from 'socket.io';
 import { createStateStore } from './state/store.ts';
 import { createCliInterface } from './cli/interface.ts';
 import { logger } from '../config/logger.ts';
+import { SOCKET_EVENTS } from '../server/socket-events.ts';
 
 /**
  * Start the interactive dev event simulator.
@@ -18,7 +19,7 @@ export function startDevSimulator(io: SocketIOServer): void {
 
     const lastUpdate = store.getLastEmitted();
     if (lastUpdate) {
-      socket.emit('game-update', lastUpdate);
+      socket.emit(SOCKET_EVENTS.GAME_UPDATE, lastUpdate);
     }
 
     socket.on('disconnect', () => {
