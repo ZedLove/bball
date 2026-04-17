@@ -52,6 +52,7 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
       'no-var': 'error',
       eqeqeq: ['error', 'always'],
+      'no-trailing-spaces': 'error',
 
       // Security
       'security/detect-object-injection': 'off',
