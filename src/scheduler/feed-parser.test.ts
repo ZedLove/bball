@@ -209,6 +209,31 @@ describe('parseFeedEvents', () => {
       expect(events).toHaveLength(3);
       expect(events.every((e) => e.atBatIndex !== 0)).toBe(true);
     });
+
+    it('suppresses a play whose result.eventType maps to a non-plate-appearance catalog category', () => {
+      // Defensive guard: if a play result somehow carries a substitution eventType
+      // (a catalog integrity violation), the play is suppressed and a warning logged.
+      // 'pitching_substitution' is in the catalog as 'pitching-substitution', not 'plate-appearance-completed'.
+      const withSubstitutionResult: GameFeedResponse = {
+        ...response,
+        liveData: {
+          ...response.liveData,
+          plays: {
+            allPlays: response.liveData.plays.allPlays!.map((p) =>
+              p.atBatIndex === 0
+                ? { ...p, result: { ...p.result, eventType: 'pitching_substitution' } }
+                : p,
+            ),
+          },
+        },
+      };
+
+      const events = parseFeedEvents(withSubstitutionResult, GAME_PK, -1);
+
+      // The play at atBatIndex 0 is suppressed; 3 events remain
+      expect(events).toHaveLength(3);
+      expect(events.every((e) => e.atBatIndex !== 0 || e.category !== 'plate-appearance-completed')).toBe(true);
+    });
   });
 
   // ---------------------------------------------------------------------------
