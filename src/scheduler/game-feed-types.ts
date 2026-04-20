@@ -199,3 +199,47 @@ export interface NextGameEntry {
     };
   };
 }
+
+// ---------------------------------------------------------------------------
+// Live feed endpoint  (/api/v1.1/game/{gamePk}/feed/live)
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal shape of the MLB `/api/v1.1/game/{gamePk}/feed/live` response.
+ * Only the fields consumed by `parseCurrentPlay` are typed.
+ */
+export interface GameFeedLiveResponse {
+  liveData: {
+    plays: {
+      /**
+       * The in-progress plate appearance.
+       * Absent before the first pitch of the game and between half-innings.
+       */
+      currentPlay: LiveCurrentPlay | null | undefined;
+    };
+  };
+}
+
+export interface LiveCurrentPlay {
+  about: {
+    atBatIndex: number;
+    halfInning: 'top' | 'bottom';
+    inning: number;
+    /** true once the at-bat is fully resolved. */
+    isComplete: boolean;
+  };
+  /** Live count for the current plate appearance. */
+  count: { balls: number; strikes: number; outs: number };
+  matchup: {
+    batter: { id: number; fullName: string };
+    pitcher: { id: number; fullName: string };
+    /** Batter stance. 'S' = switch hitter. */
+    batSide: { code: 'L' | 'R' | 'S' };
+    pitchHand: { code: 'L' | 'R' };
+  };
+  /**
+   * All in-at-bat events so far. Reuses the existing `PlayEvent` type.
+   * Filter to `type === 'pitch'` to get the pitch sequence.
+   */
+  playEvents: PlayEvent[];
+}
