@@ -8,12 +8,28 @@
           "inning": 7,
           "isComplete": false
         },
-        "count": { "balls": 1, "strikes": 2, "outs": 2 },
+        "count": {
+          "balls": 1,
+          "strikes": 2,
+          "outs": 2
+        },
         "matchup": {
-          "batter": { "id": 678554, "fullName": "Curtis Mead" },
-          "pitcher": { "id": 676775, "fullName": "Keaton Winn" },
-          "batSide": { "code": "R", "description": "Right" },
-          "pitchHand": { "code": "R", "description": "Right" }
+          "batter": {
+            "id": 678554,
+            "fullName": "Curtis Mead"
+          },
+          "pitcher": {
+            "id": 676775,
+            "fullName": "Keaton Winn"
+          },
+          "batSide": {
+            "code": "R",
+            "description": "Right"
+          },
+          "pitchHand": {
+            "code": "R",
+            "description": "Right"
+          }
         },
         "playEvents": [
           {
@@ -21,15 +37,60 @@
             "isPitch": true,
             "pitchNumber": 1,
             "details": {
-              "call": { "code": "C", "description": "Called Strike" },
+              "call": {
+                "code": "C",
+                "description": "Called Strike"
+              },
               "description": "Called Strike",
               "isInPlay": false,
               "isStrike": true,
               "isBall": false,
-              "type": { "code": "SI", "description": "Sinker" }
+              "type": {
+                "code": "SI",
+                "description": "Sinker"
+              }
             },
-            "count": { "balls": 0, "strikes": 1, "outs": 2 },
-            "pitchData": { "startSpeed": 96.8 }
+            "count": {
+              "balls": 0,
+              "strikes": 1,
+              "outs": 2
+            },
+            "pitchData": {
+              "startSpeed": 96.8,
+              "endSpeed": 84.4,
+              "strikeZoneTop": 3.28,
+              "strikeZoneBottom": 1.65,
+              "strikeZoneWidth": 17.0,
+              "strikeZoneDepth": 8.5,
+              "plateTime": 0.407,
+              "extension": 5.6,
+              "zone": 13,
+              "coordinates": {
+                "pX": 0.92,
+                "pZ": 1.62,
+                "x": 74.5,
+                "y": 189.3,
+                "x0": 1.8,
+                "y0": 50.0,
+                "z0": 5.9,
+                "vX0": -3.1,
+                "vY0": -136.2,
+                "vZ0": -6.2,
+                "aX": 11.5,
+                "aY": 30.8,
+                "aZ": -24.8,
+                "pfxX": 5.9,
+                "pfxZ": 5.8
+              },
+              "breaks": {
+                "breakAngle": 5.6,
+                "breakVertical": -25.4,
+                "breakVerticalInduced": 9.2,
+                "breakHorizontal": -9.5,
+                "spinRate": 2290,
+                "spinDirection": 158
+              }
+            }
           },
           {
             "type": "action",
@@ -44,15 +105,60 @@
             "isPitch": true,
             "pitchNumber": 2,
             "details": {
-              "call": { "code": "B", "description": "Ball" },
+              "call": {
+                "code": "B",
+                "description": "Ball"
+              },
               "description": "Ball",
               "isInPlay": false,
               "isStrike": false,
               "isBall": true,
-              "type": { "code": "FF", "description": "Four-Seam Fastball" }
+              "type": {
+                "code": "FF",
+                "description": "Four-Seam Fastball"
+              }
             },
-            "count": { "balls": 1, "strikes": 1, "outs": 2 },
-            "pitchData": { "startSpeed": 98.1 }
+            "count": {
+              "balls": 1,
+              "strikes": 1,
+              "outs": 2
+            },
+            "pitchData": {
+              "startSpeed": 98.1,
+              "endSpeed": 87.5,
+              "strikeZoneTop": 3.35,
+              "strikeZoneBottom": 1.62,
+              "strikeZoneWidth": 17.0,
+              "strikeZoneDepth": 8.5,
+              "plateTime": 0.401,
+              "extension": 6.0,
+              "zone": 5,
+              "coordinates": {
+                "pX": -0.08,
+                "pZ": 2.83,
+                "x": 111.5,
+                "y": 155.2,
+                "x0": -1.2,
+                "y0": 50.0,
+                "z0": 6.15,
+                "vX0": 4.2,
+                "vY0": -139.8,
+                "vZ0": -4.1,
+                "aX": -9.5,
+                "aY": 29.8,
+                "aZ": -14.0,
+                "pfxX": -4.8,
+                "pfxZ": 13.6
+              },
+              "breaks": {
+                "breakAngle": 3.2,
+                "breakVertical": -8.5,
+                "breakVerticalInduced": 16.8,
+                "breakHorizontal": 7.2,
+                "spinRate": 2380,
+                "spinDirection": 207
+              }
+            }
           },
           {
             "type": "pickoff",
@@ -67,15 +173,60 @@
             "isPitch": true,
             "pitchNumber": 3,
             "details": {
-              "call": { "code": "S", "description": "Swinging Strike" },
+              "call": {
+                "code": "S",
+                "description": "Swinging Strike"
+              },
               "description": "Swinging Strike",
               "isInPlay": false,
               "isStrike": true,
               "isBall": false,
-              "type": { "code": "SL", "description": "Slider" }
+              "type": {
+                "code": "SL",
+                "description": "Slider"
+              }
             },
-            "count": { "balls": 1, "strikes": 2, "outs": 2 },
-            "pitchData": { "startSpeed": 88.3 }
+            "count": {
+              "balls": 1,
+              "strikes": 2,
+              "outs": 2
+            },
+            "pitchData": {
+              "startSpeed": 88.3,
+              "endSpeed": 76.1,
+              "strikeZoneTop": 3.35,
+              "strikeZoneBottom": 1.62,
+              "strikeZoneWidth": 17.0,
+              "strikeZoneDepth": 8.5,
+              "plateTime": 0.452,
+              "extension": 5.7,
+              "zone": 14,
+              "coordinates": {
+                "pX": 1.15,
+                "pZ": 1.88,
+                "x": 68.2,
+                "y": 182.0,
+                "x0": 1.5,
+                "y0": 50.0,
+                "z0": 6.0,
+                "vX0": 1.8,
+                "vY0": -123.0,
+                "vZ0": -5.5,
+                "aX": -3.8,
+                "aY": 29.5,
+                "aZ": -28.0,
+                "pfxX": -1.9,
+                "pfxZ": 2.1
+              },
+              "breaks": {
+                "breakAngle": 38.5,
+                "breakVertical": -40.1,
+                "breakVerticalInduced": 2.3,
+                "breakHorizontal": 3.5,
+                "spinRate": 2590,
+                "spinDirection": 73
+              }
+            }
           }
         ]
       }
