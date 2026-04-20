@@ -64,6 +64,7 @@ const SAMPLE_UPDATE: GameUpdate = {
   currentPitcher: { id: 605113, fullName: 'Kodai Senga' },
   upcomingPitcher: null,
   inningBreakLength: null,
+  atBat: null,
 };
 
 // ---------------------------------------------------------------------------

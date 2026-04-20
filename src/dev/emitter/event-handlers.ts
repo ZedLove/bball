@@ -10,6 +10,8 @@ import type {
   DelayOptions,
   SetInningOptions,
   SetScoreOptions,
+  NewBatterOptions,
+  PitchOptions,
 } from '../types.ts';
 import { toOrdinal } from '../types.ts';
 import { validateTransition } from '../state/validator.ts';
@@ -364,9 +366,11 @@ export function handlePlateAppearance(
   };
 
   emitGameEvents(io, { gamePk: state.gamePk, events: [paEvent] });
-  return ok(
-    `✓ Plate appearance: ${eventType} | ${state.inning.ordinal} ${state.inning.half}`
-  );
+
+  // Clear the active at-bat: simulate the gap before the next batter steps in.
+  store.setState({ currentAtBat: null });
+
+  return ok(`✓ Plate appearance: ${eventType} | ${state.inning.ordinal} ${state.inning.half}`);
 }
 
 export function handleScore(
@@ -543,9 +547,105 @@ export function handleSimGameSummary(
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Live at-bat commands (Phase 5)
 // ---------------------------------------------------------------------------
 
+export function handleNewBatter(
+  store: StateStore,
+  io: SocketIOServer,
+  options: NewBatterOptions,
+): HandlerResult {
+  const state = store.getState();
+  const error = validateTransition('out', state); // requires game active, not final
+  if (error) return fail(error);
+
+  const batter = {
+    id: options.batterId ?? randomPitcherId(),
+    fullName: options.batterName ?? 'Simulated Batter',
+    battingOrder: 1,
+  };
+  const pitcher = {
+    id: options.pitcherId ?? (state.currentPitcher?.id ?? randomPitcherId()),
+    fullName: options.pitcherName ?? (state.currentPitcher?.fullName ?? 'Simulated Pitcher'),
+  };
+
+  store.setState({
+    currentAtBat: {
+      batter,
+      pitcher,
+      batSide: 'R',
+      pitchHand: 'R',
+      onDeck: null,
+      inHole: null,
+      first: null,
+      second: null,
+      third: null,
+      count: { balls: 0, strikes: 0 },
+      pitchSequence: [],
+    },
+  });
+
+  emitUpdate(io, store, 'outs');
+  return ok(
+    `✓ New batter: ${batter.fullName} (#${batter.id}) vs ${pitcher.fullName}` +
+      ` | ${state.inning.ordinal} ${state.inning.half} | Count 0-0`,
+  );
+}
+
+export function handlePitch(
+  store: StateStore,
+  io: SocketIOServer,
+  options: PitchOptions,
+): HandlerResult {
+  const state = store.getState();
+  const error = validateTransition('out', state);
+  if (error) return fail(error);
+
+  if (!state.currentAtBat) {
+    return fail('No active at-bat. Use new-batter first.');
+  }
+
+  const call = options.call ?? 'Ball';
+  const isBall = call === 'Ball';
+  const isStrike = call === 'Strike' || call === 'Foul';
+  const isInPlay = call === 'In play';
+
+  const currentCount = state.currentAtBat.count;
+  const newBalls = isBall ? currentCount.balls + 1 : currentCount.balls;
+  const newStrikes = isStrike && currentCount.strikes < 2
+    ? currentCount.strikes + 1
+    : currentCount.strikes;
+
+  const pitchNumber = state.currentAtBat.pitchSequence.length + 1;
+  const newPitch = {
+    pitchNumber,
+    pitchType: options.type ?? 'Four-Seam Fastball',
+    call,
+    isBall,
+    isStrike,
+    isInPlay,
+    speedMph: options.speed ?? 93,
+    countAfter: { balls: newBalls, strikes: newStrikes },
+  };
+
+  store.setState({
+    currentAtBat: {
+      ...state.currentAtBat,
+      count: { balls: newBalls, strikes: newStrikes },
+      pitchSequence: [...state.currentAtBat.pitchSequence, newPitch],
+    },
+  });
+
+  emitUpdate(io, store, 'outs');
+  return ok(
+    `✓ Pitch ${pitchNumber}: ${newPitch.pitchType} | ${call}` +
+      ` | Count ${newBalls}-${newStrikes} | ${options.speed ?? 93} mph`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 function ok(message: string): HandlerResult {
   return { success: true, message };
 }

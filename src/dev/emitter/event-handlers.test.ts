@@ -19,6 +19,8 @@ import {
   handleDefensiveSub,
   handleSimGameSummary,
   handlePitchingChange,
+  handleNewBatter,
+  handlePitch,
 } from './event-handlers.ts';
 import { SOCKET_EVENTS } from '../../server/socket-events.ts';
 import type {
@@ -28,6 +30,7 @@ import type {
   OffensiveSubstitutionEvent,
   DefensiveSubstitutionEvent,
   GameSummary,
+  AtBatState,
 } from '../../server/socket-events.ts';
 
 import type { GameUpdate } from '../../scheduler/parser.ts';
@@ -412,3 +415,216 @@ describe('handlePitchingChange (Phase 5A co-emission)', () => {
     expect(event.player.fullName).toBe('Edwin Díaz');
   });
 });
+
+// ── handleNewBatter ───────────────────────────────────────────────────────────
+
+describe('handleNewBatter', () => {
+  it('returns success and sets currentAtBat in state', () => {
+    const result = handleNewBatter(store, io, {});
+
+    expect(result.success).toBe(true);
+    const state = store.getState();
+    expect(state.currentAtBat).not.toBeNull();
+    expect(state.currentAtBat?.count).toEqual({ balls: 0, strikes: 0 });
+    expect(state.currentAtBat?.pitchSequence).toEqual([]);
+  });
+
+  it('uses provided batter and pitcher names and ids', () => {
+    handleNewBatter(store, io, {
+      batterName: 'Juan Soto',
+      batterId: 665742,
+      pitcherName: 'Gerrit Cole',
+      pitcherId: 543037,
+    });
+
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.batter.fullName).toBe('Juan Soto');
+    expect(atBat.batter.id).toBe(665742);
+    expect(atBat.pitcher.fullName).toBe('Gerrit Cole');
+    expect(atBat.pitcher.id).toBe(543037);
+  });
+
+  it('defaults batSide to R and pitchHand to R', () => {
+    handleNewBatter(store, io, {});
+
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.batSide).toBe('R');
+    expect(atBat.pitchHand).toBe('R');
+  });
+
+  it('uses current pitcher from state when no pitcher option is given', () => {
+    store.setState({ currentPitcher: { id: 999, fullName: 'State Pitcher' } });
+    handleNewBatter(store, io, {});
+
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.pitcher.fullName).toBe('State Pitcher');
+    expect(atBat.pitcher.id).toBe(999);
+  });
+
+  it('emits a game-update with atBat populated', () => {
+    handleNewBatter(store, io, { batterName: 'Pete Alonso', batterId: 624413 });
+
+    const update = firstGameUpdate(io);
+    expect(update.atBat).not.toBeNull();
+    expect((update.atBat as AtBatState).batter.fullName).toBe('Pete Alonso');
+  });
+
+  it('fails when game is not started', () => {
+    store.setState({ gameStarted: false });
+
+    const result = handleNewBatter(store, io, {});
+    expect(result.success).toBe(false);
+  });
+
+  it('fails when game is ended', () => {
+    store.setState({ gameEnded: true });
+
+    const result = handleNewBatter(store, io, {});
+    expect(result.success).toBe(false);
+  });
+});
+
+// ── handlePitch ───────────────────────────────────────────────────────────────
+
+describe('handlePitch', () => {
+  beforeEach(() => {
+    // Put an active at-bat in state
+    handleNewBatter(store, io, {});
+    (io.emit as ReturnType<typeof vi.fn>).mockClear();
+  });
+
+  it('returns success and appends pitch to pitchSequence', () => {
+    const result = handlePitch(store, io, { call: 'Ball' });
+
+    expect(result.success).toBe(true);
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.pitchSequence).toHaveLength(1);
+    expect(atBat.pitchSequence[0].call).toBe('Ball');
+  });
+
+  it('increments balls on Ball call', () => {
+    handlePitch(store, io, { call: 'Ball' });
+
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.count.balls).toBe(1);
+    expect(atBat.count.strikes).toBe(0);
+  });
+
+  it('increments strikes on Strike call', () => {
+    handlePitch(store, io, { call: 'Strike' });
+
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.count.balls).toBe(0);
+    expect(atBat.count.strikes).toBe(1);
+  });
+
+  it('increments strikes on Foul call', () => {
+    handlePitch(store, io, { call: 'Foul' });
+
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.count.strikes).toBe(1);
+  });
+
+  it('does not increment strikes beyond 2 on Foul', () => {
+    handlePitch(store, io, { call: 'Strike' });
+    handlePitch(store, io, { call: 'Strike' });
+    handlePitch(store, io, { call: 'Foul' });
+
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.count.strikes).toBe(2);
+  });
+
+  it('uses provided pitch type and speed', () => {
+    handlePitch(store, io, { type: 'Slider', speed: 88, call: 'Strike' });
+
+    const atBat = store.getState().currentAtBat as AtBatState;
+    const pitch = atBat.pitchSequence[0];
+    expect(pitch.pitchType).toBe('Slider');
+    expect(pitch.speedMph).toBe(88);
+  });
+
+  it('defaults pitch type to Four-Seam Fastball and speed to 93', () => {
+    handlePitch(store, io, {});
+
+    const pitch = (store.getState().currentAtBat as AtBatState).pitchSequence[0];
+    expect(pitch.pitchType).toBe('Four-Seam Fastball');
+    expect(pitch.speedMph).toBe(93);
+  });
+
+  it('assigns sequential pitchNumber across multiple pitches', () => {
+    handlePitch(store, io, { call: 'Ball' });
+    handlePitch(store, io, { call: 'Strike' });
+    handlePitch(store, io, { call: 'Ball' });
+
+    const seq = (store.getState().currentAtBat as AtBatState).pitchSequence;
+    expect(seq.map((p) => p.pitchNumber)).toEqual([1, 2, 3]);
+  });
+
+  it('emits game-update with updated atBat after pitch', () => {
+    handlePitch(store, io, { call: 'Ball' });
+
+    const update = firstGameUpdate(io);
+    expect((update.atBat as AtBatState).pitchSequence).toHaveLength(1);
+    expect((update.atBat as AtBatState).count.balls).toBe(1);
+  });
+
+  it('fails with no active at-bat', () => {
+    store.setState({ currentAtBat: null });
+
+    const result = handlePitch(store, io, { call: 'Ball' });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ── handlePlateAppearance clears currentAtBat ─────────────────────────────────
+
+describe('handlePlateAppearance clears active at-bat', () => {
+  it('sets currentAtBat to null after a plate appearance', () => {
+    // Set up an active at-bat first
+    handleNewBatter(store, io, {});
+    expect(store.getState().currentAtBat).not.toBeNull();
+
+    handlePlateAppearance(store, io, {});
+
+    expect(store.getState().currentAtBat).toBeNull();
+  });
+
+  it('plate appearance still succeeds when no currentAtBat is active', () => {
+    // No handleNewBatter called
+    const result = handlePlateAppearance(store, io, {});
+    expect(result.success).toBe(true);
+    expect(store.getState().currentAtBat).toBeNull();
+  });
+});
+
+// ── buildPayload respects between-innings / final tracking mode ────────────────
+
+describe('buildPayload atBat field vs trackingMode', () => {
+  it('game-update has atBat: null during between-innings even when currentAtBat is set', async () => {
+    // Start game and set an at-bat
+    handleNewBatter(store, io, {});
+    (io.emit as ReturnType<typeof vi.fn>).mockClear();
+
+    // Emit in between-innings mode by advancing past batting-begins then batting-ends
+    // We can directly test via handlePitchingChange → emitUpdate('outs') vs a between-innings emit.
+    // Simplest: import buildPayload directly and test it.
+    // Instead, verify indirectly via the store state being respected by payload-factory.
+    // We'll check by importing buildPayload.
+    const { buildPayload } = await import('./payload-factory.ts');
+    const state = store.getState();
+    const update = buildPayload(state, 'between-innings');
+    expect(update.atBat).toBeNull();
+  });
+
+  it('game-update carries atBat when trackingMode is outs', async () => {
+    handleNewBatter(store, io, { batterName: 'Test Batter' });
+    (io.emit as ReturnType<typeof vi.fn>).mockClear();
+
+    const { buildPayload } = await import('./payload-factory.ts');
+    const state = store.getState();
+    const update = buildPayload(state, 'outs');
+    expect(update.atBat).not.toBeNull();
+    expect((update.atBat as AtBatState).batter.fullName).toBe('Test Batter');
+  });
+});
+

@@ -7,6 +7,8 @@ import type {
   ScoreOptions,
   SubstitutionOptions,
   DelayOptions,
+  NewBatterOptions,
+  PitchOptions,
 } from '../types.ts';
 import { renderMenu, renderState } from './renderer.ts';
 import {
@@ -27,6 +29,8 @@ import {
   handleOffensiveSub,
   handleDefensiveSub,
   handleSimGameSummary,
+  handleNewBatter,
+  handlePitch,
 } from '../emitter/event-handlers.ts';
 
 // Maps numeric menu selections (1-based) to command names.
@@ -45,6 +49,8 @@ const NUMBERED_COMMANDS = [
   'offensive-sub',
   'defensive-sub',
   'game-summary',
+  'new-batter',
+  'pitch',
   'set-inning',
   'set-score',
   'set-team-batting',
@@ -341,6 +347,39 @@ async function dispatch(
 
     case 'game-summary': {
       print(handleSimGameSummary(store, io).message);
+      break;
+    }
+
+    case 'new-batter': {
+      const opts: NewBatterOptions = {};
+      if (args['batter-name']) opts.batterName = args['batter-name'];
+      if (args['batter-id']) {
+        const id = parseInt(args['batter-id'], 10);
+        if (!isNaN(id)) opts.batterId = id;
+      }
+      if (args['pitcher-name']) opts.pitcherName = args['pitcher-name'];
+      if (args['pitcher-id']) {
+        const id = parseInt(args['pitcher-id'], 10);
+        if (!isNaN(id)) opts.pitcherId = id;
+      }
+      print(handleNewBatter(store, io, opts).message);
+      break;
+    }
+
+    case 'pitch': {
+      const opts: PitchOptions = {};
+      if (args['type']) opts.type = args['type'];
+      if (args['speed']) {
+        const spd = parseInt(args['speed'], 10);
+        if (!isNaN(spd)) opts.speed = spd;
+      }
+      if (args['call']) {
+        const rawCall = args['call'];
+        if (rawCall === 'Ball' || rawCall === 'Strike' || rawCall === 'Foul' || rawCall === 'In play') {
+          opts.call = rawCall;
+        }
+      }
+      print(handlePitch(store, io, opts).message);
       break;
     }
 
