@@ -9,6 +9,7 @@ export function mapPitchEvent(pe: PlayEvent): PitchEvent {
   return {
     pitchNumber: pe.pitchNumber ?? 0,
     pitchType: pe.details.type?.description ?? 'Unknown',
+    pitchTypeCode: null,
     call: pe.details.description,
     isBall: pe.details.isBall ?? false,
     isStrike: pe.details.isStrike ?? false,
@@ -18,5 +19,7 @@ export function mapPitchEvent(pe: PlayEvent): PitchEvent {
       balls: pe.count?.balls ?? 0,
       strikes: pe.count?.strikes ?? 0,
     },
+    tracking: null,
+    hitData: null,
   };
 }

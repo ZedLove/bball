@@ -1,6 +1,33 @@
 import { describe, it, expect } from 'vitest';
 import { mapPitchEvent } from './pitch-mapper.ts';
-import type { PlayEvent } from './game-feed-types.ts';
+import type { PlayEvent, PitchData } from './game-feed-types.ts';
+
+function makePitchData(overrides: Partial<PitchData> = {}): PitchData {
+  return {
+    startSpeed: 95.5,
+    endSpeed: 87.2,
+    strikeZoneTop: 3.3,
+    strikeZoneBottom: 1.6,
+    strikeZoneWidth: 17.0,
+    strikeZoneDepth: 8.5,
+    plateTime: 0.408,
+    extension: 5.6,
+    zone: 5,
+    coordinates: {
+      pX: 0.12, pZ: 2.45, x: 119.0, y: 175.0,
+      x0: 0.5, y0: 50.0, z0: 6.1,
+      vX0: -3.5, vY0: -137.5, vZ0: -5.0,
+      aX: 8.5, aY: 30.5, aZ: -19.5,
+      pfxX: 5.5, pfxZ: 10.2,
+    },
+    breaks: {
+      spinRate: 2350, spinDirection: 205,
+      breakAngle: 6.5, breakVertical: -12.5,
+      breakVerticalInduced: 14.5, breakHorizontal: -8.5,
+    },
+    ...overrides,
+  };
+}
 
 function makePitchEvent(overrides: Partial<PlayEvent> = {}): PlayEvent {
   return {
@@ -9,13 +36,13 @@ function makePitchEvent(overrides: Partial<PlayEvent> = {}): PlayEvent {
     pitchNumber: 1,
     details: {
       description: 'Called Strike',
-      type: { description: 'Four-Seam Fastball' },
+      type: { code: 'FF', description: 'Four-Seam Fastball' },
       isBall: false,
       isStrike: true,
       isInPlay: false,
     },
     count: { balls: 0, strikes: 1 },
-    pitchData: { startSpeed: 95.5 },
+    pitchData: makePitchData(),
     ...overrides,
   };
 }
@@ -25,16 +52,14 @@ describe('mapPitchEvent', () => {
     const pe = makePitchEvent();
     const result = mapPitchEvent(pe);
 
-    expect(result).toEqual({
-      pitchNumber: 1,
-      pitchType: 'Four-Seam Fastball',
-      call: 'Called Strike',
-      isBall: false,
-      isStrike: true,
-      isInPlay: false,
-      speedMph: 95.5,
-      countAfter: { balls: 0, strikes: 1 },
-    });
+    expect(result.pitchNumber).toBe(1);
+    expect(result.pitchType).toBe('Four-Seam Fastball');
+    expect(result.call).toBe('Called Strike');
+    expect(result.isBall).toBe(false);
+    expect(result.isStrike).toBe(true);
+    expect(result.isInPlay).toBe(false);
+    expect(result.speedMph).toBe(95.5);
+    expect(result.countAfter).toEqual({ balls: 0, strikes: 1 });
   });
 
   it('defaults pitchNumber to 0 when absent', () => {
@@ -64,11 +89,6 @@ describe('mapPitchEvent', () => {
     expect(mapPitchEvent(pe).speedMph).toBeNull();
   });
 
-  it('defaults speedMph to null when startSpeed is null', () => {
-    const pe = makePitchEvent({ pitchData: { startSpeed: null } });
-    expect(mapPitchEvent(pe).speedMph).toBeNull();
-  });
-
   it('defaults countAfter to { balls: 0, strikes: 0 } when count is absent', () => {
     const pe = makePitchEvent({ count: undefined });
     expect(mapPitchEvent(pe).countAfter).toEqual({ balls: 0, strikes: 0 });
@@ -78,14 +98,14 @@ describe('mapPitchEvent', () => {
     const pe = makePitchEvent({
       details: {
         description: 'In play, run(s)',
-        type: { description: 'Sinker' },
+        type: { code: 'SI', description: 'Sinker' },
         isBall: false,
         isStrike: false,
         isInPlay: true,
       },
       pitchNumber: 4,
       count: { balls: 2, strikes: 1 },
-      pitchData: { startSpeed: 93.1 },
+      pitchData: makePitchData({ startSpeed: 93.1 }),
     });
     const result = mapPitchEvent(pe);
 

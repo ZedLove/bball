@@ -38,6 +38,101 @@ interface GameEventBase {
 // Plate-appearance-completed events
 // ---------------------------------------------------------------------------
 
+/** Physical coordinates of the pitch trajectory (Statcast). */
+export interface PitchCoordinates {
+  /** Horizontal plate location: feet from center. Negative = pitcher's arm side (catcher's left). */
+  pX: number;
+  /** Vertical plate location: feet above ground. */
+  pZ: number;
+  /** Legacy PITCHf/x pixel X coordinate. */
+  x: number;
+  /** Legacy PITCHf/x pixel Y coordinate. */
+  y: number;
+  /** Initial position X (feet from center) at 50ft from home plate. */
+  x0: number;
+  /** Initial position Y (feet from home plate). */
+  y0: number;
+  /** Initial position Z (feet above ground). */
+  z0: number;
+  /** Initial velocity X at release (ft/s). */
+  vX0: number;
+  /** Initial velocity Y at release (ft/s). Negative = toward home plate. */
+  vY0: number;
+  /** Initial velocity Z at release (ft/s). */
+  vZ0: number;
+  /** Lateral acceleration (ft/s²). */
+  aX: number;
+  /** Longitudinal acceleration / drag (ft/s²). */
+  aY: number;
+  /** Vertical acceleration (ft/s²). Combines gravity and Magnus lift. */
+  aZ: number;
+  /** Horizontal movement due to spin (inches, Pfx system). */
+  pfxX: number;
+  /** Vertical movement due to spin (inches, Pfx system). */
+  pfxZ: number;
+}
+
+/** Spin and break metrics (Statcast). */
+export interface PitchBreaks {
+  /** Spin rate in RPM. */
+  spinRate: number;
+  /** Spin axis direction in degrees (0–360). */
+  spinDirection: number;
+  /** Break angle in degrees (0–360). */
+  breakAngle: number;
+  /** Total vertical break in inches vs a gravity-only trajectory. */
+  breakVertical: number;
+  /** Induced vertical break in inches (spin contribution only). */
+  breakVerticalInduced: number;
+  /** Horizontal break in inches. */
+  breakHorizontal: number;
+}
+
+/** Full Statcast tracking data for a single pitch. */
+export interface PitchTrackingData {
+  /** Pitch velocity at release in mph. */
+  startSpeed: number;
+  /** Pitch velocity at plate crossing in mph. */
+  endSpeed: number;
+  /** Strike zone top in feet above ground (batter-specific, per-game). */
+  strikeZoneTop: number;
+  /** Strike zone bottom in feet above ground (batter-specific, per-game). */
+  strikeZoneBottom: number;
+  /** Strike zone width in inches (nominally 17). */
+  strikeZoneWidth: number;
+  /** Strike zone depth in inches. */
+  strikeZoneDepth: number;
+  /** Time from release to plate crossing in seconds. */
+  plateTime: number;
+  /** Pitcher's extension in feet. */
+  extension: number;
+  /**
+   * Statcast zone identifier (1–9 = in zone, 11–14 = outside zone).
+   * See: https://baseballsavant.mlb.com/leaderboard/zone for zone diagram.
+   */
+  zone: number;
+  coordinates: PitchCoordinates;
+  breaks: PitchBreaks;
+}
+
+/** Statcast batted-ball data. Present only on in-play pitches. */
+export interface BattedBallData {
+  /** Exit velocity in mph. */
+  launchSpeed: number | null;
+  /** Launch angle in degrees. Negative = ground ball; positive = fly ball. */
+  launchAngle: number | null;
+  /** Projected total distance in feet. */
+  totalDistance: number | null;
+  /** Ball flight path: "ground_ball" | "fly_ball" | "line_drive" | "popup". */
+  trajectory: string | null;
+  /** Contact quality: "soft" | "medium" | "hard". */
+  hardness: string | null;
+  /** Fielder position code where the ball was fielded (1–9 and extensions). */
+  location: string | null;
+  /** Spray chart coordinates in pixels. */
+  coordinates: { coordX: number; coordY: number } | null;
+}
+
 /**
  * One pitch within a completed at-bat, in chronological order.
  * Sourced from `allPlays[].playEvents[]` where `type === "pitch"`.
@@ -47,6 +142,12 @@ export interface PitchEvent {
   pitchNumber: number;
   /** Pitch classification from Statcast (e.g. "Four-Seam Fastball", "Curveball"). */
   pitchType: string;
+  /**
+   * Statcast pitch type code (e.g. "FF" = 4-seam fastball, "SI" = sinker,
+   * "SL" = slider, "CH" = changeup, "ST" = sweeper, "KC" = knuckle curve).
+   * null when type classification is unavailable.
+   */
+  pitchTypeCode: string | null;
   /** Call result (e.g. "Called Strike", "Ball", "Foul", "In play, run(s)"). */
   call: string;
   isBall: boolean;
@@ -57,6 +158,19 @@ export interface PitchEvent {
   speedMph: number | null;
   /** Ball/strike count after this pitch is resolved. */
   countAfter: { balls: number; strikes: number };
+  /**
+   * Full Statcast tracking data for this pitch.
+   * null when Statcast tracking is unavailable (outage, spring training, etc.).
+   * When present, all sub-fields within PitchTrackingData are always populated.
+   */
+  tracking: PitchTrackingData | null;
+  /**
+   * Batted-ball data (exit velocity, launch angle, distance, etc.).
+   * null unless isInPlay === true.
+   * Individual fields within BattedBallData may be null when Statcast tracking
+   * data is incomplete for the specific batted event.
+   */
+  hitData: BattedBallData | null;
 }
 
 /**
