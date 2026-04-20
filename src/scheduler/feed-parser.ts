@@ -1,4 +1,5 @@
-import type { GameFeedResponse, PlayEvent } from './game-feed-types.ts';
+import type { GameFeedResponse } from './game-feed-types.ts';
+import { mapPitchEvent } from './pitch-mapper.ts';
 import type {
   GameEvent,
   PitchEvent,
@@ -70,7 +71,7 @@ export function parseFeedEvents(
     const pitchSequence: PitchEvent[] = [];
     for (const pe of play.playEvents) {
       if (pe.type === 'pitch') {
-        pitchSequence.push(buildPitchEvent(pe));
+        pitchSequence.push(mapPitchEvent(pe));
         continue;
       }
 
@@ -226,22 +227,4 @@ export function parseFeedEvents(
   return events;
 }
 
-/**
- * Maps a single raw pitch play event to the `PitchEvent` domain type.
- * Only called for events where `type === "pitch"`.
- */
-function buildPitchEvent(pe: PlayEvent): PitchEvent {
-  return {
-    pitchNumber: pe.pitchNumber ?? 0,
-    pitchType: pe.details.type?.description ?? 'Unknown',
-    call: pe.details.description,
-    isBall: pe.details.isBall ?? false,
-    isStrike: pe.details.isStrike ?? false,
-    isInPlay: pe.details.isInPlay ?? false,
-    speedMph: pe.pitchData?.startSpeed ?? null,
-    countAfter: {
-      balls: pe.count?.balls ?? 0,
-      strikes: pe.count?.strikes ?? 0,
-    },
-  };
-}
+
