@@ -40,7 +40,6 @@ plans/             # Markdown feature plans — source of truth for roadmap
 
 - `src/scheduler/game-feed-types.ts` — raw MLB API shapes only
 - `src/server/socket-events.ts` — domain/emitted types and `SOCKET_EVENTS` constant
-- `src/scheduler/pitch-mapper.ts` — single `mapPitchEvent()` converter (raw → domain), shared by both the feed parser and the live at-bat parser
 
 ## Conventions
 
