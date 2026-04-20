@@ -1,0 +1,84 @@
+{
+  "liveData": {
+    "plays": {
+      "currentPlay": {
+        "about": {
+          "atBatIndex": 57,
+          "halfInning": "bottom",
+          "inning": 7,
+          "isComplete": false
+        },
+        "count": { "balls": 1, "strikes": 2, "outs": 2 },
+        "matchup": {
+          "batter": { "id": 678554, "fullName": "Curtis Mead" },
+          "pitcher": { "id": 676775, "fullName": "Keaton Winn" },
+          "batSide": { "code": "R", "description": "Right" },
+          "pitchHand": { "code": "R", "description": "Right" }
+        },
+        "playEvents": [
+          {
+            "type": "pitch",
+            "isPitch": true,
+            "pitchNumber": 1,
+            "details": {
+              "call": { "code": "C", "description": "Called Strike" },
+              "description": "Called Strike",
+              "isInPlay": false,
+              "isStrike": true,
+              "isBall": false,
+              "type": { "code": "SI", "description": "Sinker" }
+            },
+            "count": { "balls": 0, "strikes": 1, "outs": 2 },
+            "pitchData": { "startSpeed": 96.8 }
+          },
+          {
+            "type": "action",
+            "isPitch": false,
+            "details": {
+              "description": "Mound Visit.",
+              "eventType": "mound_visit"
+            }
+          },
+          {
+            "type": "pitch",
+            "isPitch": true,
+            "pitchNumber": 2,
+            "details": {
+              "call": { "code": "B", "description": "Ball" },
+              "description": "Ball",
+              "isInPlay": false,
+              "isStrike": false,
+              "isBall": true,
+              "type": { "code": "FF", "description": "Four-Seam Fastball" }
+            },
+            "count": { "balls": 1, "strikes": 1, "outs": 2 },
+            "pitchData": { "startSpeed": 98.1 }
+          },
+          {
+            "type": "pickoff",
+            "isPitch": false,
+            "details": {
+              "description": "Pickoff Attempt 1B",
+              "eventType": "pickoff_1b"
+            }
+          },
+          {
+            "type": "pitch",
+            "isPitch": true,
+            "pitchNumber": 3,
+            "details": {
+              "call": { "code": "S", "description": "Swinging Strike" },
+              "description": "Swinging Strike",
+              "isInPlay": false,
+              "isStrike": true,
+              "isBall": false,
+              "type": { "code": "SL", "description": "Slider" }
+            },
+            "count": { "balls": 1, "strikes": 2, "outs": 2 },
+            "pitchData": { "startSpeed": 88.3 }
+          }
+        ]
+      }
+    }
+  }
+}
