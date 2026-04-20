@@ -620,12 +620,15 @@ export function handlePitch(
   const newPitch = {
     pitchNumber,
     pitchType: options.type ?? 'Four-Seam Fastball',
+    pitchTypeCode: null,
     call,
     isBall,
     isStrike,
     isInPlay,
     speedMph: options.speed ?? 93,
     countAfter: { balls: newBalls, strikes: newStrikes },
+    tracking: null,
+    hitData: null,
   };
 
   store.setState({

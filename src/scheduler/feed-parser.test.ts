@@ -287,6 +287,9 @@ describe('parseFeedEvents', () => {
         isInPlay: false,
         speedMph: 96.0,
         countAfter: { balls: 0, strikes: 1 },
+        pitchTypeCode: null,
+        tracking: null,
+        hitData: null,
       });
 
       expect(p2).toEqual<PitchEvent>({
@@ -298,6 +301,9 @@ describe('parseFeedEvents', () => {
         isInPlay: false,
         speedMph: 78.5,
         countAfter: { balls: 1, strikes: 1 },
+        pitchTypeCode: null,
+        tracking: null,
+        hitData: null,
       });
 
       expect(p3).toEqual<PitchEvent>({
@@ -309,6 +315,9 @@ describe('parseFeedEvents', () => {
         isInPlay: false,
         speedMph: 91.3,
         countAfter: { balls: 1, strikes: 2 },
+        pitchTypeCode: null,
+        tracking: null,
+        hitData: null,
       });
 
       expect(p4).toEqual<PitchEvent>({
@@ -320,6 +329,9 @@ describe('parseFeedEvents', () => {
         isInPlay: false,
         speedMph: 97.1,
         countAfter: { balls: 1, strikes: 3 },
+        pitchTypeCode: null,
+        tracking: null,
+        hitData: null,
       });
     });
 
