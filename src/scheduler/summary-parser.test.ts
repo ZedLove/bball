@@ -23,8 +23,14 @@ describe('buildGameSummary', () => {
   describe('core fields', () => {
     it('includes gamePk, finalScore, innings, and isExtraInnings', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
       expect(summary.gamePk).toBe(GAME_PK);
@@ -35,12 +41,18 @@ describe('buildGameSummary', () => {
 
     it('derives the boxscore URL from gamePk', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
       expect(summary.boxscoreUrl).toBe(
-        `https://www.mlb.com/gameday/${GAME_PK}/final/box-score`,
+        `https://www.mlb.com/gameday/${GAME_PK}/final/box-score`
       );
     });
   });
@@ -48,18 +60,36 @@ describe('buildGameSummary', () => {
   describe('decisions', () => {
     it('maps winner and loser from liveData.decisions', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
-      expect(summary.decisions.winner).toEqual({ id: 660271, fullName: 'Shohei Ohtani' });
-      expect(summary.decisions.loser).toEqual({ id: 605280, fullName: 'Clay Holmes' });
+      expect(summary.decisions.winner).toEqual({
+        id: 660271,
+        fullName: 'Shohei Ohtani',
+      });
+      expect(summary.decisions.loser).toEqual({
+        id: 605280,
+        fullName: 'Clay Holmes',
+      });
     });
 
     it('sets save to null when no save is recorded', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
       expect(summary.decisions.save).toBeNull();
@@ -79,11 +109,20 @@ describe('buildGameSummary', () => {
       };
 
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        withSave, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        withSave,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
-      expect(summary.decisions.save).toEqual({ id: 642207, fullName: 'Devin Williams' });
+      expect(summary.decisions.save).toEqual({
+        id: 642207,
+        fullName: 'Devin Williams',
+      });
     });
 
     it('throws when liveData.decisions is absent', () => {
@@ -97,18 +136,32 @@ describe('buildGameSummary', () => {
 
       expect(() =>
         buildGameSummary(
-          GAME_PK, FINAL_SCORE, 9, false,
-          withoutDecisions, boxscoreResponse, nextGameResponse, NYM_ID,
-        ),
-      ).toThrow(`liveData.decisions missing from final feed response for gamePk ${GAME_PK}`);
+          GAME_PK,
+          FINAL_SCORE,
+          9,
+          false,
+          withoutDecisions,
+          boxscoreResponse,
+          nextGameResponse,
+          NYM_ID
+        )
+      ).toThrow(
+        `liveData.decisions missing from final feed response for gamePk ${GAME_PK}`
+      );
     });
   });
 
   describe('topPerformers', () => {
     it('maps all three performers with the correct summary strings', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
       expect(summary.topPerformers).toHaveLength(3);
@@ -128,8 +181,14 @@ describe('buildGameSummary', () => {
 
     it('prefers pitching summary over batting summary for two-way players', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
       // Ohtani has pitching summary; batting summary is null — pitching should win
@@ -142,15 +201,24 @@ describe('buildGameSummary', () => {
           {
             player: {
               person: { id: 12345, fullName: 'No-Summary Player' },
-              stats: { batting: { summary: null }, pitching: { summary: null } },
+              stats: {
+                batting: { summary: null },
+                pitching: { summary: null },
+              },
             },
           },
         ],
       };
 
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, noSummaryBoxscore, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        noSummaryBoxscore,
+        nextGameResponse,
+        NYM_ID
       );
 
       expect(summary.topPerformers).toHaveLength(0);
@@ -160,8 +228,14 @@ describe('buildGameSummary', () => {
       const emptyBoxscore: BoxscoreResponse = { topPerformers: [] };
 
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, emptyBoxscore, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        emptyBoxscore,
+        nextGameResponse,
+        NYM_ID
       );
 
       expect(summary.topPerformers).toEqual([]);
@@ -172,8 +246,14 @@ describe('buildGameSummary', () => {
     it('identifies the opponent when the tracked team is away', () => {
       // NYM (121) is away; CHC (112) is home → opponent is CHC
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
       expect(summary.nextGame).not.toBeNull();
@@ -187,8 +267,14 @@ describe('buildGameSummary', () => {
     it('identifies the opponent when the tracked team is home', () => {
       // Treat CHC (112) as the tracked team; opponent is NYM (121)
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, CHC_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        CHC_ID
       );
 
       expect(summary.nextGame!.opponent).toEqual({
@@ -200,8 +286,14 @@ describe('buildGameSummary', () => {
 
     it('maps gameTime, venue, and gamePk', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
       expect(summary.nextGame!.gamePk).toBe(824693);
@@ -211,8 +303,14 @@ describe('buildGameSummary', () => {
 
     it('maps probable pitchers for both teams', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, nextGameResponse, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        NYM_ID
       );
 
       expect(summary.nextGame!.probablePitchers).toEqual({
@@ -223,37 +321,64 @@ describe('buildGameSummary', () => {
 
     it('sets probable pitchers to null when not announced', () => {
       const noPitchers: NextGameScheduleResponse = {
-        dates: [{
-          games: [{
-            gamePk: 824693,
-            gameDate: '2026-04-17T18:20:00Z',
-            venue: { name: 'Wrigley Field' },
-            teams: {
-              away: {
-                team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-                probablePitcher: null,
+        dates: [
+          {
+            games: [
+              {
+                gamePk: 824693,
+                gameDate: '2026-04-17T18:20:00Z',
+                venue: { name: 'Wrigley Field' },
+                teams: {
+                  away: {
+                    team: {
+                      id: NYM_ID,
+                      name: 'New York Mets',
+                      abbreviation: 'NYM',
+                    },
+                    probablePitcher: null,
+                  },
+                  home: {
+                    team: {
+                      id: CHC_ID,
+                      name: 'Chicago Cubs',
+                      abbreviation: 'CHC',
+                    },
+                    probablePitcher: null,
+                  },
+                },
               },
-              home: {
-                team: { id: CHC_ID, name: 'Chicago Cubs', abbreviation: 'CHC' },
-                probablePitcher: null,
-              },
-            },
-          }],
-        }],
+            ],
+          },
+        ],
       };
 
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, noPitchers, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        noPitchers,
+        NYM_ID
       );
 
-      expect(summary.nextGame!.probablePitchers).toEqual({ away: null, home: null });
+      expect(summary.nextGame!.probablePitchers).toEqual({
+        away: null,
+        home: null,
+      });
     });
 
     it('sets nextGame to null when schedule response is null', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, null, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        null,
+        NYM_ID
       );
 
       expect(summary.nextGame).toBeNull();
@@ -263,8 +388,14 @@ describe('buildGameSummary', () => {
       const empty: NextGameScheduleResponse = { dates: [] };
 
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, empty, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        empty,
+        NYM_ID
       );
 
       expect(summary.nextGame).toBeNull();
@@ -274,45 +405,69 @@ describe('buildGameSummary', () => {
       // Doubleheader / timezone edge case: today's response includes the current
       // game (GAME_PK) followed by a second game (824693).
       const withCurrentGameFirst: NextGameScheduleResponse = {
-        dates: [{
-          games: [
-            {
-              gamePk: GAME_PK, // the game that just ended — should be skipped
-              gameDate: '2026-04-15T17:05:00Z',
-              venue: { name: 'Dodger Stadium' },
-              teams: {
-                away: {
-                  team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-                  probablePitcher: null,
-                },
-                home: {
-                  team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
-                  probablePitcher: null,
-                },
-              },
-            },
-            {
-              gamePk: 824693, // the next game
-              gameDate: '2026-04-17T18:20:00Z',
-              venue: { name: 'Wrigley Field' },
-              teams: {
-                away: {
-                  team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-                  probablePitcher: null,
-                },
-                home: {
-                  team: { id: CHC_ID, name: 'Chicago Cubs', abbreviation: 'CHC' },
-                  probablePitcher: null,
+        dates: [
+          {
+            games: [
+              {
+                gamePk: GAME_PK, // the game that just ended — should be skipped
+                gameDate: '2026-04-15T17:05:00Z',
+                venue: { name: 'Dodger Stadium' },
+                teams: {
+                  away: {
+                    team: {
+                      id: NYM_ID,
+                      name: 'New York Mets',
+                      abbreviation: 'NYM',
+                    },
+                    probablePitcher: null,
+                  },
+                  home: {
+                    team: {
+                      id: LAD_ID,
+                      name: 'Los Angeles Dodgers',
+                      abbreviation: 'LAD',
+                    },
+                    probablePitcher: null,
+                  },
                 },
               },
-            },
-          ],
-        }],
+              {
+                gamePk: 824693, // the next game
+                gameDate: '2026-04-17T18:20:00Z',
+                venue: { name: 'Wrigley Field' },
+                teams: {
+                  away: {
+                    team: {
+                      id: NYM_ID,
+                      name: 'New York Mets',
+                      abbreviation: 'NYM',
+                    },
+                    probablePitcher: null,
+                  },
+                  home: {
+                    team: {
+                      id: CHC_ID,
+                      name: 'Chicago Cubs',
+                      abbreviation: 'CHC',
+                    },
+                    probablePitcher: null,
+                  },
+                },
+              },
+            ],
+          },
+        ],
       };
 
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, withCurrentGameFirst, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        withCurrentGameFirst,
+        NYM_ID
       );
 
       expect(summary.nextGame).not.toBeNull();
@@ -326,28 +481,46 @@ describe('buildGameSummary', () => {
 
     it('sets nextGame to null when the only game in the response is the current game', () => {
       const onlyCurrentGame: NextGameScheduleResponse = {
-        dates: [{
-          games: [{
-            gamePk: GAME_PK,
-            gameDate: '2026-04-15T17:05:00Z',
-            venue: { name: 'Dodger Stadium' },
-            teams: {
-              away: {
-                team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-                probablePitcher: null,
+        dates: [
+          {
+            games: [
+              {
+                gamePk: GAME_PK,
+                gameDate: '2026-04-15T17:05:00Z',
+                venue: { name: 'Dodger Stadium' },
+                teams: {
+                  away: {
+                    team: {
+                      id: NYM_ID,
+                      name: 'New York Mets',
+                      abbreviation: 'NYM',
+                    },
+                    probablePitcher: null,
+                  },
+                  home: {
+                    team: {
+                      id: LAD_ID,
+                      name: 'Los Angeles Dodgers',
+                      abbreviation: 'LAD',
+                    },
+                    probablePitcher: null,
+                  },
+                },
               },
-              home: {
-                team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
-                probablePitcher: null,
-              },
-            },
-          }],
-        }],
+            ],
+          },
+        ],
       };
 
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 9, false,
-        feedResponse, boxscoreResponse, onlyCurrentGame, NYM_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        9,
+        false,
+        feedResponse,
+        boxscoreResponse,
+        onlyCurrentGame,
+        NYM_ID
       );
 
       expect(summary.nextGame).toBeNull();
@@ -357,8 +530,14 @@ describe('buildGameSummary', () => {
   describe('extra-innings game', () => {
     it('reflects isExtraInnings: true and the actual innings count', () => {
       const summary = buildGameSummary(
-        GAME_PK, FINAL_SCORE, 11, true,
-        feedResponse, boxscoreResponse, nextGameResponse, LAD_ID,
+        GAME_PK,
+        FINAL_SCORE,
+        11,
+        true,
+        feedResponse,
+        boxscoreResponse,
+        nextGameResponse,
+        LAD_ID
       );
 
       expect(summary.innings).toBe(11);

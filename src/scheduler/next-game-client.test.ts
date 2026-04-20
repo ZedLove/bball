@@ -15,7 +15,7 @@ describe('fetchNextGame', () => {
     expect(mockGet).toHaveBeenCalledOnce();
     expect(mockGet).toHaveBeenCalledWith(
       'https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=121&startDate=2026-04-16&hydrate=team,probablePitcher',
-      expect.objectContaining({ timeout: 8_000 }),
+      expect.objectContaining({ timeout: 8_000 })
     );
   });
 
@@ -31,6 +31,8 @@ describe('fetchNextGame', () => {
   it('propagates axios errors to the caller', async () => {
     mockGet.mockRejectedValueOnce(new Error('network timeout'));
 
-    await expect(fetchNextGame(121, '2026-04-16')).rejects.toThrow('network timeout');
+    await expect(fetchNextGame(121, '2026-04-16')).rejects.toThrow(
+      'network timeout'
+    );
   });
 });

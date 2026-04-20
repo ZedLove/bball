@@ -24,22 +24,30 @@ describe('parseFeedEvents', () => {
     it('parses a strikeout as a plate-appearance-completed event', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const strikeout = events.find(
-        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed',
+        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent | undefined;
 
       expect(strikeout).toBeDefined();
       expect(strikeout!.eventType).toBe('strikeout');
-      expect(strikeout!.description).toBe('Francisco Lindor strikes out swinging.');
+      expect(strikeout!.description).toBe(
+        'Francisco Lindor strikes out swinging.'
+      );
       expect(strikeout!.isScoringPlay).toBe(false);
       expect(strikeout!.rbi).toBe(0);
-      expect(strikeout!.batter).toEqual({ id: 596019, fullName: 'Francisco Lindor' });
-      expect(strikeout!.pitcher).toEqual({ id: 660271, fullName: 'Shohei Ohtani' });
+      expect(strikeout!.batter).toEqual({
+        id: 596019,
+        fullName: 'Francisco Lindor',
+      });
+      expect(strikeout!.pitcher).toEqual({
+        id: 660271,
+        fullName: 'Shohei Ohtani',
+      });
     });
 
     it('sets battingTeam to the away team for top-half plays', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const strikeout = events.find(
-        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed',
+        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed'
       )!;
 
       // atBatIndex 0 is top of 1st: away (NYM) bats, home (LAD) defends
@@ -52,7 +60,8 @@ describe('parseFeedEvents', () => {
     it('sets battingTeam to the home team for bottom-half plays', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const homeRun = events.find(
-        (e) => e.atBatIndex === 13 && e.category === 'plate-appearance-completed',
+        (e) =>
+          e.atBatIndex === 13 && e.category === 'plate-appearance-completed'
       )!;
 
       // atBatIndex 13 is bottom of 2nd: home (LAD) bats, away (NYM) defends
@@ -72,7 +81,8 @@ describe('parseFeedEvents', () => {
     it('marks a home run as isScoringPlay: true', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const homeRun = events.find(
-        (e) => e.atBatIndex === 13 && e.category === 'plate-appearance-completed',
+        (e) =>
+          e.atBatIndex === 13 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
       expect(homeRun.isScoringPlay).toBe(true);
@@ -85,7 +95,7 @@ describe('parseFeedEvents', () => {
     it('marks a non-scoring at-bat as isScoringPlay: false', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const strikeout = events.find(
-        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed',
+        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
       expect(strikeout.isScoringPlay).toBe(false);
@@ -105,18 +115,20 @@ describe('parseFeedEvents', () => {
     it('populates the substitution event with the incoming player from gameData.players', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const sub = events.find(
-        (e) => e.atBatIndex === 43 && e.category === 'pitching-substitution',
+        (e) => e.atBatIndex === 43 && e.category === 'pitching-substitution'
       ) as PitchingSubstitutionEvent;
 
       expect(sub.eventType).toBe('pitching_substitution');
-      expect(sub.description).toBe('Pitching Change: Tobias Myers replaces Clay Holmes.');
+      expect(sub.description).toBe(
+        'Pitching Change: Tobias Myers replaces Clay Holmes.'
+      );
       expect(sub.player).toEqual({ id: 668964, fullName: 'Tobias Myers' });
     });
 
     it('sets correct inning context on a substitution event', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const sub = events.find(
-        (e) => e.atBatIndex === 43 && e.category === 'pitching-substitution',
+        (e) => e.atBatIndex === 43 && e.category === 'pitching-substitution'
       )!;
 
       expect(sub.inning).toBe(6);
@@ -175,7 +187,9 @@ describe('parseFeedEvents', () => {
           ...response.liveData,
           plays: {
             allPlays: response.liveData.plays.allPlays!.map((p) =>
-              p.atBatIndex === 0 ? { ...p, about: { ...p.about, isComplete: false } } : p,
+              p.atBatIndex === 0
+                ? { ...p, about: { ...p.about, isComplete: false } }
+                : p
             ),
           },
         },
@@ -198,8 +212,11 @@ describe('parseFeedEvents', () => {
           plays: {
             allPlays: response.liveData.plays.allPlays!.map((p) =>
               p.atBatIndex === 0
-                ? { ...p, result: { ...p.result, eventType: 'unknown_play_type' } }
-                : p,
+                ? {
+                    ...p,
+                    result: { ...p.result, eventType: 'unknown_play_type' },
+                  }
+                : p
             ),
           },
         },
@@ -223,8 +240,11 @@ describe('parseFeedEvents', () => {
           plays: {
             allPlays: response.liveData.plays.allPlays!.map((p) =>
               p.atBatIndex === 0
-                ? { ...p, result: { ...p.result, eventType: 'pitching_substitution' } }
-                : p,
+                ? {
+                    ...p,
+                    result: { ...p.result, eventType: 'pitching_substitution' },
+                  }
+                : p
             ),
           },
         },
@@ -234,7 +254,12 @@ describe('parseFeedEvents', () => {
 
       // The play at atBatIndex 0 is suppressed; 3 events remain
       expect(events).toHaveLength(3);
-      expect(events.every((e) => e.atBatIndex !== 0 || e.category !== 'plate-appearance-completed')).toBe(true);
+      expect(
+        events.every(
+          (e) =>
+            e.atBatIndex !== 0 || e.category !== 'plate-appearance-completed'
+        )
+      ).toBe(true);
     });
   });
 
@@ -246,7 +271,7 @@ describe('parseFeedEvents', () => {
     it('maps all pitch fields correctly from fixture data', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const strikeout = events.find(
-        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed',
+        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
       expect(strikeout.pitchSequence).toHaveLength(4);
@@ -301,7 +326,7 @@ describe('parseFeedEvents', () => {
     it('preserves pitch order by pitchNumber', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const strikeout = events.find(
-        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed',
+        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
       const numbers = strikeout.pitchSequence.map((p) => p.pitchNumber);
@@ -311,7 +336,8 @@ describe('parseFeedEvents', () => {
     it('marks the final pitch as isInPlay: true for a home run', () => {
       const events = parseFeedEvents(response, GAME_PK, -1);
       const homeRun = events.find(
-        (e) => e.atBatIndex === 13 && e.category === 'plate-appearance-completed',
+        (e) =>
+          e.atBatIndex === 13 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
       expect(homeRun.pitchSequence).toHaveLength(3);
@@ -325,7 +351,8 @@ describe('parseFeedEvents', () => {
       // atBatIndex 13 has a pickoff event before the pitches — only 3 pitches should appear
       const events = parseFeedEvents(response, GAME_PK, -1);
       const homeRun = events.find(
-        (e) => e.atBatIndex === 13 && e.category === 'plate-appearance-completed',
+        (e) =>
+          e.atBatIndex === 13 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
       // Confirm no pickoff bled into the sequence
@@ -337,7 +364,7 @@ describe('parseFeedEvents', () => {
       // atBatIndex 0 has game_advisory and batter_timeout action events — none in pitchSequence
       const events = parseFeedEvents(response, GAME_PK, -1);
       const strikeout = events.find(
-        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed',
+        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
       // Only the 4 pitch events appear — the 2 action events are excluded
@@ -348,7 +375,8 @@ describe('parseFeedEvents', () => {
       // atBatIndex 43 has a pitching_substitution action then 2 pitches
       const events = parseFeedEvents(response, GAME_PK, -1);
       const homeRun = events.find(
-        (e) => e.atBatIndex === 43 && e.category === 'plate-appearance-completed',
+        (e) =>
+          e.atBatIndex === 43 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
       expect(homeRun.pitchSequence).toHaveLength(2);
@@ -373,17 +401,51 @@ describe('parseFeedEvents', () => {
             allPlays: [
               {
                 atBatIndex: 5,
-                result: { eventType: 'intent_walk', description: 'Francisco Lindor intentionally walks.', rbi: 0 },
-                about: { atBatIndex: 5, halfInning: 'top', inning: 3, isComplete: true, isScoringPlay: false },
+                result: {
+                  eventType: 'intent_walk',
+                  description: 'Francisco Lindor intentionally walks.',
+                  rbi: 0,
+                },
+                about: {
+                  atBatIndex: 5,
+                  halfInning: 'top',
+                  inning: 3,
+                  isComplete: true,
+                  isScoringPlay: false,
+                },
                 matchup: {
                   batter: { id: 596019, fullName: 'Francisco Lindor' },
                   pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
                 },
                 playEvents: [
-                  { type: 'no_pitch', isPitch: false, pitchNumber: 1, details: { description: 'Automatic Ball' }, count: { balls: 1, strikes: 0 } },
-                  { type: 'no_pitch', isPitch: false, pitchNumber: 2, details: { description: 'Automatic Ball' }, count: { balls: 2, strikes: 0 } },
-                  { type: 'no_pitch', isPitch: false, pitchNumber: 3, details: { description: 'Automatic Ball' }, count: { balls: 3, strikes: 0 } },
-                  { type: 'no_pitch', isPitch: false, pitchNumber: 4, details: { description: 'Automatic Ball' }, count: { balls: 4, strikes: 0 } },
+                  {
+                    type: 'no_pitch',
+                    isPitch: false,
+                    pitchNumber: 1,
+                    details: { description: 'Automatic Ball' },
+                    count: { balls: 1, strikes: 0 },
+                  },
+                  {
+                    type: 'no_pitch',
+                    isPitch: false,
+                    pitchNumber: 2,
+                    details: { description: 'Automatic Ball' },
+                    count: { balls: 2, strikes: 0 },
+                  },
+                  {
+                    type: 'no_pitch',
+                    isPitch: false,
+                    pitchNumber: 3,
+                    details: { description: 'Automatic Ball' },
+                    count: { balls: 3, strikes: 0 },
+                  },
+                  {
+                    type: 'no_pitch',
+                    isPitch: false,
+                    pitchNumber: 4,
+                    details: { description: 'Automatic Ball' },
+                    count: { balls: 4, strikes: 0 },
+                  },
                 ],
               },
             ],
@@ -393,7 +455,7 @@ describe('parseFeedEvents', () => {
 
       const events = parseFeedEvents(intentWalkResponse, GAME_PK, -1);
       const pa = events.find(
-        (e) => e.atBatIndex === 5 && e.category === 'plate-appearance-completed',
+        (e) => e.atBatIndex === 5 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
       expect(pa).toBeDefined();
@@ -412,7 +474,7 @@ describe('parseFeedEvents', () => {
               return {
                 ...p,
                 playEvents: p.playEvents.map((pe) =>
-                  pe.type === 'pitch' ? { ...pe, pitchData: undefined } : pe,
+                  pe.type === 'pitch' ? { ...pe, pitchData: undefined } : pe
                 ),
               };
             }),
@@ -422,10 +484,12 @@ describe('parseFeedEvents', () => {
 
       const events = parseFeedEvents(noPitchDataResponse, GAME_PK, -1);
       const strikeout = events.find(
-        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed',
+        (e) => e.atBatIndex === 0 && e.category === 'plate-appearance-completed'
       ) as PlateAppearanceCompletedEvent;
 
-      expect(strikeout.pitchSequence.every((p) => p.speedMph === null)).toBe(true);
+      expect(strikeout.pitchSequence.every((p) => p.speedMph === null)).toBe(
+        true
+      );
     });
   });
 
@@ -436,7 +500,7 @@ describe('parseFeedEvents', () => {
   describe('substitution event error handling', () => {
     /** Build a minimal inline response with one at-bat containing the given action events. */
     function makeResponseWithActions(
-      actionEvents: Array<{ eventType: string; player?: { id: number } }>,
+      actionEvents: Array<{ eventType: string; player?: { id: number } }>
     ): GameFeedResponse {
       return {
         metaData: { timeStamp: '20260415_010000' },
@@ -456,8 +520,18 @@ describe('parseFeedEvents', () => {
             allPlays: [
               {
                 atBatIndex: 0,
-                result: { eventType: 'strikeout', description: 'Batter strikes out.', rbi: 0 },
-                about: { atBatIndex: 0, halfInning: 'top', inning: 1, isComplete: true, isScoringPlay: false },
+                result: {
+                  eventType: 'strikeout',
+                  description: 'Batter strikes out.',
+                  rbi: 0,
+                },
+                about: {
+                  atBatIndex: 0,
+                  halfInning: 'top',
+                  inning: 1,
+                  isComplete: true,
+                  isScoringPlay: false,
+                },
                 matchup: {
                   batter: { id: 596019, fullName: 'Francisco Lindor' },
                   pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
@@ -477,7 +551,9 @@ describe('parseFeedEvents', () => {
     }
 
     it('skips an action event that has no player field', () => {
-      const r = makeResponseWithActions([{ eventType: 'pitching_substitution' }]);
+      const r = makeResponseWithActions([
+        { eventType: 'pitching_substitution' },
+      ]);
       const events = parseFeedEvents(r, GAME_PK, -1);
 
       // Only the plate-appearance should be emitted; the sub is skipped

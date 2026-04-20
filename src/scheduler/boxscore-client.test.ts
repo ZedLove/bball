@@ -15,7 +15,7 @@ describe('fetchBoxscore', () => {
     expect(mockGet).toHaveBeenCalledOnce();
     expect(mockGet).toHaveBeenCalledWith(
       'https://statsapi.mlb.com/api/v1/game/823963/boxscore',
-      expect.objectContaining({ timeout: 8_000 }),
+      expect.objectContaining({ timeout: 8_000 })
     );
   });
 

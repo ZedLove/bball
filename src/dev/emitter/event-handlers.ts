@@ -31,7 +31,7 @@ function emitUpdate(
   io: SocketIOServer,
   store: StateStore,
   trackingMode: GameUpdate['trackingMode'],
-  overrides?: Partial<GameUpdate>,
+  overrides?: Partial<GameUpdate>
 ): void {
   const payload = buildPayload(store.getState(), trackingMode, overrides);
   io.emit(SOCKET_EVENTS.GAME_UPDATE, payload);
@@ -46,7 +46,10 @@ function emitGameEvents(io: SocketIOServer, payload: GameEventsPayload): void {
 // Game lifecycle events
 // ---------------------------------------------------------------------------
 
-export function handleGameStart(store: StateStore, io: SocketIOServer): HandlerResult {
+export function handleGameStart(
+  store: StateStore,
+  io: SocketIOServer
+): HandlerResult {
   const state = store.getState();
   const error = validateTransition('game-start', state);
   if (error) return fail(error);
@@ -57,11 +60,14 @@ export function handleGameStart(store: StateStore, io: SocketIOServer): HandlerR
 
   const s = store.getState();
   return ok(
-    `✓ Game started | ${s.inning.ordinal} Top | ${s.teams.home.abbreviation} defending | Score 0-0 | 0 outs`,
+    `✓ Game started | ${s.inning.ordinal} Top | ${s.teams.home.abbreviation} defending | Score 0-0 | 0 outs`
   );
 }
 
-export function handleGameEnd(store: StateStore, io: SocketIOServer): HandlerResult {
+export function handleGameEnd(
+  store: StateStore,
+  io: SocketIOServer
+): HandlerResult {
   const state = store.getState();
   const error = validateTransition('game-end', state);
   if (error) return fail(error);
@@ -72,7 +78,7 @@ export function handleGameEnd(store: StateStore, io: SocketIOServer): HandlerRes
   const s = store.getState();
   return ok(
     `✓ Game ended (final) | Score: ${s.teams.away.abbreviation} ${s.score.away}` +
-      ` – ${s.teams.home.abbreviation} ${s.score.home}`,
+      ` – ${s.teams.home.abbreviation} ${s.score.home}`
   );
 }
 
@@ -80,7 +86,10 @@ export function handleGameEnd(store: StateStore, io: SocketIOServer): HandlerRes
 // In-game events
 // ---------------------------------------------------------------------------
 
-export function handleOut(store: StateStore, io: SocketIOServer): HandlerResult {
+export function handleOut(
+  store: StateStore,
+  io: SocketIOServer
+): HandlerResult {
   const state = store.getState();
   const error = validateTransition('out', state);
   if (error) return fail(error);
@@ -91,16 +100,18 @@ export function handleOut(store: StateStore, io: SocketIOServer): HandlerResult 
   emitUpdate(io, store, 'outs');
 
   const sideNote =
-    newOuts === 3 ? ' (side retired – use batting-begins to advance to next half)' : '';
+    newOuts === 3
+      ? ' (side retired – use batting-begins to advance to next half)'
+      : '';
   return ok(
-    `✓ Out recorded | ${state.inning.ordinal} ${state.inning.half} | ${newOuts} outs${sideNote}`,
+    `✓ Out recorded | ${state.inning.ordinal} ${state.inning.half} | ${newOuts} outs${sideNote}`
   );
 }
 
 export function handlePitchingChange(
   store: StateStore,
   io: SocketIOServer,
-  options: PitchingChangeOptions,
+  options: PitchingChangeOptions
 ): HandlerResult {
   const state = store.getState();
   const error = validateTransition('pitching-change', state);
@@ -119,9 +130,13 @@ export function handlePitchingChange(
     inning: state.inning.number,
     halfInning: state.inning.half === 'Top' ? 'top' : 'bottom',
     battingTeam:
-      state.inning.half === 'Top' ? state.teams.away.abbreviation : state.teams.home.abbreviation,
+      state.inning.half === 'Top'
+        ? state.teams.away.abbreviation
+        : state.teams.home.abbreviation,
     defendingTeam:
-      state.inning.half === 'Top' ? state.teams.home.abbreviation : state.teams.away.abbreviation,
+      state.inning.half === 'Top'
+        ? state.teams.home.abbreviation
+        : state.teams.away.abbreviation,
     eventType: 'pitching_substitution',
     description: `Pitching change: ${pitcher.fullName} replaces the previous pitcher.`,
     category: 'pitching-substitution',
@@ -131,11 +146,14 @@ export function handlePitchingChange(
 
   return ok(
     `✓ Pitching change: ${pitcher.fullName} (#${pitcher.id}) enters` +
-      ` | ${state.inning.ordinal} ${state.inning.half}`,
+      ` | ${state.inning.ordinal} ${state.inning.half}`
   );
 }
 
-export function handleBattingBegins(store: StateStore, io: SocketIOServer): HandlerResult {
+export function handleBattingBegins(
+  store: StateStore,
+  io: SocketIOServer
+): HandlerResult {
   const state = store.getState();
   const error = validateTransition('batting-begins', state);
   if (error) return fail(error);
@@ -148,34 +166,46 @@ export function handleBattingBegins(store: StateStore, io: SocketIOServer): Hand
   emitUpdate(io, store, isExtras ? 'runs' : 'batting');
 
   const battingTeam =
-    s.inning.half === 'Top' ? s.teams.away.abbreviation : s.teams.home.abbreviation;
-  return ok(`✓ ${s.inning.ordinal} ${s.inning.half} begins | ${battingTeam} batting | 0 outs`);
+    s.inning.half === 'Top'
+      ? s.teams.away.abbreviation
+      : s.teams.home.abbreviation;
+  return ok(
+    `✓ ${s.inning.ordinal} ${s.inning.half} begins | ${battingTeam} batting | 0 outs`
+  );
 }
 
-export function handleBattingEnds(store: StateStore, io: SocketIOServer): HandlerResult {
+export function handleBattingEnds(
+  store: StateStore,
+  io: SocketIOServer
+): HandlerResult {
   const state = store.getState();
   const error = validateTransition('batting-ends', state);
   if (error) return fail(error);
 
   emitUpdate(io, store, 'between-innings');
   return ok(
-    `✓ Half-inning ended | Between-innings break | ${state.inning.ordinal} ${state.inning.half}`,
+    `✓ Half-inning ended | Between-innings break | ${state.inning.ordinal} ${state.inning.half}`
   );
 }
 
-export function handleBetweenInnings(store: StateStore, io: SocketIOServer): HandlerResult {
+export function handleBetweenInnings(
+  store: StateStore,
+  io: SocketIOServer
+): HandlerResult {
   const state = store.getState();
   const error = validateTransition('between-innings', state);
   if (error) return fail(error);
 
   emitUpdate(io, store, 'between-innings');
-  return ok(`✓ Between-innings emitted | ${state.inning.ordinal} ${state.inning.half}`);
+  return ok(
+    `✓ Between-innings emitted | ${state.inning.ordinal} ${state.inning.half}`
+  );
 }
 
 export function handleDelay(
   store: StateStore,
   io: SocketIOServer,
-  options: DelayOptions,
+  options: DelayOptions
 ): HandlerResult {
   const state = store.getState();
   const error = validateTransition('delay', state);
@@ -185,10 +215,15 @@ export function handleDelay(
   store.setState({ isDelayed: true, delayDescription: desc });
   emitUpdate(io, store, 'outs');
 
-  return ok(`✓ Game delayed: ${desc} | ${state.inning.ordinal} ${state.inning.half}`);
+  return ok(
+    `✓ Game delayed: ${desc} | ${state.inning.ordinal} ${state.inning.half}`
+  );
 }
 
-export function handleClearDelay(store: StateStore, io: SocketIOServer): HandlerResult {
+export function handleClearDelay(
+  store: StateStore,
+  io: SocketIOServer
+): HandlerResult {
   const state = store.getState();
   const error = validateTransition('clear-delay', state);
   if (error) return fail(error);
@@ -196,36 +231,56 @@ export function handleClearDelay(store: StateStore, io: SocketIOServer): Handler
   store.setState({ isDelayed: false, delayDescription: null });
   emitUpdate(io, store, 'outs');
 
-  return ok(`✓ Delay cleared | Game resumed | ${state.inning.ordinal} ${state.inning.half}`);
+  return ok(
+    `✓ Delay cleared | Game resumed | ${state.inning.ordinal} ${state.inning.half}`
+  );
 }
 
 // ---------------------------------------------------------------------------
 // State control commands (no socket emission)
 // ---------------------------------------------------------------------------
 
-export function handleSetInning(store: StateStore, options: SetInningOptions): HandlerResult {
+export function handleSetInning(
+  store: StateStore,
+  options: SetInningOptions
+): HandlerResult {
   const n = options.inning;
   if (n === undefined || !Number.isInteger(n) || n < 1 || n > 30) {
     return fail('Inning must be a whole number between 1 and 30.');
   }
 
   const current = store.getState().inning;
-  store.setState({ outs: 0, inning: { number: n, half: current.half, ordinal: toOrdinal(n) } });
-  return ok(`✓ Inning set to ${toOrdinal(n)} ${current.half} | Outs reset to 0`);
+  store.setState({
+    outs: 0,
+    inning: { number: n, half: current.half, ordinal: toOrdinal(n) },
+  });
+  return ok(
+    `✓ Inning set to ${toOrdinal(n)} ${current.half} | Outs reset to 0`
+  );
 }
 
-export function handleSetScore(store: StateStore, options: SetScoreOptions): HandlerResult {
+export function handleSetScore(
+  store: StateStore,
+  options: SetScoreOptions
+): HandlerResult {
   const current = store.getState().score;
   const away = options.away ?? current.away;
   const home = options.home ?? current.home;
 
-  if (!Number.isInteger(away) || away < 0 || !Number.isInteger(home) || home < 0) {
+  if (
+    !Number.isInteger(away) ||
+    away < 0 ||
+    !Number.isInteger(home) ||
+    home < 0
+  ) {
     return fail('Scores must be non-negative whole numbers.');
   }
 
   store.setState({ score: { away, home } });
   const s = store.getState();
-  return ok(`✓ Score set: ${s.teams.away.abbreviation} ${away} – ${s.teams.home.abbreviation} ${home}`);
+  return ok(
+    `✓ Score set: ${s.teams.away.abbreviation} ${away} – ${s.teams.home.abbreviation} ${home}`
+  );
 }
 
 export function handleSetTeamBatting(store: StateStore): HandlerResult {
@@ -235,8 +290,12 @@ export function handleSetTeamBatting(store: StateStore): HandlerResult {
 
   const s = store.getState();
   const batting =
-    s.inning.half === 'Top' ? s.teams.away.abbreviation : s.teams.home.abbreviation;
-  return ok(`✓ Batting side swapped | ${batting} now batting | Outs reset to 0`);
+    s.inning.half === 'Top'
+      ? s.teams.away.abbreviation
+      : s.teams.home.abbreviation;
+  return ok(
+    `✓ Batting side swapped | ${batting} now batting | Outs reset to 0`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +312,13 @@ const DEFAULT_OUT_TYPES = [
 ] as const;
 
 /** Default scoring event types for the score command. */
-const DEFAULT_SCORING_TYPES = ['single', 'double', 'home_run', 'walk', 'sac_fly'] as const;
+const DEFAULT_SCORING_TYPES = [
+  'single',
+  'double',
+  'home_run',
+  'walk',
+  'sac_fly',
+] as const;
 
 function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -262,7 +327,7 @@ function pick<T>(arr: readonly T[]): T {
 export function handlePlateAppearance(
   store: StateStore,
   io: SocketIOServer,
-  options: PlateAppearanceOptions,
+  options: PlateAppearanceOptions
 ): HandlerResult {
   const state = store.getState();
   const error = validateTransition('out', state); // requires game active, not final
@@ -270,7 +335,10 @@ export function handlePlateAppearance(
 
   const eventType = options.type ?? pick(DEFAULT_OUT_TYPES);
   const batter = { id: randomPitcherId(), fullName: 'Simulated Batter' };
-  const pitcher = state.currentPitcher ?? { id: randomPitcherId(), fullName: 'Simulated Pitcher' };
+  const pitcher = state.currentPitcher ?? {
+    id: randomPitcherId(),
+    fullName: 'Simulated Pitcher',
+  };
 
   const paEvent: PlateAppearanceCompletedEvent = {
     gamePk: state.gamePk,
@@ -278,9 +346,13 @@ export function handlePlateAppearance(
     inning: state.inning.number,
     halfInning: state.inning.half === 'Top' ? 'top' : 'bottom',
     battingTeam:
-      state.inning.half === 'Top' ? state.teams.away.abbreviation : state.teams.home.abbreviation,
+      state.inning.half === 'Top'
+        ? state.teams.away.abbreviation
+        : state.teams.home.abbreviation,
     defendingTeam:
-      state.inning.half === 'Top' ? state.teams.home.abbreviation : state.teams.away.abbreviation,
+      state.inning.half === 'Top'
+        ? state.teams.home.abbreviation
+        : state.teams.away.abbreviation,
     eventType,
     description: `${batter.fullName} ${humanise(eventType)}.`,
     category: 'plate-appearance-completed',
@@ -292,13 +364,15 @@ export function handlePlateAppearance(
   };
 
   emitGameEvents(io, { gamePk: state.gamePk, events: [paEvent] });
-  return ok(`✓ Plate appearance: ${eventType} | ${state.inning.ordinal} ${state.inning.half}`);
+  return ok(
+    `✓ Plate appearance: ${eventType} | ${state.inning.ordinal} ${state.inning.half}`
+  );
 }
 
 export function handleScore(
   store: StateStore,
   io: SocketIOServer,
-  options: ScoreOptions,
+  options: ScoreOptions
 ): HandlerResult {
   const state = store.getState();
   const error = validateTransition('out', state);
@@ -307,7 +381,10 @@ export function handleScore(
   const eventType = options.type ?? pick(DEFAULT_SCORING_TYPES);
   const runs = options.runs ?? 1;
   const batter = { id: randomPitcherId(), fullName: 'Simulated Batter' };
-  const pitcher = state.currentPitcher ?? { id: randomPitcherId(), fullName: 'Simulated Pitcher' };
+  const pitcher = state.currentPitcher ?? {
+    id: randomPitcherId(),
+    fullName: 'Simulated Pitcher',
+  };
 
   // Increment the batting team's score.
   const isBattingAway = state.inning.half === 'Top';
@@ -324,8 +401,12 @@ export function handleScore(
     atBatIndex: randomAtBatIndex(),
     inning: state.inning.number,
     halfInning: state.inning.half === 'Top' ? 'top' : 'bottom',
-    battingTeam: isBattingAway ? state.teams.away.abbreviation : state.teams.home.abbreviation,
-    defendingTeam: isBattingAway ? state.teams.home.abbreviation : state.teams.away.abbreviation,
+    battingTeam: isBattingAway
+      ? state.teams.away.abbreviation
+      : state.teams.home.abbreviation,
+    defendingTeam: isBattingAway
+      ? state.teams.home.abbreviation
+      : state.teams.away.abbreviation,
     eventType,
     description: `${batter.fullName} ${humanise(eventType)}. ${runs} run${runs !== 1 ? 's' : ''} score${runs !== 1 ? '' : 's'}.`,
     category: 'plate-appearance-completed',
@@ -341,14 +422,14 @@ export function handleScore(
   const s = store.getState();
   return ok(
     `✓ Score: ${eventType} | +${runs} run${runs !== 1 ? 's' : ''}` +
-      ` | ${s.teams.away.abbreviation} ${s.score.away} – ${s.teams.home.abbreviation} ${s.score.home}`,
+      ` | ${s.teams.away.abbreviation} ${s.score.away} – ${s.teams.home.abbreviation} ${s.score.home}`
   );
 }
 
 export function handleOffensiveSub(
   store: StateStore,
   io: SocketIOServer,
-  options: SubstitutionOptions,
+  options: SubstitutionOptions
 ): HandlerResult {
   const state = store.getState();
   const error = validateTransition('out', state);
@@ -365,9 +446,13 @@ export function handleOffensiveSub(
     inning: state.inning.number,
     halfInning: state.inning.half === 'Top' ? 'top' : 'bottom',
     battingTeam:
-      state.inning.half === 'Top' ? state.teams.away.abbreviation : state.teams.home.abbreviation,
+      state.inning.half === 'Top'
+        ? state.teams.away.abbreviation
+        : state.teams.home.abbreviation,
     defendingTeam:
-      state.inning.half === 'Top' ? state.teams.home.abbreviation : state.teams.away.abbreviation,
+      state.inning.half === 'Top'
+        ? state.teams.home.abbreviation
+        : state.teams.away.abbreviation,
     eventType: 'offensive_substitution',
     description: `Offensive substitution: ${player.fullName} replaces the previous batter.`,
     category: 'offensive-substitution',
@@ -375,13 +460,15 @@ export function handleOffensiveSub(
   };
 
   emitGameEvents(io, { gamePk: state.gamePk, events: [subEvent] });
-  return ok(`✓ Offensive sub: ${player.fullName} (#${player.id}) enters | ${state.inning.ordinal} ${state.inning.half}`);
+  return ok(
+    `✓ Offensive sub: ${player.fullName} (#${player.id}) enters | ${state.inning.ordinal} ${state.inning.half}`
+  );
 }
 
 export function handleDefensiveSub(
   store: StateStore,
   io: SocketIOServer,
-  options: SubstitutionOptions,
+  options: SubstitutionOptions
 ): HandlerResult {
   const state = store.getState();
   const error = validateTransition('out', state);
@@ -398,9 +485,13 @@ export function handleDefensiveSub(
     inning: state.inning.number,
     halfInning: state.inning.half === 'Top' ? 'top' : 'bottom',
     battingTeam:
-      state.inning.half === 'Top' ? state.teams.away.abbreviation : state.teams.home.abbreviation,
+      state.inning.half === 'Top'
+        ? state.teams.away.abbreviation
+        : state.teams.home.abbreviation,
     defendingTeam:
-      state.inning.half === 'Top' ? state.teams.home.abbreviation : state.teams.away.abbreviation,
+      state.inning.half === 'Top'
+        ? state.teams.home.abbreviation
+        : state.teams.away.abbreviation,
     eventType: 'defensive_substitution',
     description: `Defensive substitution: ${player.fullName} enters the game.`,
     category: 'defensive-substitution',
@@ -408,12 +499,14 @@ export function handleDefensiveSub(
   };
 
   emitGameEvents(io, { gamePk: state.gamePk, events: [subEvent] });
-  return ok(`✓ Defensive sub: ${player.fullName} (#${player.id}) enters | ${state.inning.ordinal} ${state.inning.half}`);
+  return ok(
+    `✓ Defensive sub: ${player.fullName} (#${player.id}) enters | ${state.inning.ordinal} ${state.inning.half}`
+  );
 }
 
 export function handleSimGameSummary(
   store: StateStore,
-  io: SocketIOServer,
+  io: SocketIOServer
 ): HandlerResult {
   const state = store.getState();
 
@@ -444,7 +537,9 @@ export function handleSimGameSummary(
   };
 
   io.emit(SOCKET_EVENTS.GAME_SUMMARY, summary);
-  return ok(`✓ Game summary emitted | ${state.teams.away.abbreviation} ${state.score.away} – ${state.teams.home.abbreviation} ${state.score.home}`);
+  return ok(
+    `✓ Game summary emitted | ${state.teams.away.abbreviation} ${state.score.away} – ${state.teams.home.abbreviation} ${state.score.home}`
+  );
 }
 
 // ---------------------------------------------------------------------------

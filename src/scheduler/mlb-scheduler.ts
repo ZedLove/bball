@@ -8,7 +8,10 @@ import type { GameUpdate } from './parser.ts';
 import { logger } from '../config/logger.ts';
 import { fetchGameFeed } from './game-feed-client.ts';
 import type { GameFeedResponse } from './game-feed-types.ts';
-import type { BoxscoreResponse, NextGameScheduleResponse } from './game-feed-types.ts';
+import type {
+  BoxscoreResponse,
+  NextGameScheduleResponse,
+} from './game-feed-types.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import { parseFeedEvents } from './feed-parser.ts';
@@ -101,9 +104,11 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     // Re-find the active game in the raw schedule so we can read linescore and
     // gameDate, which are not surfaced on GameUpdate (to keep the socket
     // payload clean).
-    const activeGame = update && schedule
-      ? (schedule.dates?.[0]?.games.find((g) => g.gamePk === update.gamePk) ?? null)
-      : null;
+    const activeGame =
+      update && schedule
+        ? (schedule.dates?.[0]?.games.find((g) => g.gamePk === update.gamePk) ??
+          null)
+        : null;
     const currentLinescore: Linescore | null = activeGame?.linescore ?? null;
     const currentGameDate: string | null = activeGame?.gameDate ?? null;
 
@@ -111,9 +116,12 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     if (!update || !activeGame) {
       // No trackable game in this tick — reset any live enrichment cursor.
       if (enrichmentState !== null) {
-        logger.info('Active game dropped out of scope — resetting enrichment state', {
-          gamePk: enrichmentState.gamePk,
-        });
+        logger.info(
+          'Active game dropped out of scope — resetting enrichment state',
+          {
+            gamePk: enrichmentState.gamePk,
+          }
+        );
         enrichmentState = null;
       }
     } else {
@@ -133,7 +141,10 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         }
         const seedTimestamp = toTimecode(currentGameDate!);
         enrichmentState = createEnrichmentState(currentGamePk, seedTimestamp);
-        logger.info('Enrichment state initialized', { gamePk: currentGamePk, seedTimestamp });
+        logger.info('Enrichment state initialized', {
+          gamePk: currentGamePk,
+          seedTimestamp,
+        });
       }
     }
 
@@ -173,7 +184,10 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         !isFirstTick &&
         (isFinal ||
           (currentLinescore !== null &&
-            hasLinescoreDelta(currentLinescore, enrichmentState.lastLinescoreSnapshot)));
+            hasLinescoreDelta(
+              currentLinescore,
+              enrichmentState.lastLinescoreSnapshot
+            )));
 
       if (shouldEnrich) {
         logger.info('Enrichment fetch triggered', {
@@ -192,7 +206,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         try {
           const feedResponse = await fetchGameFeed(
             enrichmentState.gamePk,
-            enrichmentState.lastTimestamp,
+            enrichmentState.lastTimestamp
           );
 
           // The diffPatch endpoint returns [] when there are no new events since
@@ -202,15 +216,18 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           // scheduler retries on the very next tick.
           if (feedResponse === null) {
             retryPending = true;
-            logger.debug('Enrichment fetch returned empty — will retry next tick', {
-              gamePk: enrichmentState.gamePk,
-            });
+            logger.debug(
+              'Enrichment fetch returned empty — will retry next tick',
+              {
+                gamePk: enrichmentState.gamePk,
+              }
+            );
           } else {
             // Parse completed plays into domain events and emit if non-empty.
             const gameEvents = parseFeedEvents(
               feedResponse,
               enrichmentState.gamePk,
-              enrichmentState.lastProcessedAtBatIndex,
+              enrichmentState.lastProcessedAtBatIndex
             );
 
             if (gameEvents.length > 0) {
@@ -219,7 +236,9 @@ export function startScheduler(io: SocketIOServer): Scheduler {
                 events: gameEvents,
               };
               io.emit(SOCKET_EVENTS.GAME_EVENTS, batch);
-              const maxAtBatIndex = Math.max(...gameEvents.map((e) => e.atBatIndex));
+              const maxAtBatIndex = Math.max(
+                ...gameEvents.map((e) => e.atBatIndex)
+              );
               enrichmentState.lastProcessedAtBatIndex = maxAtBatIndex;
               logger.info('game-events emitted', {
                 gamePk: enrichmentState.gamePk,
@@ -248,7 +267,10 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           const isError = err instanceof Error;
           // Cast to the superset of fields an AxiosError exposes so we can log
           // HTTP status and network-level error codes without using `any`.
-          const httpErr = err as { code?: string; response?: { status?: number; statusText?: string } };
+          const httpErr = err as {
+            code?: string;
+            response?: { status?: number; statusText?: string };
+          };
           logger.error(
             'Enrichment fetch failed — baseline game-update will still be emitted',
             {
@@ -258,7 +280,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
               code: httpErr.code,
               status: httpErr.response?.status,
               statusText: httpErr.response?.statusText,
-            },
+            }
           );
         }
 
@@ -307,7 +329,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           : (() => {
               logger.error(
                 'Boxscore fetch failed — game-summary will have empty topPerformers',
-                { gamePk: gamePkForFinal, err: boxscoreResult.reason },
+                { gamePk: gamePkForFinal, err: boxscoreResult.reason }
               );
               return { topPerformers: [] };
             })();
@@ -318,7 +340,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           : (() => {
               logger.error(
                 'Next-game fetch failed — game-summary will have null nextGame',
-                { gamePk: gamePkForFinal, err: nextGameResult.reason },
+                { gamePk: gamePkForFinal, err: nextGameResult.reason }
               );
               return null;
             })();
@@ -333,7 +355,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
             feedResponseForFinal,
             boxscoreResponse,
             nextGameResponse,
-            CONFIG.TEAM_ID,
+            CONFIG.TEAM_ID
           );
           io.emit(SOCKET_EVENTS.GAME_SUMMARY, summary);
           logger.info('game-summary emitted', { gamePk: gamePkForFinal });
@@ -358,12 +380,18 @@ export function startScheduler(io: SocketIOServer): Scheduler {
 
     // ── 7. Schedule next tick ─────────────────────────────────────────────────
     const getNextIntervalSec = (update: GameUpdate | null): number => {
-      if (update === null || update.isDelayed || update.trackingMode === 'final') {
+      if (
+        update === null ||
+        update.isDelayed ||
+        update.trackingMode === 'final'
+      ) {
         return CONFIG.IDLE_POLL_INTERVAL;
       }
       switch (update.trackingMode) {
         case 'between-innings':
-          return (update.inningBreakLength ?? 120) + CONFIG.BETWEEN_INNINGS_BUFFER_S;
+          return (
+            (update.inningBreakLength ?? 120) + CONFIG.BETWEEN_INNINGS_BUFFER_S
+          );
         case 'batting':
           return CONFIG.BATTING_POLL_INTERVAL;
         default:

@@ -40,13 +40,23 @@ describe('hasLinescoreDelta', () => {
   describe('score changes', () => {
     it('returns true when the home run total increases', () => {
       const previous = makeLinescore();
-      const current = makeLinescore({ teams: { home: { runs: 2, hits: 3, errors: 0 }, away: { runs: 2, hits: 5, errors: 1 } } });
+      const current = makeLinescore({
+        teams: {
+          home: { runs: 2, hits: 3, errors: 0 },
+          away: { runs: 2, hits: 5, errors: 1 },
+        },
+      });
       expect(hasLinescoreDelta(current, previous)).toBe(true);
     });
 
     it('returns true when the away run total increases', () => {
       const previous = makeLinescore();
-      const current = makeLinescore({ teams: { home: { runs: 1, hits: 3, errors: 0 }, away: { runs: 3, hits: 5, errors: 1 } } });
+      const current = makeLinescore({
+        teams: {
+          home: { runs: 1, hits: 3, errors: 0 },
+          away: { runs: 3, hits: 5, errors: 1 },
+        },
+      });
       expect(hasLinescoreDelta(current, previous)).toBe(true);
     });
   });
@@ -90,28 +100,40 @@ describe('hasLinescoreDelta', () => {
 
   describe('batter changes', () => {
     it('returns true when offense.batter.id changes (new batter up)', () => {
-      const previous = makeLinescore({ offense: { batter: { id: 596019, fullName: 'Francisco Lindor' } } });
-      const current = makeLinescore({ offense: { batter: { id: 605280, fullName: 'Clay Holmes' } } });
+      const previous = makeLinescore({
+        offense: { batter: { id: 596019, fullName: 'Francisco Lindor' } },
+      });
+      const current = makeLinescore({
+        offense: { batter: { id: 605280, fullName: 'Clay Holmes' } },
+      });
       expect(hasLinescoreDelta(current, previous)).toBe(true);
     });
 
     it('returns true when offense changes from present to absent (between-innings)', () => {
-      const previous = makeLinescore({ offense: { batter: { id: 596019, fullName: 'Francisco Lindor' } } });
+      const previous = makeLinescore({
+        offense: { batter: { id: 596019, fullName: 'Francisco Lindor' } },
+      });
       const current = makeLinescore({ offense: undefined });
       expect(hasLinescoreDelta(current, previous)).toBe(true);
     });
 
     it('returns true when offense transitions from absent to present', () => {
       const previous = makeLinescore({ offense: undefined });
-      const current = makeLinescore({ offense: { batter: { id: 596019, fullName: 'Francisco Lindor' } } });
+      const current = makeLinescore({
+        offense: { batter: { id: 596019, fullName: 'Francisco Lindor' } },
+      });
       expect(hasLinescoreDelta(current, previous)).toBe(true);
     });
   });
 
   describe('pitcher changes', () => {
     it('returns true when defense.pitcher changes (pitching substitution)', () => {
-      const previous = makeLinescore({ defense: { pitcher: { id: 660271, fullName: 'Shohei Ohtani' } } });
-      const current = makeLinescore({ defense: { pitcher: { id: 668964, fullName: 'Tobias Myers' } } });
+      const previous = makeLinescore({
+        defense: { pitcher: { id: 660271, fullName: 'Shohei Ohtani' } },
+      });
+      const current = makeLinescore({
+        defense: { pitcher: { id: 668964, fullName: 'Tobias Myers' } },
+      });
       expect(hasLinescoreDelta(current, previous)).toBe(true);
     });
   });

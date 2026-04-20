@@ -11,12 +11,16 @@ import type { SimulationState } from '../types.ts';
 export function buildPayload(
   state: SimulationState,
   trackingMode: GameUpdate['trackingMode'],
-  overrides?: Partial<GameUpdate>,
+  overrides?: Partial<GameUpdate>
 ): GameUpdate {
   const defending =
-    state.inning.half === 'Top' ? state.teams.home.abbreviation : state.teams.away.abbreviation;
+    state.inning.half === 'Top'
+      ? state.teams.home.abbreviation
+      : state.teams.away.abbreviation;
   const batting =
-    state.inning.half === 'Top' ? state.teams.away.abbreviation : state.teams.home.abbreviation;
+    state.inning.half === 'Top'
+      ? state.teams.away.abbreviation
+      : state.teams.home.abbreviation;
 
   const isExtraInnings = state.inning.number > state.scheduledInnings;
 
@@ -51,8 +55,18 @@ export function buildPayload(
     delayDescription: state.delayDescription,
     isExtraInnings,
     scheduledInnings: state.scheduledInnings,
-    currentPitcher: trackingMode === 'between-innings' ? null : (state.currentPitcher ? { ...state.currentPitcher } : null),
-    upcomingPitcher: trackingMode === 'between-innings' ? (state.currentPitcher ? { ...state.currentPitcher } : null) : null,
+    currentPitcher:
+      trackingMode === 'between-innings'
+        ? null
+        : state.currentPitcher
+          ? { ...state.currentPitcher }
+          : null,
+    upcomingPitcher:
+      trackingMode === 'between-innings'
+        ? state.currentPitcher
+          ? { ...state.currentPitcher }
+          : null
+        : null,
     trackingMode,
     outsRemaining,
     totalOutsRemaining,

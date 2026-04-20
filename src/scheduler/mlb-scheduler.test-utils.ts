@@ -6,7 +6,11 @@
 import { vi } from 'vitest';
 import type { Server as SocketIOServer } from 'socket.io';
 import type { ScheduleResponse } from './schedule-client.ts';
-import type { GameFeedResponse, BoxscoreResponse, NextGameScheduleResponse } from './game-feed-types.ts';
+import type {
+  GameFeedResponse,
+  BoxscoreResponse,
+  NextGameScheduleResponse,
+} from './game-feed-types.ts';
 
 // ── Test constants ───────────────────────────────────────────────────────────
 
@@ -47,42 +51,54 @@ export async function drainMicrotasks(rounds = 15): Promise<void> {
  */
 export function makeLiveSchedule(outsOverride = 1): ScheduleResponse {
   return {
-    dates: [{
-      date: '2026-04-15',
-      games: [{
-        gamePk: GAME_PK,
-        gameDate: GAME_DATE,
-        status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-        inningBreakLength: 120,
-        teams: {
-          away: {
-            team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
-            score: 0,
-            leagueRecord: { wins: 3, losses: 2 },
+    dates: [
+      {
+        date: '2026-04-15',
+        games: [
+          {
+            gamePk: GAME_PK,
+            gameDate: GAME_DATE,
+            status: { detailedState: 'In Progress', abstractGameState: 'Live' },
+            inningBreakLength: 120,
+            teams: {
+              away: {
+                team: {
+                  id: LAD_ID,
+                  name: 'Los Angeles Dodgers',
+                  abbreviation: 'LAD',
+                },
+                score: 0,
+                leagueRecord: { wins: 3, losses: 2 },
+              },
+              home: {
+                team: {
+                  id: NYM_ID,
+                  name: 'New York Mets',
+                  abbreviation: 'NYM',
+                },
+                score: 1,
+                leagueRecord: { wins: 4, losses: 1 },
+              },
+            },
+            linescore: {
+              currentInning: 3,
+              currentInningOrdinal: '3rd',
+              inningState: 'Top', // LAD batting, NYM defending → trackingMode 'outs'
+              scheduledInnings: 9,
+              outs: outsOverride,
+              balls: 0,
+              strikes: 0,
+              teams: {
+                home: { runs: 1, hits: 2, errors: 0 },
+                away: { runs: 0, hits: 1, errors: 0 },
+              },
+              defense: { pitcher: { id: 660271, fullName: 'Shohei Ohtani' } },
+              offense: { batter: { id: 596019, fullName: 'Francisco Lindor' } },
+            },
           },
-          home: {
-            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-            score: 1,
-            leagueRecord: { wins: 4, losses: 1 },
-          },
-        },
-        linescore: {
-          currentInning: 3,
-          currentInningOrdinal: '3rd',
-          inningState: 'Top', // LAD batting, NYM defending → trackingMode 'outs'
-          scheduledInnings: 9,
-          outs: outsOverride,
-          balls: 0,
-          strikes: 0,
-          teams: {
-            home: { runs: 1, hits: 2, errors: 0 },
-            away: { runs: 0, hits: 1, errors: 0 },
-          },
-          defense: { pitcher: { id: 660271, fullName: 'Shohei Ohtani' } },
-          offense: { batter: { id: 596019, fullName: 'Francisco Lindor' } },
-        },
-      }],
-    }],
+        ],
+      },
+    ],
   };
 }
 
@@ -91,40 +107,52 @@ export function makeLiveSchedule(outsOverride = 1): ScheduleResponse {
  */
 export function makeFinalSchedule(): ScheduleResponse {
   return {
-    dates: [{
-      date: '2026-04-15',
-      games: [{
-        gamePk: GAME_PK,
-        gameDate: GAME_DATE,
-        status: { detailedState: 'Final', abstractGameState: 'Final' },
-        inningBreakLength: 120,
-        teams: {
-          away: {
-            team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
-            score: 2,
-            leagueRecord: { wins: 3, losses: 3 },
+    dates: [
+      {
+        date: '2026-04-15',
+        games: [
+          {
+            gamePk: GAME_PK,
+            gameDate: GAME_DATE,
+            status: { detailedState: 'Final', abstractGameState: 'Final' },
+            inningBreakLength: 120,
+            teams: {
+              away: {
+                team: {
+                  id: LAD_ID,
+                  name: 'Los Angeles Dodgers',
+                  abbreviation: 'LAD',
+                },
+                score: 2,
+                leagueRecord: { wins: 3, losses: 3 },
+              },
+              home: {
+                team: {
+                  id: NYM_ID,
+                  name: 'New York Mets',
+                  abbreviation: 'NYM',
+                },
+                score: 4,
+                leagueRecord: { wins: 5, losses: 1 },
+              },
+            },
+            linescore: {
+              currentInning: 9,
+              currentInningOrdinal: '9th',
+              inningState: 'End',
+              scheduledInnings: 9,
+              outs: 3,
+              balls: 0,
+              strikes: 0,
+              teams: {
+                home: { runs: 4, hits: 8, errors: 0 },
+                away: { runs: 2, hits: 6, errors: 1 },
+              },
+            },
           },
-          home: {
-            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-            score: 4,
-            leagueRecord: { wins: 5, losses: 1 },
-          },
-        },
-        linescore: {
-          currentInning: 9,
-          currentInningOrdinal: '9th',
-          inningState: 'End',
-          scheduledInnings: 9,
-          outs: 3,
-          balls: 0,
-          strikes: 0,
-          teams: {
-            home: { runs: 4, hits: 8, errors: 0 },
-            away: { runs: 2, hits: 6, errors: 1 },
-          },
-        },
-      }],
-    }],
+        ],
+      },
+    ],
   };
 }
 
@@ -135,11 +163,17 @@ export function makeFinalSchedule(): ScheduleResponse {
  * @param atBatIndex - The at-bat index for the play.
  * @param timestamp - Optional override for the response timestamp.
  */
-export function makeFeedResponse(atBatIndex: number, timestamp = FEED_TIMESTAMP_1): GameFeedResponse {
+export function makeFeedResponse(
+  atBatIndex: number,
+  timestamp = FEED_TIMESTAMP_1
+): GameFeedResponse {
   return {
     metaData: { timeStamp: timestamp },
     gameData: {
-      teams: { away: { id: LAD_ID, abbreviation: 'LAD' }, home: { id: NYM_ID, abbreviation: 'NYM' } },
+      teams: {
+        away: { id: LAD_ID, abbreviation: 'LAD' },
+        home: { id: NYM_ID, abbreviation: 'NYM' },
+      },
       players: {
         ID596019: { id: 596019, fullName: 'Francisco Lindor' },
         ID660271: { id: 660271, fullName: 'Shohei Ohtani' },
@@ -147,16 +181,28 @@ export function makeFeedResponse(atBatIndex: number, timestamp = FEED_TIMESTAMP_
     },
     liveData: {
       plays: {
-        allPlays: [{
-          atBatIndex,
-          result: { eventType: 'strikeout', description: 'Francisco Lindor strikes out swinging.', rbi: 0 },
-          about: { atBatIndex, halfInning: 'top', inning: 3, isComplete: true, isScoringPlay: false },
-          matchup: {
-            batter: { id: 596019, fullName: 'Francisco Lindor' },
-            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+        allPlays: [
+          {
+            atBatIndex,
+            result: {
+              eventType: 'strikeout',
+              description: 'Francisco Lindor strikes out swinging.',
+              rbi: 0,
+            },
+            about: {
+              atBatIndex,
+              halfInning: 'top',
+              inning: 3,
+              isComplete: true,
+              isScoringPlay: false,
+            },
+            matchup: {
+              batter: { id: 596019, fullName: 'Francisco Lindor' },
+              pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            },
+            playEvents: [],
           },
-          playEvents: [],
-        }],
+        ],
       },
       decisions: {
         winner: { id: 660271, fullName: 'Shohei Ohtani' },
@@ -178,22 +224,34 @@ export function makeBoxscoreResponse(): BoxscoreResponse {
  */
 export function makeNextGameResponse(): NextGameScheduleResponse {
   return {
-    dates: [{
-      games: [{
-        gamePk: 824693,
-        gameDate: '2026-04-17T18:20:00Z',
-        venue: { name: 'Citi Field' },
-        teams: {
-          away: {
-            team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
-            probablePitcher: null,
+    dates: [
+      {
+        games: [
+          {
+            gamePk: 824693,
+            gameDate: '2026-04-17T18:20:00Z',
+            venue: { name: 'Citi Field' },
+            teams: {
+              away: {
+                team: {
+                  id: LAD_ID,
+                  name: 'Los Angeles Dodgers',
+                  abbreviation: 'LAD',
+                },
+                probablePitcher: null,
+              },
+              home: {
+                team: {
+                  id: NYM_ID,
+                  name: 'New York Mets',
+                  abbreviation: 'NYM',
+                },
+                probablePitcher: null,
+              },
+            },
           },
-          home: {
-            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-            probablePitcher: null,
-          },
-        },
-      }],
-    }],
+        ],
+      },
+    ],
   };
 }

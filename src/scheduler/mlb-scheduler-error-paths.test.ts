@@ -82,7 +82,10 @@ describe('buildGameSummary error handling', () => {
     vi.runOnlyPendingTimers();
     await drainMicrotasks(); // tick 2: final game, buildGameSummary throws
 
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_SUMMARY, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_SUMMARY,
+      expect.anything()
+    );
     scheduler.stop();
   });
 
@@ -107,7 +110,7 @@ describe('buildGameSummary error handling', () => {
     // Baseline game-update for the final game should still be emitted
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_UPDATE,
-      expect.objectContaining({ trackingMode: 'final' }),
+      expect.objectContaining({ trackingMode: 'final' })
     );
     scheduler.stop();
   });

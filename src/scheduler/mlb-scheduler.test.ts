@@ -8,8 +8,8 @@ vi.mock('./next-game-client.ts', () => ({ fetchNextGame: vi.fn() }));
 vi.mock('./logger.ts', () => ({ logUpdate: vi.fn() }));
 vi.mock('../config/env.ts', () => ({
   CONFIG: {
-    TEAM_ID: 121,            // NYM
-    MAX_RETRIES: 0,          // Fail fast in tests — no retry delay
+    TEAM_ID: 121, // NYM
+    MAX_RETRIES: 0, // Fail fast in tests — no retry delay
     RETRY_BACKOFF_MS: 0,
     IDLE_POLL_INTERVAL: 60,
     ACTIVE_POLL_INTERVAL: 10,
@@ -56,40 +56,52 @@ const mockFetchNextGame = vi.mocked(fetchNextGame);
 
 function makeNewGameSchedule(): ScheduleResponse {
   return {
-    dates: [{
-      date: '2026-04-16',
-      games: [{
-        gamePk: 824100, // different gamePk
-        gameDate: '2026-04-16T18:00:00Z',
-        status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-        inningBreakLength: 120,
-        teams: {
-          away: {
-            team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
-            score: 0,
-            leagueRecord: { wins: 4, losses: 3 },
+    dates: [
+      {
+        date: '2026-04-16',
+        games: [
+          {
+            gamePk: 824100, // different gamePk
+            gameDate: '2026-04-16T18:00:00Z',
+            status: { detailedState: 'In Progress', abstractGameState: 'Live' },
+            inningBreakLength: 120,
+            teams: {
+              away: {
+                team: {
+                  id: LAD_ID,
+                  name: 'Los Angeles Dodgers',
+                  abbreviation: 'LAD',
+                },
+                score: 0,
+                leagueRecord: { wins: 4, losses: 3 },
+              },
+              home: {
+                team: {
+                  id: NYM_ID,
+                  name: 'New York Mets',
+                  abbreviation: 'NYM',
+                },
+                score: 0,
+                leagueRecord: { wins: 5, losses: 2 },
+              },
+            },
+            linescore: {
+              currentInning: 1,
+              currentInningOrdinal: '1st',
+              inningState: 'Top',
+              scheduledInnings: 9,
+              outs: 0,
+              balls: 0,
+              strikes: 0,
+              teams: {
+                home: { runs: 0, hits: 0, errors: 0 },
+                away: { runs: 0, hits: 0, errors: 0 },
+              },
+            },
           },
-          home: {
-            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-            score: 0,
-            leagueRecord: { wins: 5, losses: 2 },
-          },
-        },
-        linescore: {
-          currentInning: 1,
-          currentInningOrdinal: '1st',
-          inningState: 'Top',
-          scheduledInnings: 9,
-          outs: 0,
-          balls: 0,
-          strikes: 0,
-          teams: {
-            home: { runs: 0, hits: 0, errors: 0 },
-            away: { runs: 0, hits: 0, errors: 0 },
-          },
-        },
-      }],
-    }],
+        ],
+      },
+    ],
   };
 }
 
@@ -103,7 +115,10 @@ function makeEmptyFeedResponse(timestamp = FEED_TIMESTAMP_1): GameFeedResponse {
   return {
     metaData: { timeStamp: timestamp },
     gameData: {
-      teams: { away: { id: LAD_ID, abbreviation: 'LAD' }, home: { id: NYM_ID, abbreviation: 'NYM' } },
+      teams: {
+        away: { id: LAD_ID, abbreviation: 'LAD' },
+        home: { id: NYM_ID, abbreviation: 'NYM' },
+      },
       players: {},
     },
     liveData: { plays: { allPlays: [] } },
@@ -137,7 +152,7 @@ describe('baseline game-update emission', () => {
 
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_UPDATE,
-      expect.objectContaining({ gamePk: GAME_PK, trackingMode: 'outs' }),
+      expect.objectContaining({ gamePk: GAME_PK, trackingMode: 'outs' })
     );
     scheduler.stop();
   });
@@ -149,7 +164,10 @@ describe('baseline game-update emission', () => {
 
     await drainMicrotasks();
 
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_UPDATE, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.anything()
+    );
     scheduler.stop();
   });
 });
@@ -183,7 +201,7 @@ describe('enrichment state management', () => {
     await drainMicrotasks(); // tick 1 settles
 
     vi.runOnlyPendingTimers(); // fire tick 2's setTimeout
-    await drainMicrotasks();  // tick 2 settles
+    await drainMicrotasks(); // tick 2 settles
 
     expect(mockFetchGameFeed).toHaveBeenCalledOnce();
     expect(mockFetchGameFeed).toHaveBeenCalledWith(GAME_PK, SEED_TIMECODE);
@@ -213,10 +231,14 @@ describe('enrichment state management', () => {
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
     // Tick 2: outs changes → enrichment fires with SEED_TIMECODE; cursor advances to FEED_TIMESTAMP_1
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
-    mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse(FEED_TIMESTAMP_1));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeEmptyFeedResponse(FEED_TIMESTAMP_1)
+    );
     // Tick 3: outs changes again → enrichment fires with FEED_TIMESTAMP_1 (the advanced cursor)
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(3));
-    mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse(FEED_TIMESTAMP_2));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeEmptyFeedResponse(FEED_TIMESTAMP_2)
+    );
 
     const io = createMockIo();
     const scheduler = startScheduler(io);
@@ -232,8 +254,16 @@ describe('enrichment state management', () => {
     await drainMicrotasks();
 
     // Third call should use the timestamp from tick 2's feed response
-    expect(mockFetchGameFeed).toHaveBeenNthCalledWith(1, GAME_PK, SEED_TIMECODE);
-    expect(mockFetchGameFeed).toHaveBeenNthCalledWith(2, GAME_PK, FEED_TIMESTAMP_1);
+    expect(mockFetchGameFeed).toHaveBeenNthCalledWith(
+      1,
+      GAME_PK,
+      SEED_TIMECODE
+    );
+    expect(mockFetchGameFeed).toHaveBeenNthCalledWith(
+      2,
+      GAME_PK,
+      FEED_TIMESTAMP_1
+    );
     scheduler.stop();
   });
 
@@ -306,7 +336,7 @@ describe('game-events emission', () => {
         events: expect.arrayContaining([
           expect.objectContaining({ atBatIndex: 0, eventType: 'strikeout' }),
         ]),
-      }),
+      })
     );
     scheduler.stop();
   });
@@ -324,7 +354,10 @@ describe('game-events emission', () => {
     vi.runOnlyPendingTimers();
     await drainMicrotasks();
 
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_EVENTS, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_EVENTS,
+      expect.anything()
+    );
     scheduler.stop();
   });
 
@@ -338,7 +371,9 @@ describe('game-events emission', () => {
     mockFetchGameFeed.mockResolvedValueOnce(null);
     // Tick 3: same linescore as tick 2 — enrichment still retries because snapshot is stale
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
-    mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse(FEED_TIMESTAMP_1));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeEmptyFeedResponse(FEED_TIMESTAMP_1)
+    );
 
     const io = createMockIo();
     const scheduler = startScheduler(io);
@@ -351,10 +386,21 @@ describe('game-events emission', () => {
     vi.runOnlyPendingTimers();
     await drainMicrotasks(); // tick 3: retries with original cursor even though linescore unchanged
 
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_EVENTS, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_EVENTS,
+      expect.anything()
+    );
     // Cursor was not advanced after the null response, so tick 3 retries with SEED_TIMECODE
-    expect(mockFetchGameFeed).toHaveBeenNthCalledWith(1, GAME_PK, SEED_TIMECODE);
-    expect(mockFetchGameFeed).toHaveBeenNthCalledWith(2, GAME_PK, SEED_TIMECODE);
+    expect(mockFetchGameFeed).toHaveBeenNthCalledWith(
+      1,
+      GAME_PK,
+      SEED_TIMECODE
+    );
+    expect(mockFetchGameFeed).toHaveBeenNthCalledWith(
+      2,
+      GAME_PK,
+      SEED_TIMECODE
+    );
     scheduler.stop();
   });
 
@@ -366,7 +412,9 @@ describe('game-events emission', () => {
     mockFetchGameFeed.mockResolvedValueOnce(null);
     // Tick 3: same linescore → enrichment retries (snapshot was stale), succeeds with an event
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
-    mockFetchGameFeed.mockResolvedValueOnce(makeFeedResponse(0, FEED_TIMESTAMP_1));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponse(0, FEED_TIMESTAMP_1)
+    );
     // Tick 4: same linescore → enrichment should NOT fire (snapshot now current after success)
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
 
@@ -394,10 +442,14 @@ describe('game-events emission', () => {
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
     // Tick 2 → linescore change → atBatIndex 0 processed
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
-    mockFetchGameFeed.mockResolvedValueOnce(makeFeedResponse(0, FEED_TIMESTAMP_1));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponse(0, FEED_TIMESTAMP_1)
+    );
     // Tick 3 → another linescore change → feed returns same atBatIndex 0 (already seen)
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(3));
-    mockFetchGameFeed.mockResolvedValueOnce(makeFeedResponse(0, FEED_TIMESTAMP_2));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponse(0, FEED_TIMESTAMP_2)
+    );
 
     const io = createMockIo();
     const scheduler = startScheduler(io);
@@ -412,7 +464,10 @@ describe('game-events emission', () => {
     vi.runOnlyPendingTimers();
     await drainMicrotasks(); // tick 3 → atBatIndex 0 already processed, no emission
 
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_EVENTS, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_EVENTS,
+      expect.anything()
+    );
     scheduler.stop();
   });
 });
@@ -441,10 +496,13 @@ describe('enrichment failure resilience', () => {
     // Baseline update must still be emitted despite enrichment failure
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_UPDATE,
-      expect.objectContaining({ gamePk: GAME_PK }),
+      expect.objectContaining({ gamePk: GAME_PK })
     );
     // No game-events should be emitted
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_EVENTS, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_EVENTS,
+      expect.anything()
+    );
     scheduler.stop();
   });
 });
@@ -480,7 +538,7 @@ describe('final game handling', () => {
           winner: expect.objectContaining({ id: 660271 }),
           loser: expect.objectContaining({ id: 605280 }),
         }),
-      }),
+      })
     );
     scheduler.stop();
   });
@@ -507,9 +565,9 @@ describe('final game handling', () => {
     vi.runOnlyPendingTimers();
     await drainMicrotasks(); // tick 3 (still final)
 
-    const gameSummaryCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
-      ([event]) => event === SOCKET_EVENTS.GAME_SUMMARY,
-    );
+    const gameSummaryCalls = (
+      io.emit as ReturnType<typeof vi.fn>
+    ).mock.calls.filter(([event]) => event === SOCKET_EVENTS.GAME_SUMMARY);
     expect(gameSummaryCalls).toHaveLength(1);
     scheduler.stop();
   });
@@ -531,7 +589,7 @@ describe('final game handling', () => {
 
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_SUMMARY,
-      expect.objectContaining({ topPerformers: [] }),
+      expect.objectContaining({ topPerformers: [] })
     );
     scheduler.stop();
   });
@@ -553,7 +611,7 @@ describe('final game handling', () => {
 
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_SUMMARY,
-      expect.objectContaining({ nextGame: null }),
+      expect.objectContaining({ nextGame: null })
     );
     scheduler.stop();
   });
@@ -573,14 +631,19 @@ describe('final game handling', () => {
     vi.runOnlyPendingTimers();
     await drainMicrotasks();
 
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_SUMMARY, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_SUMMARY,
+      expect.anything()
+    );
     scheduler.stop();
   });
 
   it('does not emit game-summary when buildGameSummary throws', async () => {
-    vi.spyOn(summaryParserModule, 'buildGameSummary').mockImplementationOnce(() => {
-      throw new Error('parse error');
-    });
+    vi.spyOn(summaryParserModule, 'buildGameSummary').mockImplementationOnce(
+      () => {
+        throw new Error('parse error');
+      }
+    );
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
     mockFetchSchedule.mockResolvedValueOnce(makeFinalSchedule());
     mockFetchGameFeed.mockResolvedValueOnce(makeFeedResponse(5));
@@ -595,7 +658,10 @@ describe('final game handling', () => {
     vi.runOnlyPendingTimers();
     await drainMicrotasks();
 
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_SUMMARY, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_SUMMARY,
+      expect.anything()
+    );
     scheduler.stop();
   });
 
@@ -610,7 +676,10 @@ describe('final game handling', () => {
     await drainMicrotasks();
 
     expect(mockFetchGameFeed).not.toHaveBeenCalled();
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_SUMMARY, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_SUMMARY,
+      expect.anything()
+    );
     scheduler.stop();
   });
 
@@ -626,9 +695,18 @@ describe('final game handling', () => {
 
     await drainMicrotasks();
 
-    expect(io.emit).toHaveBeenCalledWith(SOCKET_EVENTS.GAME_UPDATE, expect.objectContaining({ trackingMode: 'final' }));
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_EVENTS, expect.anything());
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_SUMMARY, expect.anything());
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.objectContaining({ trackingMode: 'final' })
+    );
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_EVENTS,
+      expect.anything()
+    );
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_SUMMARY,
+      expect.anything()
+    );
     scheduler.stop();
   });
 });
@@ -684,77 +762,109 @@ describe('getLastUpdate', () => {
 /** Schedule fixture that puts NYM (home, 121) in a between-innings state. */
 function makeBetweenInningsSchedule(): ScheduleResponse {
   return {
-    dates: [{
-      date: '2026-04-15',
-      games: [{
-        gamePk: GAME_PK,
-        gameDate: GAME_DATE,
-        status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-        inningBreakLength: 120,
-        teams: {
-          away: {
-            team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
-            score: 0,
-            leagueRecord: { wins: 3, losses: 2 },
+    dates: [
+      {
+        date: '2026-04-15',
+        games: [
+          {
+            gamePk: GAME_PK,
+            gameDate: GAME_DATE,
+            status: { detailedState: 'In Progress', abstractGameState: 'Live' },
+            inningBreakLength: 120,
+            teams: {
+              away: {
+                team: {
+                  id: LAD_ID,
+                  name: 'Los Angeles Dodgers',
+                  abbreviation: 'LAD',
+                },
+                score: 0,
+                leagueRecord: { wins: 3, losses: 2 },
+              },
+              home: {
+                team: {
+                  id: NYM_ID,
+                  name: 'New York Mets',
+                  abbreviation: 'NYM',
+                },
+                score: 0,
+                leagueRecord: { wins: 3, losses: 2 },
+              },
+            },
+            linescore: {
+              currentInning: 3,
+              currentInningOrdinal: '3rd',
+              inningState: 'Middle', // ← between-innings
+              scheduledInnings: 9,
+              outs: 3,
+              balls: 0,
+              strikes: 0,
+              teams: {
+                home: { runs: 0, hits: 0, errors: 0 },
+                away: { runs: 0, hits: 0, errors: 0 },
+              },
+              defense: { pitcher: { id: 660271, fullName: 'Shohei Ohtani' } },
+            },
           },
-          home: {
-            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-            score: 0,
-            leagueRecord: { wins: 3, losses: 2 },
-          },
-        },
-        linescore: {
-          currentInning: 3,
-          currentInningOrdinal: '3rd',
-          inningState: 'Middle',        // ← between-innings
-          scheduledInnings: 9,
-          outs: 3,
-          balls: 0,
-          strikes: 0,
-          teams: { home: { runs: 0, hits: 0, errors: 0 }, away: { runs: 0, hits: 0, errors: 0 } },
-          defense: { pitcher: { id: 660271, fullName: 'Shohei Ohtani' } },
-        },
-      }],
-    }],
+        ],
+      },
+    ],
   };
 }
 
 /** Schedule fixture where NYM (home, 121) is batting in regular innings. */
 function makeBattingSchedule(): ScheduleResponse {
   return {
-    dates: [{
-      date: '2026-04-15',
-      games: [{
-        gamePk: GAME_PK,
-        gameDate: GAME_DATE,
-        status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-        inningBreakLength: 120,
-        teams: {
-          away: {
-            team: { id: LAD_ID, name: 'Los Angeles Dodgers', abbreviation: 'LAD' },
-            score: 0,
-            leagueRecord: { wins: 3, losses: 2 },
+    dates: [
+      {
+        date: '2026-04-15',
+        games: [
+          {
+            gamePk: GAME_PK,
+            gameDate: GAME_DATE,
+            status: { detailedState: 'In Progress', abstractGameState: 'Live' },
+            inningBreakLength: 120,
+            teams: {
+              away: {
+                team: {
+                  id: LAD_ID,
+                  name: 'Los Angeles Dodgers',
+                  abbreviation: 'LAD',
+                },
+                score: 0,
+                leagueRecord: { wins: 3, losses: 2 },
+              },
+              home: {
+                team: {
+                  id: NYM_ID,
+                  name: 'New York Mets',
+                  abbreviation: 'NYM',
+                },
+                score: 0,
+                leagueRecord: { wins: 3, losses: 2 },
+              },
+            },
+            linescore: {
+              currentInning: 3,
+              currentInningOrdinal: '3rd',
+              inningState: 'Bottom', // ← NYM (home) batting
+              scheduledInnings: 9,
+              outs: 1,
+              balls: 0,
+              strikes: 0,
+              teams: {
+                home: { runs: 0, hits: 0, errors: 0 },
+                away: { runs: 0, hits: 0, errors: 0 },
+              },
+              defense: {
+                pitcher: { id: 596019, fullName: 'Francisco Lindor' },
+              },
+              offense: { batter: { id: 660271, fullName: 'Shohei Ohtani' } },
+            },
           },
-          home: {
-            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
-            score: 0,
-            leagueRecord: { wins: 3, losses: 2 },
-          },
-        },
-        linescore: {
-          currentInning: 3,
-          currentInningOrdinal: '3rd',
-          inningState: 'Bottom',         // ← NYM (home) batting
-          scheduledInnings: 9,
-          outs: 1,
-          balls: 0,
-          strikes: 0,
-          teams: { home: { runs: 0, hits: 0, errors: 0 }, away: { runs: 0, hits: 0, errors: 0 } },
-          defense: { pitcher: { id: 596019, fullName: 'Francisco Lindor' } },
-          offense: { batter: { id: 660271, fullName: 'Shohei Ohtani' } },
-        },
-      }],
-    }],
+        ],
+      },
+    ],
   };
 }
 

@@ -49,7 +49,7 @@ function toSignal(ls: Linescore): LinescoreSignal {
  */
 export function hasLinescoreDelta(
   current: Linescore,
-  previous: Linescore | null,
+  previous: Linescore | null
 ): boolean {
   if (previous === null) return false;
   const curr = toSignal(current);

@@ -23,7 +23,7 @@ const REQUEST_TIMEOUT_MS = 8_000;
  */
 export async function fetchGameFeed(
   gamePk: number,
-  startTimecode: string,
+  startTimecode: string
 ): Promise<GameFeedResponse | null> {
   const url = `${MLB_GAME_FEED_BASE}/${gamePk}/feed/live/diffPatch?startTimecode=${encodeURIComponent(startTimecode)}`;
   const response = await axios.get<GameFeedResponse | []>(url, {

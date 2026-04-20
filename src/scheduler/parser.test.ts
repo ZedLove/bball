@@ -667,7 +667,10 @@ describe('parseGameUpdate', () => {
 
     it('tracks a replay review as an in-progress game', () => {
       const game = makeGame({
-        status: { detailedState: 'In Progress - Review', abstractGameState: 'Live' },
+        status: {
+          detailedState: 'In Progress - Review',
+          abstractGameState: 'Live',
+        },
       });
       const schedule = makeSchedule([game]);
       const result = parseGameUpdate(schedule, STL_ID);

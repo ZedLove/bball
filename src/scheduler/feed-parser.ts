@@ -7,7 +7,10 @@ import type {
   OffensiveSubstitutionEvent,
   DefensiveSubstitutionEvent,
 } from '../server/socket-events.ts';
-import { EVENT_TYPE_CATEGORY_MAP, SUPPRESSED_ACTION_TYPES } from './known-event-types.ts';
+import {
+  EVENT_TYPE_CATEGORY_MAP,
+  SUPPRESSED_ACTION_TYPES,
+} from './known-event-types.ts';
 import { logger } from '../config/logger.ts';
 
 /**
@@ -32,7 +35,7 @@ import { logger } from '../config/logger.ts';
 export function parseFeedEvents(
   response: GameFeedResponse,
   gamePk: number,
-  lastProcessedAtBatIndex: number,
+  lastProcessedAtBatIndex: number
 ): GameEvent[] {
   const events: GameEvent[] = [];
   const { teams, players } = response.gameData;
@@ -41,7 +44,7 @@ export function parseFeedEvents(
   if (!allPlays) {
     logger.warn(
       'diffPatch response missing liveData.plays.allPlays — skipping event parsing',
-      { gamePk },
+      { gamePk }
     );
     return events;
   }
@@ -86,13 +89,20 @@ export function parseFeedEvents(
 
       if (!category) {
         if (SUPPRESSED_ACTION_TYPES.has(eventType)) {
-          logger.debug('Action event type suppressed', { gamePk, atBatIndex, eventType });
-        } else {
-          logger.warn('Unknown action event type — not in catalog or suppressed list', {
+          logger.debug('Action event type suppressed', {
             gamePk,
             atBatIndex,
             eventType,
           });
+        } else {
+          logger.warn(
+            'Unknown action event type — not in catalog or suppressed list',
+            {
+              gamePk,
+              atBatIndex,
+              eventType,
+            }
+          );
         }
         continue;
       }
@@ -113,12 +123,15 @@ export function parseFeedEvents(
 
       const playerEntry = players[`ID${playerId}`];
       if (!playerEntry) {
-        logger.warn('Player not found in gameData.players — skipping substitution event', {
-          gamePk,
-          atBatIndex,
-          eventType,
-          playerId,
-        });
+        logger.warn(
+          'Player not found in gameData.players — skipping substitution event',
+          {
+            gamePk,
+            atBatIndex,
+            eventType,
+            playerId,
+          }
+        );
         continue;
       }
 
@@ -135,13 +148,22 @@ export function parseFeedEvents(
       };
 
       if (category === 'pitching-substitution') {
-        const event: PitchingSubstitutionEvent = { ...subFields, category: 'pitching-substitution' };
+        const event: PitchingSubstitutionEvent = {
+          ...subFields,
+          category: 'pitching-substitution',
+        };
         events.push(event);
       } else if (category === 'offensive-substitution') {
-        const event: OffensiveSubstitutionEvent = { ...subFields, category: 'offensive-substitution' };
+        const event: OffensiveSubstitutionEvent = {
+          ...subFields,
+          category: 'offensive-substitution',
+        };
         events.push(event);
       } else if (category === 'defensive-substitution') {
-        const event: DefensiveSubstitutionEvent = { ...subFields, category: 'defensive-substitution' };
+        const event: DefensiveSubstitutionEvent = {
+          ...subFields,
+          category: 'defensive-substitution',
+        };
         events.push(event);
       }
     }
@@ -151,21 +173,27 @@ export function parseFeedEvents(
     const category = EVENT_TYPE_CATEGORY_MAP.get(eventType);
 
     if (!category) {
-      logger.warn('Plate-appearance event type suppressed — not in known-event catalog', {
-        gamePk,
-        atBatIndex,
-        eventType,
-      });
+      logger.warn(
+        'Plate-appearance event type suppressed — not in known-event catalog',
+        {
+          gamePk,
+          atBatIndex,
+          eventType,
+        }
+      );
       continue;
     }
 
     if (category !== 'plate-appearance-completed') {
-      logger.warn('Unexpected non-plate-appearance category on play result — skipping', {
-        gamePk,
-        atBatIndex,
-        eventType,
-        category,
-      });
+      logger.warn(
+        'Unexpected non-plate-appearance category on play result — skipping',
+        {
+          gamePk,
+          atBatIndex,
+          eventType,
+          category,
+        }
+      );
       continue;
     }
 
@@ -181,8 +209,14 @@ export function parseFeedEvents(
       category: 'plate-appearance-completed',
       isScoringPlay,
       rbi,
-      batter: { id: play.matchup.batter.id, fullName: play.matchup.batter.fullName },
-      pitcher: { id: play.matchup.pitcher.id, fullName: play.matchup.pitcher.fullName },
+      batter: {
+        id: play.matchup.batter.id,
+        fullName: play.matchup.batter.fullName,
+      },
+      pitcher: {
+        id: play.matchup.pitcher.id,
+        fullName: play.matchup.pitcher.fullName,
+      },
       pitchSequence,
     };
 

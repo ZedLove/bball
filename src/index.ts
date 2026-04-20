@@ -11,7 +11,9 @@ async function main() {
   let stopScheduler: (() => void) | null = null;
 
   if (CONFIG.DEV_MODE) {
-    logger.info('🎮  Dev mode – real polling disabled, interactive simulator active');
+    logger.info(
+      '🎮  Dev mode – real polling disabled, interactive simulator active'
+    );
     startDevSimulator(io);
   } else {
     const scheduler = startScheduler(io);

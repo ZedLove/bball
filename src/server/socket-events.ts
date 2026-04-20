@@ -7,7 +7,8 @@ export const SOCKET_EVENTS = {
   GAME_SUMMARY: 'game-summary',
 } as const;
 
-export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
+export type SocketEventName =
+  (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
 
 // ---------------------------------------------------------------------------
 // Shared base fields present on every game event

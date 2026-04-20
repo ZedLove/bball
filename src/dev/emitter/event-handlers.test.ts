@@ -48,14 +48,16 @@ function capturedGameEvents(io: SocketIOServer): GameEventsPayload[] {
 /** Returns the first game-events payload emitted, or throws if none. */
 function firstGameEventsPayload(io: SocketIOServer): GameEventsPayload {
   const payloads = capturedGameEvents(io);
-  if (payloads.length === 0) throw new Error('No game-events payload was emitted');
+  if (payloads.length === 0)
+    throw new Error('No game-events payload was emitted');
   return payloads[0];
 }
 
 /** Returns the first game-update payload emitted, or throws if none. */
 function firstGameUpdate(io: SocketIOServer): GameUpdate {
-  const calls = (io.emit as ReturnType<typeof vi.fn>).mock.calls
-    .filter((call: unknown[]) => call[0] === SOCKET_EVENTS.GAME_UPDATE);
+  const calls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+    (call: unknown[]) => call[0] === SOCKET_EVENTS.GAME_UPDATE
+  );
   if (calls.length === 0) throw new Error('No game-update payload was emitted');
   return calls[0][1] as GameUpdate;
 }
@@ -80,7 +82,7 @@ describe('handlePlateAppearance', () => {
 
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_EVENTS,
-      expect.objectContaining({ gamePk: expect.any(Number) }),
+      expect.objectContaining({ gamePk: expect.any(Number) })
     );
   });
 
@@ -95,7 +97,8 @@ describe('handlePlateAppearance', () => {
   it('plate-appearance event has all required GameEventBase fields', () => {
     handlePlateAppearance(store, io, {});
 
-    const event = firstGameEventsPayload(io).events[0] as PlateAppearanceCompletedEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as PlateAppearanceCompletedEvent;
     expect(typeof event.gamePk).toBe('number');
     expect(typeof event.atBatIndex).toBe('number');
     expect(typeof event.inning).toBe('number');
@@ -109,7 +112,8 @@ describe('handlePlateAppearance', () => {
   it('plate-appearance event has required PlateAppearanceCompletedEvent fields', () => {
     handlePlateAppearance(store, io, {});
 
-    const event = firstGameEventsPayload(io).events[0] as PlateAppearanceCompletedEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as PlateAppearanceCompletedEvent;
     expect(event.isScoringPlay).toBe(false);
     expect(typeof event.rbi).toBe('number');
     expect(typeof event.batter.id).toBe('number');
@@ -122,7 +126,8 @@ describe('handlePlateAppearance', () => {
   it('uses the provided --type override as eventType', () => {
     handlePlateAppearance(store, io, { type: 'home_run' });
 
-    const event = firstGameEventsPayload(io).events[0] as PlateAppearanceCompletedEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as PlateAppearanceCompletedEvent;
     expect(event.eventType).toBe('home_run');
   });
 
@@ -135,7 +140,10 @@ describe('handlePlateAppearance', () => {
     store.setState({ gameStarted: false });
     const result = handlePlateAppearance(store, io, {});
     expect(result.success).toBe(false);
-    expect(io.emit).not.toHaveBeenCalledWith(SOCKET_EVENTS.GAME_EVENTS, expect.anything());
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_EVENTS,
+      expect.anything()
+    );
   });
 });
 
@@ -145,14 +153,21 @@ describe('handleScore', () => {
   it('emits both game-update and game-events', () => {
     handleScore(store, io, {});
 
-    expect(io.emit).toHaveBeenCalledWith(SOCKET_EVENTS.GAME_UPDATE, expect.anything());
-    expect(io.emit).toHaveBeenCalledWith(SOCKET_EVENTS.GAME_EVENTS, expect.anything());
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.anything()
+    );
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_EVENTS,
+      expect.anything()
+    );
   });
 
   it('scoring event has isScoringPlay: true', () => {
     handleScore(store, io, {});
 
-    const event = firstGameEventsPayload(io).events[0] as PlateAppearanceCompletedEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as PlateAppearanceCompletedEvent;
     expect(event.isScoringPlay).toBe(true);
   });
 
@@ -172,14 +187,16 @@ describe('handleScore', () => {
   it('sets rbi to the number of runs scored', () => {
     handleScore(store, io, { runs: 2 });
 
-    const event = firstGameEventsPayload(io).events[0] as PlateAppearanceCompletedEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as PlateAppearanceCompletedEvent;
     expect(event.rbi).toBe(2);
   });
 
   it('uses the provided --type override', () => {
     handleScore(store, io, { type: 'home_run' });
 
-    const event = firstGameEventsPayload(io).events[0] as PlateAppearanceCompletedEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as PlateAppearanceCompletedEvent;
     expect(event.eventType).toBe('home_run');
   });
 
@@ -232,7 +249,8 @@ describe('handleOffensiveSub', () => {
   it('emits game-events with an offensive-substitution event', () => {
     handleOffensiveSub(store, io, {});
 
-    const event = firstGameEventsPayload(io).events[0] as OffensiveSubstitutionEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as OffensiveSubstitutionEvent;
     expect(event.category).toBe('offensive-substitution');
     expect(event.eventType).toBe('offensive_substitution');
   });
@@ -240,14 +258,16 @@ describe('handleOffensiveSub', () => {
   it('uses the provided player name in the event', () => {
     handleOffensiveSub(store, io, { playerName: 'Pete Alonso' });
 
-    const event = firstGameEventsPayload(io).events[0] as OffensiveSubstitutionEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as OffensiveSubstitutionEvent;
     expect(event.player.fullName).toBe('Pete Alonso');
   });
 
   it('substitution event has all required GameEventBase fields', () => {
     handleOffensiveSub(store, io, {});
 
-    const event = firstGameEventsPayload(io).events[0] as OffensiveSubstitutionEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as OffensiveSubstitutionEvent;
     expect(typeof event.gamePk).toBe('number');
     expect(event.halfInning).toMatch(/^(top|bottom)$/);
     expect(typeof event.battingTeam).toBe('string');
@@ -274,7 +294,8 @@ describe('handleDefensiveSub', () => {
   it('emits game-events with a defensive-substitution event', () => {
     handleDefensiveSub(store, io, {});
 
-    const event = firstGameEventsPayload(io).events[0] as DefensiveSubstitutionEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as DefensiveSubstitutionEvent;
     expect(event.category).toBe('defensive-substitution');
     expect(event.eventType).toBe('defensive_substitution');
   });
@@ -282,7 +303,8 @@ describe('handleDefensiveSub', () => {
   it('uses the provided player name', () => {
     handleDefensiveSub(store, io, { playerName: 'Brandon Nimmo' });
 
-    const event = firstGameEventsPayload(io).events[0] as DefensiveSubstitutionEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as DefensiveSubstitutionEvent;
     expect(event.player.fullName).toBe('Brandon Nimmo');
   });
 
@@ -304,14 +326,17 @@ describe('handleSimGameSummary', () => {
   it('emits on SOCKET_EVENTS.GAME_SUMMARY', () => {
     handleSimGameSummary(store, io);
 
-    expect(io.emit).toHaveBeenCalledWith(SOCKET_EVENTS.GAME_SUMMARY, expect.anything());
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_SUMMARY,
+      expect.anything()
+    );
   });
 
   it('emitted payload satisfies the GameSummary interface shape', () => {
     handleSimGameSummary(store, io);
 
     const summary = (io.emit as ReturnType<typeof vi.fn>).mock.calls.find(
-      (c: unknown[]) => c[0] === SOCKET_EVENTS.GAME_SUMMARY,
+      (c: unknown[]) => c[0] === SOCKET_EVENTS.GAME_SUMMARY
     )![1] as GameSummary;
 
     expect(typeof summary.gamePk).toBe('number');
@@ -338,7 +363,7 @@ describe('handleSimGameSummary', () => {
     handleSimGameSummary(store, io);
 
     const summary = (io.emit as ReturnType<typeof vi.fn>).mock.calls.find(
-      (c: unknown[]) => c[0] === SOCKET_EVENTS.GAME_SUMMARY,
+      (c: unknown[]) => c[0] === SOCKET_EVENTS.GAME_SUMMARY
     )![1] as GameSummary;
 
     expect(summary.finalScore).toEqual({ away: 3, home: 5 });
@@ -356,22 +381,33 @@ describe('handlePitchingChange (Phase 5A co-emission)', () => {
   it('emits both game-update and game-events', () => {
     handlePitchingChange(store, io, { pitcherName: 'Edwin Díaz' });
 
-    expect(io.emit).toHaveBeenCalledWith(SOCKET_EVENTS.GAME_UPDATE, expect.anything());
-    expect(io.emit).toHaveBeenCalledWith(SOCKET_EVENTS.GAME_EVENTS, expect.anything());
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.anything()
+    );
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_EVENTS,
+      expect.anything()
+    );
   });
 
   it('game-events contains a pitching-substitution event', () => {
     handlePitchingChange(store, io, { pitcherName: 'Edwin Díaz' });
 
-    const event = firstGameEventsPayload(io).events[0] as PitchingSubstitutionEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as PitchingSubstitutionEvent;
     expect(event.category).toBe('pitching-substitution');
     expect(event.eventType).toBe('pitching_substitution');
   });
 
   it('pitching-substitution player reflects the new pitcher', () => {
-    handlePitchingChange(store, io, { pitcherId: 554430, pitcherName: 'Edwin Díaz' });
+    handlePitchingChange(store, io, {
+      pitcherId: 554430,
+      pitcherName: 'Edwin Díaz',
+    });
 
-    const event = firstGameEventsPayload(io).events[0] as PitchingSubstitutionEvent;
+    const event = firstGameEventsPayload(io)
+      .events[0] as PitchingSubstitutionEvent;
     expect(event.player.id).toBe(554430);
     expect(event.player.fullName).toBe('Edwin Díaz');
   });
