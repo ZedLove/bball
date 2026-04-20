@@ -148,8 +148,7 @@ export interface TopPerformer {
   summary: string;
 }
 
-export interface NextGame {
-  gamePk: number;
+export interface NextGame {  gamePk: number;
   opponent: { id: number; name: string; abbreviation: string };
   /** ISO 8601 UTC game time. */
   gameTime: string;
@@ -184,4 +183,44 @@ export interface GameSummary {
    * null if the fetch fails or no upcoming game is found.
    */
   nextGame: NextGame | null;
+}
+
+// ---------------------------------------------------------------------------
+// AtBatState — live plate appearance snapshot attached to game-update
+// ---------------------------------------------------------------------------
+
+/**
+ * Snapshot of the current plate appearance, attached to every `game-update`
+ * emission while a plate appearance is in progress.
+ *
+ * null when:
+ * - trackingMode is 'between-innings' or 'final'
+ * - No active gamePk
+ * - currentPlay is absent or already complete (isComplete: true)
+ * - The feed/live fetch failed
+ */
+export interface AtBatState {
+  batter: { id: number; fullName: string; battingOrder: number };
+  pitcher: { id: number; fullName: string };
+  /** Batter's hitting stance. */
+  batSide: 'L' | 'R' | 'S';
+  /** Pitcher's throwing hand. */
+  pitchHand: 'L' | 'R';
+  onDeck: { id: number; fullName: string } | null;
+  inHole: { id: number; fullName: string } | null;
+  /** Runner on first base. null when unoccupied. */
+  first: { id: number; fullName: string } | null;
+  /** Runner on second base. null when unoccupied. */
+  second: { id: number; fullName: string } | null;
+  /** Runner on third base. null when unoccupied. */
+  third: { id: number; fullName: string } | null;
+  /** Live ball/strike count for this plate appearance. */
+  count: { balls: number; strikes: number };
+  /**
+   * Partial pitch sequence for the current in-progress at-bat, in
+   * chronological order. Empty at the start of a new at-bat. Grows as
+   * pitches are thrown. Reuses the same PitchEvent type as
+   * PlateAppearanceCompletedEvent.pitchSequence.
+   */
+  pitchSequence: PitchEvent[];
 }
