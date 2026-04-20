@@ -17,6 +17,7 @@ const DEFAULT_STATE: SimulationState = {
   gameStarted: false,
   gameEnded: false,
   gamePk: 0,
+  currentAtBat: null,
 };
 
 export interface StateStore {
@@ -43,9 +44,8 @@ export function createStateStore(): StateStore {
           home: { ...state.teams.home },
         },
         score: { ...state.score },
-        currentPitcher: state.currentPitcher
-          ? { ...state.currentPitcher }
-          : null,
+        currentPitcher: state.currentPitcher ? { ...state.currentPitcher } : null,
+        currentAtBat: state.currentAtBat ? { ...state.currentAtBat } : null,
       };
     },
 

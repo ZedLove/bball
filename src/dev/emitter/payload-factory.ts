@@ -72,6 +72,10 @@ export function buildPayload(
     totalOutsRemaining,
     runsNeeded,
     inningBreakLength: trackingMode === 'between-innings' ? 120 : null,
+    atBat:
+      trackingMode === 'between-innings' || trackingMode === 'final'
+        ? null
+        : (state.currentAtBat ?? null),
   };
 
   return overrides ? { ...base, ...overrides } : base;

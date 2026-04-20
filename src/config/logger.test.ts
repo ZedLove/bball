@@ -34,6 +34,7 @@ describe('logUpdate', () => {
     currentPitcher: null,
     upcomingPitcher: null,
     inningBreakLength: null,
+    atBat: null,
     ...overrides,
   });
 

@@ -29,12 +29,16 @@ export function renderMenu(state: SimulationState): string {
     13. defensive-sub     – Defensive substitution [--name "Player Name"]
     14. game-summary      – Emit a simulated game-summary event
 
+  Live At-Bat:
+    15. new-batter        – Start a new at-bat (sets atBat state) [--batter-name] [--batter-id] [--pitcher-name] [--pitcher-id]
+    16. pitch             – Add a pitch to current at-bat [--type <pitchType>] [--speed <mph>] [--call Ball|Strike|Foul|"In play"]
+
   State Control:
-    15. set-inning        – Jump to a specific inning
-    16. set-score         – Set team scores
-    17. set-team-batting  – Swap batting/defending sides
-    18. state             – Show full current game state
-    19. reset             – Reset everything to defaults
+    17. set-inning        – Jump to a specific inning
+    18. set-score         – Set team scores
+    19. set-team-batting  – Swap batting/defending sides
+    20. state             – Show full current game state
+    21. reset             – Reset everything to defaults
 
   ?, help                 – Show this menu
   q, exit                 – Quit simulator

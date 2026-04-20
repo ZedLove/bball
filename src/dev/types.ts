@@ -2,6 +2,8 @@
 // Shared types for the dev event simulator
 // ---------------------------------------------------------------------------
 
+import type { AtBatState } from '../server/socket-events.ts';
+
 export type EventType =
   | 'game-start'
   | 'game-end'
@@ -41,6 +43,8 @@ export interface SimulationState {
   gameEnded: boolean;
   /** Placeholder game identifier used to shape-match production `game-update` payloads. */
   gamePk: number;
+  /** Live at-bat snapshot for the current plate appearance. null when no at-bat is in progress. */
+  currentAtBat: AtBatState | null;
 }
 
 export interface HandlerResult {
@@ -81,6 +85,22 @@ export interface SetInningOptions {
 export interface SetScoreOptions {
   away?: number;
   home?: number;
+}
+
+export interface NewBatterOptions {
+  batterName?: string;
+  batterId?: number;
+  pitcherName?: string;
+  pitcherId?: number;
+}
+
+export interface PitchOptions {
+  /** Pitch type description, e.g. "Four-Seam Fastball". Defaults to "Four-Seam Fastball". */
+  type?: string;
+  /** Velocity in mph. Defaults to 93. */
+  speed?: number;
+  /** Call result: "Ball", "Strike", "Foul", or "In play". Defaults to "Ball". */
+  call?: 'Ball' | 'Strike' | 'Foul' | 'In play';
 }
 
 /** Convert an integer to its ordinal string representation (1 → "1st", 11 → "11th", etc.) */
