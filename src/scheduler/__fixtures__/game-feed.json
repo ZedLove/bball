@@ -4,16 +4,40 @@
   },
   "gameData": {
     "teams": {
-      "away": { "id": 121, "abbreviation": "NYM" },
-      "home": { "id": 119, "abbreviation": "LAD" }
+      "away": {
+        "id": 121,
+        "abbreviation": "NYM"
+      },
+      "home": {
+        "id": 119,
+        "abbreviation": "LAD"
+      }
     },
     "players": {
-      "ID596019": { "id": 596019, "fullName": "Francisco Lindor" },
-      "ID660271": { "id": 660271, "fullName": "Shohei Ohtani" },
-      "ID808975": { "id": 808975, "fullName": "Hyeseong Kim" },
-      "ID605280": { "id": 605280, "fullName": "Clay Holmes" },
-      "ID606192": { "id": 606192, "fullName": "Teoscar Hernández" },
-      "ID668964": { "id": 668964, "fullName": "Tobias Myers" }
+      "ID596019": {
+        "id": 596019,
+        "fullName": "Francisco Lindor"
+      },
+      "ID660271": {
+        "id": 660271,
+        "fullName": "Shohei Ohtani"
+      },
+      "ID808975": {
+        "id": 808975,
+        "fullName": "Hyeseong Kim"
+      },
+      "ID605280": {
+        "id": 605280,
+        "fullName": "Clay Holmes"
+      },
+      "ID606192": {
+        "id": 606192,
+        "fullName": "Teoscar Hern\u00e1ndez"
+      },
+      "ID668964": {
+        "id": 668964,
+        "fullName": "Tobias Myers"
+      }
     }
   },
   "liveData": {
@@ -34,8 +58,14 @@
             "isScoringPlay": false
           },
           "matchup": {
-            "batter": { "id": 596019, "fullName": "Francisco Lindor" },
-            "pitcher": { "id": 660271, "fullName": "Shohei Ohtani" }
+            "batter": {
+              "id": 596019,
+              "fullName": "Francisco Lindor"
+            },
+            "pitcher": {
+              "id": 660271,
+              "fullName": "Shohei Ohtani"
+            }
           },
           "playEvents": [
             {
@@ -45,7 +75,9 @@
               },
               "type": "action",
               "isSubstitution": false,
-              "player": { "id": 596019 }
+              "player": {
+                "id": 596019
+              }
             },
             {
               "details": {
@@ -54,7 +86,9 @@
               },
               "type": "action",
               "isSubstitution": false,
-              "player": { "id": 596019 }
+              "player": {
+                "id": 596019
+              }
             },
             {
               "type": "pitch",
@@ -62,13 +96,54 @@
               "pitchNumber": 1,
               "details": {
                 "description": "Called Strike",
-                "type": { "description": "Four-Seam Fastball" },
+                "type": {
+                  "description": "Four-Seam Fastball",
+                  "code": "FF"
+                },
                 "isBall": false,
                 "isStrike": true,
                 "isInPlay": false
               },
-              "count": { "balls": 0, "strikes": 1 },
-              "pitchData": { "startSpeed": 96.0 }
+              "count": {
+                "balls": 0,
+                "strikes": 1
+              },
+              "pitchData": {
+                "startSpeed": 96.0,
+                "endSpeed": 87.5,
+                "strikeZoneTop": 3.35,
+                "strikeZoneBottom": 1.62,
+                "strikeZoneWidth": 17.0,
+                "strikeZoneDepth": 8.5,
+                "plateTime": 0.401,
+                "extension": 6.0,
+                "zone": 5,
+                "coordinates": {
+                  "pX": -0.08,
+                  "pZ": 2.83,
+                  "x": 111.5,
+                  "y": 155.2,
+                  "x0": -1.2,
+                  "y0": 50.0,
+                  "z0": 6.15,
+                  "vX0": 4.2,
+                  "vY0": -139.8,
+                  "vZ0": -4.1,
+                  "aX": -9.5,
+                  "aY": 29.8,
+                  "aZ": -14.0,
+                  "pfxX": -4.8,
+                  "pfxZ": 13.6
+                },
+                "breaks": {
+                  "breakAngle": 3.2,
+                  "breakVertical": -8.5,
+                  "breakVerticalInduced": 16.8,
+                  "breakHorizontal": 7.2,
+                  "spinRate": 2380,
+                  "spinDirection": 207
+                }
+              }
             },
             {
               "type": "pitch",
@@ -76,13 +151,54 @@
               "pitchNumber": 2,
               "details": {
                 "description": "Ball",
-                "type": { "description": "Curveball" },
+                "type": {
+                  "description": "Curveball",
+                  "code": "CU"
+                },
                 "isBall": true,
                 "isStrike": false,
                 "isInPlay": false
               },
-              "count": { "balls": 1, "strikes": 1 },
-              "pitchData": { "startSpeed": 78.5 }
+              "count": {
+                "balls": 1,
+                "strikes": 1
+              },
+              "pitchData": {
+                "startSpeed": 78.5,
+                "endSpeed": 67.8,
+                "strikeZoneTop": 3.35,
+                "strikeZoneBottom": 1.62,
+                "strikeZoneWidth": 17.0,
+                "strikeZoneDepth": 8.5,
+                "plateTime": 0.489,
+                "extension": 5.8,
+                "zone": 14,
+                "coordinates": {
+                  "pX": 0.94,
+                  "pZ": 1.35,
+                  "x": 74.1,
+                  "y": 201.0,
+                  "x0": 0.6,
+                  "y0": 50.0,
+                  "z0": 6.0,
+                  "vX0": -1.3,
+                  "vY0": -114.5,
+                  "vZ0": -3.8,
+                  "aX": 2.1,
+                  "aY": 28.0,
+                  "aZ": -34.5,
+                  "pfxX": 0.8,
+                  "pfxZ": -8.3
+                },
+                "breaks": {
+                  "breakAngle": 48.5,
+                  "breakVertical": -55.2,
+                  "breakVerticalInduced": -4.7,
+                  "breakHorizontal": -1.2,
+                  "spinRate": 2810,
+                  "spinDirection": 47
+                }
+              }
             },
             {
               "type": "pitch",
@@ -90,13 +206,54 @@
               "pitchNumber": 3,
               "details": {
                 "description": "Foul",
-                "type": { "description": "Cutter" },
+                "type": {
+                  "description": "Cutter",
+                  "code": "FC"
+                },
                 "isBall": false,
                 "isStrike": true,
                 "isInPlay": false
               },
-              "count": { "balls": 1, "strikes": 2 },
-              "pitchData": { "startSpeed": 91.3 }
+              "count": {
+                "balls": 1,
+                "strikes": 2
+              },
+              "pitchData": {
+                "startSpeed": 91.3,
+                "endSpeed": 82.8,
+                "strikeZoneTop": 3.35,
+                "strikeZoneBottom": 1.62,
+                "strikeZoneWidth": 17.0,
+                "strikeZoneDepth": 8.5,
+                "plateTime": 0.421,
+                "extension": 5.9,
+                "zone": 8,
+                "coordinates": {
+                  "pX": 0.52,
+                  "pZ": 2.15,
+                  "x": 86.3,
+                  "y": 172.4,
+                  "x0": 1.0,
+                  "y0": 50.0,
+                  "z0": 6.05,
+                  "vX0": -2.4,
+                  "vY0": -133.6,
+                  "vZ0": -5.0,
+                  "aX": 5.3,
+                  "aY": 30.2,
+                  "aZ": -22.1,
+                  "pfxX": 2.2,
+                  "pfxZ": 8.5
+                },
+                "breaks": {
+                  "breakAngle": 8.4,
+                  "breakVertical": -22.8,
+                  "breakVerticalInduced": 9.5,
+                  "breakHorizontal": -3.8,
+                  "spinRate": 2240,
+                  "spinDirection": 185
+                }
+              }
             },
             {
               "type": "pitch",
@@ -104,13 +261,54 @@
               "pitchNumber": 4,
               "details": {
                 "description": "Swinging Strike",
-                "type": { "description": "Four-Seam Fastball" },
+                "type": {
+                  "description": "Four-Seam Fastball",
+                  "code": "FF"
+                },
                 "isBall": false,
                 "isStrike": true,
                 "isInPlay": false
               },
-              "count": { "balls": 1, "strikes": 3 },
-              "pitchData": { "startSpeed": 97.1 }
+              "count": {
+                "balls": 1,
+                "strikes": 3
+              },
+              "pitchData": {
+                "startSpeed": 97.1,
+                "endSpeed": 87.5,
+                "strikeZoneTop": 3.35,
+                "strikeZoneBottom": 1.62,
+                "strikeZoneWidth": 17.0,
+                "strikeZoneDepth": 8.5,
+                "plateTime": 0.401,
+                "extension": 6.0,
+                "zone": 5,
+                "coordinates": {
+                  "pX": -0.08,
+                  "pZ": 2.83,
+                  "x": 111.5,
+                  "y": 155.2,
+                  "x0": -1.2,
+                  "y0": 50.0,
+                  "z0": 6.15,
+                  "vX0": 4.2,
+                  "vY0": -139.8,
+                  "vZ0": -4.1,
+                  "aX": -9.5,
+                  "aY": 29.8,
+                  "aZ": -14.0,
+                  "pfxX": -4.8,
+                  "pfxZ": 13.6
+                },
+                "breaks": {
+                  "breakAngle": 3.2,
+                  "breakVertical": -8.5,
+                  "breakVerticalInduced": 16.8,
+                  "breakHorizontal": 7.2,
+                  "spinRate": 2380,
+                  "spinDirection": 207
+                }
+              }
             }
           ]
         },
@@ -129,8 +327,14 @@
             "isScoringPlay": true
           },
           "matchup": {
-            "batter": { "id": 808975, "fullName": "Hyeseong Kim" },
-            "pitcher": { "id": 605280, "fullName": "Clay Holmes" }
+            "batter": {
+              "id": 808975,
+              "fullName": "Hyeseong Kim"
+            },
+            "pitcher": {
+              "id": 605280,
+              "fullName": "Clay Holmes"
+            }
           },
           "playEvents": [
             {
@@ -146,13 +350,54 @@
               "pitchNumber": 1,
               "details": {
                 "description": "Ball",
-                "type": { "description": "Sinker" },
+                "type": {
+                  "description": "Sinker",
+                  "code": "SI"
+                },
                 "isBall": true,
                 "isStrike": false,
                 "isInPlay": false
               },
-              "count": { "balls": 1, "strikes": 0 },
-              "pitchData": { "startSpeed": 93.2 }
+              "count": {
+                "balls": 1,
+                "strikes": 0
+              },
+              "pitchData": {
+                "startSpeed": 93.2,
+                "endSpeed": 84.4,
+                "strikeZoneTop": 3.28,
+                "strikeZoneBottom": 1.65,
+                "strikeZoneWidth": 17.0,
+                "strikeZoneDepth": 8.5,
+                "plateTime": 0.407,
+                "extension": 5.6,
+                "zone": 13,
+                "coordinates": {
+                  "pX": 0.92,
+                  "pZ": 1.62,
+                  "x": 74.5,
+                  "y": 189.3,
+                  "x0": 1.8,
+                  "y0": 50.0,
+                  "z0": 5.9,
+                  "vX0": -3.1,
+                  "vY0": -136.2,
+                  "vZ0": -6.2,
+                  "aX": 11.5,
+                  "aY": 30.8,
+                  "aZ": -24.8,
+                  "pfxX": 5.9,
+                  "pfxZ": 5.8
+                },
+                "breaks": {
+                  "breakAngle": 5.6,
+                  "breakVertical": -25.4,
+                  "breakVerticalInduced": 9.2,
+                  "breakHorizontal": -9.5,
+                  "spinRate": 2290,
+                  "spinDirection": 158
+                }
+              }
             },
             {
               "type": "pitch",
@@ -160,13 +405,54 @@
               "pitchNumber": 2,
               "details": {
                 "description": "Called Strike",
-                "type": { "description": "Slider" },
+                "type": {
+                  "description": "Slider",
+                  "code": "SL"
+                },
                 "isBall": false,
                 "isStrike": true,
                 "isInPlay": false
               },
-              "count": { "balls": 1, "strikes": 1 },
-              "pitchData": { "startSpeed": 84.5 }
+              "count": {
+                "balls": 1,
+                "strikes": 1
+              },
+              "pitchData": {
+                "startSpeed": 84.5,
+                "endSpeed": 76.1,
+                "strikeZoneTop": 3.35,
+                "strikeZoneBottom": 1.62,
+                "strikeZoneWidth": 17.0,
+                "strikeZoneDepth": 8.5,
+                "plateTime": 0.452,
+                "extension": 5.7,
+                "zone": 14,
+                "coordinates": {
+                  "pX": 1.15,
+                  "pZ": 1.88,
+                  "x": 68.2,
+                  "y": 182.0,
+                  "x0": 1.5,
+                  "y0": 50.0,
+                  "z0": 6.0,
+                  "vX0": 1.8,
+                  "vY0": -123.0,
+                  "vZ0": -5.5,
+                  "aX": -3.8,
+                  "aY": 29.5,
+                  "aZ": -28.0,
+                  "pfxX": -1.9,
+                  "pfxZ": 2.1
+                },
+                "breaks": {
+                  "breakAngle": 38.5,
+                  "breakVertical": -40.1,
+                  "breakVerticalInduced": 2.3,
+                  "breakHorizontal": 3.5,
+                  "spinRate": 2590,
+                  "spinDirection": 73
+                }
+              }
             },
             {
               "type": "pitch",
@@ -174,13 +460,66 @@
               "pitchNumber": 3,
               "details": {
                 "description": "In play, run(s)",
-                "type": { "description": "Four-Seam Fastball" },
+                "type": {
+                  "description": "Four-Seam Fastball",
+                  "code": "FF"
+                },
                 "isBall": false,
                 "isStrike": false,
                 "isInPlay": true
               },
-              "count": { "balls": 1, "strikes": 1 },
-              "pitchData": { "startSpeed": 94.8 }
+              "count": {
+                "balls": 1,
+                "strikes": 1
+              },
+              "pitchData": {
+                "startSpeed": 94.8,
+                "endSpeed": 87.5,
+                "strikeZoneTop": 3.35,
+                "strikeZoneBottom": 1.62,
+                "strikeZoneWidth": 17.0,
+                "strikeZoneDepth": 8.5,
+                "plateTime": 0.401,
+                "extension": 6.0,
+                "zone": 5,
+                "coordinates": {
+                  "pX": -0.08,
+                  "pZ": 2.83,
+                  "x": 111.5,
+                  "y": 155.2,
+                  "x0": -1.2,
+                  "y0": 50.0,
+                  "z0": 6.15,
+                  "vX0": 4.2,
+                  "vY0": -139.8,
+                  "vZ0": -4.1,
+                  "aX": -9.5,
+                  "aY": 29.8,
+                  "aZ": -14.0,
+                  "pfxX": -4.8,
+                  "pfxZ": 13.6
+                },
+                "breaks": {
+                  "breakAngle": 3.2,
+                  "breakVertical": -8.5,
+                  "breakVerticalInduced": 16.8,
+                  "breakHorizontal": 7.2,
+                  "spinRate": 2380,
+                  "spinDirection": 207
+                }
+              },
+              "hitData": {
+                "launchSpeed": 111.6,
+                "launchAngle": 30.0,
+                "totalDistance": 425.0,
+                "trajectory": "fly_ball",
+                "hardness": "hard",
+                "location": "8",
+                "coordinates": {
+                  "coordX": 113.48,
+                  "coordY": 27.53
+                }
+              }
             }
           ]
         },
@@ -188,7 +527,7 @@
           "atBatIndex": 43,
           "result": {
             "eventType": "home_run",
-            "description": "Teoscar Hernández homers (4) on a fly ball to right center field.",
+            "description": "Teoscar Hern\u00e1ndez homers (4) on a fly ball to right center field.",
             "rbi": 1
           },
           "about": {
@@ -199,8 +538,14 @@
             "isScoringPlay": true
           },
           "matchup": {
-            "batter": { "id": 606192, "fullName": "Teoscar Hernández" },
-            "pitcher": { "id": 668964, "fullName": "Tobias Myers" }
+            "batter": {
+              "id": 606192,
+              "fullName": "Teoscar Hern\u00e1ndez"
+            },
+            "pitcher": {
+              "id": 668964,
+              "fullName": "Tobias Myers"
+            }
           },
           "playEvents": [
             {
@@ -210,7 +555,9 @@
               },
               "type": "action",
               "isSubstitution": true,
-              "player": { "id": 668964 }
+              "player": {
+                "id": 668964
+              }
             },
             {
               "type": "pitch",
@@ -218,13 +565,54 @@
               "pitchNumber": 1,
               "details": {
                 "description": "Ball",
-                "type": { "description": "Curveball" },
+                "type": {
+                  "description": "Curveball",
+                  "code": "CU"
+                },
                 "isBall": true,
                 "isStrike": false,
                 "isInPlay": false
               },
-              "count": { "balls": 1, "strikes": 0 },
-              "pitchData": { "startSpeed": 81.2 }
+              "count": {
+                "balls": 1,
+                "strikes": 0
+              },
+              "pitchData": {
+                "startSpeed": 81.2,
+                "endSpeed": 67.8,
+                "strikeZoneTop": 3.35,
+                "strikeZoneBottom": 1.62,
+                "strikeZoneWidth": 17.0,
+                "strikeZoneDepth": 8.5,
+                "plateTime": 0.489,
+                "extension": 5.8,
+                "zone": 14,
+                "coordinates": {
+                  "pX": 0.94,
+                  "pZ": 1.35,
+                  "x": 74.1,
+                  "y": 201.0,
+                  "x0": 0.6,
+                  "y0": 50.0,
+                  "z0": 6.0,
+                  "vX0": -1.3,
+                  "vY0": -114.5,
+                  "vZ0": -3.8,
+                  "aX": 2.1,
+                  "aY": 28.0,
+                  "aZ": -34.5,
+                  "pfxX": 0.8,
+                  "pfxZ": -8.3
+                },
+                "breaks": {
+                  "breakAngle": 48.5,
+                  "breakVertical": -55.2,
+                  "breakVerticalInduced": -4.7,
+                  "breakHorizontal": -1.2,
+                  "spinRate": 2810,
+                  "spinDirection": 47
+                }
+              }
             },
             {
               "type": "pitch",
@@ -232,21 +620,80 @@
               "pitchNumber": 2,
               "details": {
                 "description": "In play, run(s)",
-                "type": { "description": "Four-Seam Fastball" },
+                "type": {
+                  "description": "Four-Seam Fastball",
+                  "code": "FF"
+                },
                 "isBall": false,
                 "isStrike": false,
                 "isInPlay": true
               },
-              "count": { "balls": 1, "strikes": 0 },
-              "pitchData": { "startSpeed": 94.1 }
+              "count": {
+                "balls": 1,
+                "strikes": 0
+              },
+              "pitchData": {
+                "startSpeed": 94.1,
+                "endSpeed": 87.5,
+                "strikeZoneTop": 3.35,
+                "strikeZoneBottom": 1.62,
+                "strikeZoneWidth": 17.0,
+                "strikeZoneDepth": 8.5,
+                "plateTime": 0.401,
+                "extension": 6.0,
+                "zone": 5,
+                "coordinates": {
+                  "pX": -0.08,
+                  "pZ": 2.83,
+                  "x": 111.5,
+                  "y": 155.2,
+                  "x0": -1.2,
+                  "y0": 50.0,
+                  "z0": 6.15,
+                  "vX0": 4.2,
+                  "vY0": -139.8,
+                  "vZ0": -4.1,
+                  "aX": -9.5,
+                  "aY": 29.8,
+                  "aZ": -14.0,
+                  "pfxX": -4.8,
+                  "pfxZ": 13.6
+                },
+                "breaks": {
+                  "breakAngle": 3.2,
+                  "breakVertical": -8.5,
+                  "breakVerticalInduced": 16.8,
+                  "breakHorizontal": 7.2,
+                  "spinRate": 2380,
+                  "spinDirection": 207
+                }
+              },
+              "hitData": {
+                "launchSpeed": 111.6,
+                "launchAngle": 30.0,
+                "totalDistance": 425.0,
+                "trajectory": "fly_ball",
+                "hardness": "hard",
+                "location": "8",
+                "coordinates": {
+                  "coordX": 113.48,
+                  "coordY": 27.53
+                }
+              }
             }
           ]
         }
       ]
     },
     "decisions": {
-      "winner": { "id": 660271, "fullName": "Shohei Ohtani" },
-      "loser": { "id": 605280, "fullName": "Clay Holmes" }
+      "winner": {
+        "id": 660271,
+        "fullName": "Shohei Ohtani"
+      },
+      "loser": {
+        "id": 605280,
+        "fullName": "Clay Holmes"
+      }
     }
   }
 }
