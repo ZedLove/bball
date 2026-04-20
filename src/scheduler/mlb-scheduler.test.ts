@@ -3,6 +3,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 // ── Module mocks (hoisted before imports) ────────────────────────────────────
 vi.mock('./schedule-client.ts', () => ({ fetchSchedule: vi.fn() }));
 vi.mock('./game-feed-client.ts', () => ({ fetchGameFeed: vi.fn() }));
+vi.mock('./game-feed-live-client.ts', () => ({ fetchGameFeedLive: vi.fn() }));
 vi.mock('./boxscore-client.ts', () => ({ fetchBoxscore: vi.fn() }));
 vi.mock('./next-game-client.ts', () => ({ fetchNextGame: vi.fn() }));
 vi.mock('./logger.ts', () => ({ logUpdate: vi.fn() }));
@@ -25,6 +26,7 @@ import { startScheduler } from './mlb-scheduler.ts';
 import { SOCKET_EVENTS } from '../server/socket-events.ts';
 import { fetchSchedule } from './schedule-client.ts';
 import { fetchGameFeed } from './game-feed-client.ts';
+import { fetchGameFeedLive } from './game-feed-live-client.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import * as summaryParserModule from './summary-parser.ts';
@@ -45,10 +47,12 @@ import {
   makeFeedResponse,
   makeBoxscoreResponse,
   makeNextGameResponse,
+  makeGameFeedLiveResponse,
 } from './mlb-scheduler.test-utils.ts';
 
 const mockFetchSchedule = vi.mocked(fetchSchedule);
 const mockFetchGameFeed = vi.mocked(fetchGameFeed);
+const mockFetchGameFeedLive = vi.mocked(fetchGameFeedLive);
 const mockFetchBoxscore = vi.mocked(fetchBoxscore);
 const mockFetchNextGame = vi.mocked(fetchNextGame);
 
@@ -129,6 +133,9 @@ function makeEmptyFeedResponse(timestamp = FEED_TIMESTAMP_1): GameFeedResponse {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  // Default: feed/live returns currentPlay: null → atBat: null on every game-update.
+  // Tests that need a populated atBat override this per-test.
+  mockFetchGameFeedLive.mockResolvedValue(makeGameFeedLiveResponse());
 });
 
 afterEach(() => {
@@ -934,6 +941,155 @@ describe('error handling', () => {
     await drainMicrotasks();
 
     // Stop the second scheduler (which ran cleanly) without error
+    scheduler.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Live at-bat state (atBat field on game-update)
+// ---------------------------------------------------------------------------
+
+describe('live at-bat state', () => {
+  it('emits game-update with atBat: null when feed/live returns currentPlay: null', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    // Default mock returns currentPlay: null → atBat: null
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.objectContaining({ gamePk: GAME_PK, atBat: null }),
+    );
+    scheduler.stop();
+  });
+
+  it('populates atBat from feed/live when game is active and currentPlay is present', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse({
+      currentPlay: {
+        about: { atBatIndex: 12, halfInning: 'top', inning: 3, isComplete: false },
+        count: { balls: 1, strikes: 0, outs: 1 },
+        matchup: {
+          batter: { id: 596019, fullName: 'Francisco Lindor' },
+          pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+          batSide: { code: 'R' },
+          pitchHand: { code: 'R' },
+        },
+        playEvents: [],
+      },
+    }));
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.objectContaining({
+        gamePk: GAME_PK,
+        atBat: expect.objectContaining({
+          batter: expect.objectContaining({ id: 596019, fullName: 'Francisco Lindor' }),
+          pitcher: expect.objectContaining({ id: 660271, fullName: 'Shohei Ohtani' }),
+          batSide: 'R',
+          pitchHand: 'R',
+          count: { balls: 1, strikes: 0 },
+          pitchSequence: [],
+        }),
+      }),
+    );
+    scheduler.stop();
+  });
+
+  it('emits atBat: null when trackingMode is between-innings', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.objectContaining({ trackingMode: 'between-innings', atBat: null }),
+    );
+    // feed/live must NOT be called for between-innings
+    expect(mockFetchGameFeedLive).not.toHaveBeenCalled();
+    scheduler.stop();
+  });
+
+  it('emits atBat: null when trackingMode is final', async () => {
+    // Skip enrichment on first tick, then final on second
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    mockFetchSchedule.mockResolvedValueOnce(makeFinalSchedule());
+    mockFetchGameFeed.mockResolvedValueOnce(makeFeedResponse(5));
+    mockFetchBoxscore.mockResolvedValueOnce(makeBoxscoreResponse());
+    mockFetchNextGame.mockResolvedValueOnce(makeNextGameResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2 (final)
+
+    const gameUpdateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE,
+    );
+    const finalUpdate = gameUpdateCalls.find(
+      ([, payload]) => (payload as { trackingMode: string }).trackingMode === 'final',
+    );
+    expect(finalUpdate).toBeDefined();
+    expect(finalUpdate![1]).toMatchObject({ trackingMode: 'final', atBat: null });
+    scheduler.stop();
+  });
+
+  it('emits game-update with atBat: null and does not suppress it when feed/live throws', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    mockFetchGameFeedLive.mockRejectedValueOnce(new Error('live feed unavailable'));
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    // game-update must still be emitted despite the feed/live failure
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.objectContaining({ gamePk: GAME_PK, atBat: null }),
+    );
+    scheduler.stop();
+  });
+
+  it('emits atBat: null when currentPlay.isComplete is true', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse({
+      currentPlay: {
+        about: { atBatIndex: 12, halfInning: 'top', inning: 3, isComplete: true },
+        count: { balls: 3, strikes: 2, outs: 2 },
+        matchup: {
+          batter: { id: 596019, fullName: 'Francisco Lindor' },
+          pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+          batSide: { code: 'L' },
+          pitchHand: { code: 'R' },
+        },
+        playEvents: [],
+      },
+    }));
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.objectContaining({ gamePk: GAME_PK, atBat: null }),
+    );
     scheduler.stop();
   });
 });

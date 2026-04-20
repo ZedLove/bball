@@ -8,6 +8,7 @@
 // ── Module mocks (hoisted before imports) ────────────────────────────────────
 vi.mock('./schedule-client.ts', () => ({ fetchSchedule: vi.fn() }));
 vi.mock('./game-feed-client.ts', () => ({ fetchGameFeed: vi.fn() }));
+vi.mock('./game-feed-live-client.ts', () => ({ fetchGameFeedLive: vi.fn() }));
 vi.mock('./boxscore-client.ts', () => ({ fetchBoxscore: vi.fn() }));
 vi.mock('./next-game-client.ts', () => ({ fetchNextGame: vi.fn() }));
 vi.mock('./summary-parser.ts', () => ({ buildGameSummary: vi.fn() }));
@@ -31,6 +32,7 @@ import { startScheduler } from './mlb-scheduler.ts';
 import { SOCKET_EVENTS } from '../server/socket-events.ts';
 import { fetchSchedule } from './schedule-client.ts';
 import { fetchGameFeed } from './game-feed-client.ts';
+import { fetchGameFeedLive } from './game-feed-live-client.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import { buildGameSummary } from './summary-parser.ts';
@@ -42,10 +44,12 @@ import {
   makeFeedResponse,
   makeBoxscoreResponse,
   makeNextGameResponse,
+  makeGameFeedLiveResponse,
 } from './mlb-scheduler.test-utils.ts';
 
 const mockFetchSchedule = vi.mocked(fetchSchedule);
 const mockFetchGameFeed = vi.mocked(fetchGameFeed);
+const mockFetchGameFeedLive = vi.mocked(fetchGameFeedLive);
 const mockFetchBoxscore = vi.mocked(fetchBoxscore);
 const mockFetchNextGame = vi.mocked(fetchNextGame);
 const mockBuildGameSummary = vi.mocked(buildGameSummary);
@@ -54,6 +58,7 @@ const mockBuildGameSummary = vi.mocked(buildGameSummary);
 
 beforeEach(() => {
   vi.useFakeTimers();
+  mockFetchGameFeedLive.mockResolvedValue(makeGameFeedLiveResponse());
 });
 
 afterEach(() => {
