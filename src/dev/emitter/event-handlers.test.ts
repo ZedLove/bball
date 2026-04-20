@@ -582,12 +582,8 @@ describe('handlePitch', () => {
       expect(pitch.tracking.breaks.spinRate).toBeLessThanOrEqual(2500);
       expect(pitch.tracking.zone).toBeGreaterThanOrEqual(1);
       expect(pitch.tracking.zone).toBeLessThanOrEqual(9);
-      expect(pitch.tracking.coordinates.pX).toEqual(
-        expect.any(Number)
-      );
-      expect(pitch.tracking.breaks.spinDirection).toEqual(
-        expect.any(Number)
-      );
+      expect(pitch.tracking.coordinates.pX).toEqual(expect.any(Number));
+      expect(pitch.tracking.breaks.spinDirection).toEqual(expect.any(Number));
     }
   });
 

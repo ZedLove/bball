@@ -80,9 +80,15 @@ function generateTrackingData(speedMph: number): PitchTrackingData {
 
 /** Generate realistic batted-ball data for an in-play pitch. */
 function generateHitData(): BattedBallData {
-  const trajectories = ['ground_ball', 'fly_ball', 'line_drive', 'popup'] as const;
+  const trajectories = [
+    'ground_ball',
+    'fly_ball',
+    'line_drive',
+    'popup',
+  ] as const;
   const hardness = ['soft', 'medium', 'hard'][Math.floor(Math.random() * 3)];
-  const trajectory = trajectories[Math.floor(Math.random() * trajectories.length)];
+  const trajectory =
+    trajectories[Math.floor(Math.random() * trajectories.length)];
   const launchAngle = -30 + Math.random() * 70;
   const launchSpeed = 70 + Math.random() * 50; // 70–120 mph
   const distance = 150 + Math.random() * 300; // 150–450 feet
