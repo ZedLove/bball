@@ -569,6 +569,48 @@ describe('handlePitch', () => {
     expect((update.atBat as AtBatState).count.balls).toBe(1);
   });
 
+  it('populates tracking data with realistic Statcast values', () => {
+    handlePitch(store, io, { speed: 93, call: 'Ball' });
+
+    const pitch = (store.getState().currentAtBat as AtBatState)
+      .pitchSequence[0];
+    expect(pitch.tracking).not.toBeNull();
+    if (pitch.tracking) {
+      expect(pitch.tracking.startSpeed).toBe(93);
+      expect(pitch.tracking.endSpeed).toBeLessThan(93);
+      expect(pitch.tracking.breaks.spinRate).toBeGreaterThanOrEqual(2000);
+      expect(pitch.tracking.breaks.spinRate).toBeLessThanOrEqual(2500);
+      expect(pitch.tracking.zone).toBeGreaterThanOrEqual(1);
+      expect(pitch.tracking.zone).toBeLessThanOrEqual(9);
+      expect(pitch.tracking.coordinates.pX).toEqual(
+        expect.any(Number)
+      );
+      expect(pitch.tracking.breaks.spinDirection).toEqual(
+        expect.any(Number)
+      );
+    }
+  });
+
+  it('populates hitData only for in-play pitches', () => {
+    handlePitch(store, io, { call: 'Ball' });
+    const ballPitch = (store.getState().currentAtBat as AtBatState)
+      .pitchSequence[0];
+    expect(ballPitch.hitData).toBeNull();
+
+    handlePitch(store, io, { call: 'In play' });
+    const inPlayPitch = (store.getState().currentAtBat as AtBatState)
+      .pitchSequence[1];
+    expect(inPlayPitch.hitData).not.toBeNull();
+    if (inPlayPitch.hitData) {
+      expect(inPlayPitch.hitData.launchSpeed).toBeGreaterThanOrEqual(70);
+      expect(inPlayPitch.hitData.launchSpeed).toBeLessThanOrEqual(120);
+      expect(inPlayPitch.hitData.trajectory).toMatch(
+        /ground_ball|fly_ball|line_drive|popup/
+      );
+      expect(inPlayPitch.hitData.location).toMatch(/^[1-9]$/);
+    }
+  });
+
   it('fails with no active at-bat', () => {
     store.setState({ currentAtBat: null });
 
