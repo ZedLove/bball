@@ -24,11 +24,83 @@ import type {
   OffensiveSubstitutionEvent,
   DefensiveSubstitutionEvent,
   GameSummary,
+  PitchTrackingData,
+  BattedBallData,
 } from '../../server/socket-events.ts';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/** Generate realistic Statcast tracking data for a simulated pitch. */
+function generateTrackingData(speedMph: number): PitchTrackingData {
+  const spinRate = 2000 + Math.random() * 500; // 2000–2500 RPM
+  const spinDirection = Math.random() * 360;
+  const breakVertical = -10 - Math.random() * 15; // negative = drop
+  const breakVerticalInduced = 8 + Math.random() * 6;
+  const breakHorizontal = -10 + Math.random() * 20; // can be positive (tail) or negative (movement)
+
+  return {
+    startSpeed: speedMph,
+    endSpeed: speedMph - 5 - Math.random() * 5, // account for drag
+    strikeZoneTop: 3.2,
+    strikeZoneBottom: 1.6,
+    strikeZoneWidth: 17.0,
+    strikeZoneDepth: 8.5,
+    plateTime: 0.4 + Math.random() * 0.05,
+    extension: 5.5 + Math.random() * 0.3,
+    zone: Math.floor(Math.random() * 9) + 1, // zones 1-9 for simplicity
+    coordinates: {
+      pX: -1.5 + Math.random() * 3,
+      pZ: 1.5 + Math.random() * 2,
+      x: 50 + Math.random() * 20,
+      y: 180 + Math.random() * 20,
+      x0: 2.5 + Math.random() * 0.5,
+      y0: 50,
+      z0: 5.4 + Math.random() * 0.4,
+      vX0: -6 + Math.random() * 3,
+      vY0: -(130 + Math.random() * 10),
+      vZ0: -5 + Math.random() * 3,
+      aX: 15 + Math.random() * 10,
+      aY: 30 + Math.random() * 5,
+      aZ: -20 + Math.random() * 5,
+      pfxX: breakHorizontal,
+      pfxZ: breakVertical,
+    },
+    breaks: {
+      spinRate: Math.round(spinRate),
+      spinDirection: Math.round(spinDirection),
+      breakAngle: Math.round(spinDirection),
+      breakVertical: Math.round(breakVertical * 10) / 10,
+      breakVerticalInduced: Math.round(breakVerticalInduced * 10) / 10,
+      breakHorizontal: Math.round(breakHorizontal * 10) / 10,
+    },
+  };
+}
+
+/** Generate realistic batted-ball data for an in-play pitch. */
+function generateHitData(): BattedBallData {
+  const trajectories = ['ground_ball', 'fly_ball', 'line_drive', 'popup'] as const;
+  const hardness = ['soft', 'medium', 'hard'][Math.floor(Math.random() * 3)];
+  const trajectory = trajectories[Math.floor(Math.random() * trajectories.length)];
+  const launchAngle = -30 + Math.random() * 70;
+  const launchSpeed = 70 + Math.random() * 50; // 70–120 mph
+  const distance = 150 + Math.random() * 300; // 150–450 feet
+
+  return {
+    launchSpeed: Math.round(launchSpeed * 10) / 10,
+    launchAngle: Math.round(launchAngle * 10) / 10,
+    totalDistance: Math.round(distance),
+    trajectory,
+    hardness: hardness as 'soft' | 'medium' | 'hard',
+    location: String(Math.floor(Math.random() * 9) + 1), // fielder positions 1–9
+    coordinates: {
+      coordX: Math.round(Math.random() * 200),
+      coordY: Math.round(Math.random() * 100),
+    },
+  };
+}
+
 function emitUpdate(
   io: SocketIOServer,
   store: StateStore,
@@ -622,6 +694,7 @@ export function handlePitch(
       ? currentCount.strikes + 1
       : currentCount.strikes;
 
+  const speedMph = options.speed ?? 93;
   const pitchNumber = state.currentAtBat.pitchSequence.length + 1;
   const newPitch = {
     pitchNumber,
@@ -631,10 +704,10 @@ export function handlePitch(
     isBall,
     isStrike,
     isInPlay,
-    speedMph: options.speed ?? 93,
+    speedMph,
     countAfter: { balls: newBalls, strikes: newStrikes },
-    tracking: null,
-    hitData: null,
+    tracking: generateTrackingData(speedMph),
+    hitData: isInPlay ? generateHitData() : null,
   };
 
   store.setState({
@@ -648,7 +721,7 @@ export function handlePitch(
   emitUpdate(io, store, 'outs');
   return ok(
     `✓ Pitch ${pitchNumber}: ${newPitch.pitchType} | ${call}` +
-      ` | Count ${newBalls}-${newStrikes} | ${options.speed ?? 93} mph`
+      ` | Count ${newBalls}-${newStrikes} | ${speedMph} mph`
   );
 }
 
