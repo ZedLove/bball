@@ -546,7 +546,8 @@ describe('handlePitch', () => {
   it('defaults pitch type to Four-Seam Fastball and speed to 93', () => {
     handlePitch(store, io, {});
 
-    const pitch = (store.getState().currentAtBat as AtBatState).pitchSequence[0];
+    const pitch = (store.getState().currentAtBat as AtBatState)
+      .pitchSequence[0];
     expect(pitch.pitchType).toBe('Four-Seam Fastball');
     expect(pitch.speedMph).toBe(93);
   });
@@ -627,4 +628,3 @@ describe('buildPayload atBat field vs trackingMode', () => {
     expect((update.atBat as AtBatState).batter.fullName).toBe('Test Batter');
   });
 });
-

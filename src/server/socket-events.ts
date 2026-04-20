@@ -262,7 +262,8 @@ export interface TopPerformer {
   summary: string;
 }
 
-export interface NextGame {  gamePk: number;
+export interface NextGame {
+  gamePk: number;
   opponent: { id: number; name: string; abbreviation: string };
   /** ISO 8601 UTC game time. */
   gameTime: string;

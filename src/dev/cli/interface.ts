@@ -375,7 +375,12 @@ async function dispatch(
       }
       if (args['call']) {
         const rawCall = args['call'];
-        if (rawCall === 'Ball' || rawCall === 'Strike' || rawCall === 'Foul' || rawCall === 'In play') {
+        if (
+          rawCall === 'Ball' ||
+          rawCall === 'Strike' ||
+          rawCall === 'Foul' ||
+          rawCall === 'In play'
+        ) {
           opts.call = rawCall;
         }
       }

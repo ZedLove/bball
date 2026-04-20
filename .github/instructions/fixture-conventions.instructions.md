@@ -1,6 +1,6 @@
 ---
-description: "Use when authoring or updating JSON test fixtures in `src/scheduler/__fixtures__/`. Covers fixture structure, realism, and integration with test helpers."
-applyTo: "**/__fixtures__/**"
+description: 'Use when authoring or updating JSON test fixtures in `src/scheduler/__fixtures__/`. Covers fixture structure, realism, and integration with test helpers.'
+applyTo: '**/__fixtures__/**'
 ---
 
 # JSON Fixture Guidelines
@@ -27,6 +27,7 @@ Never import fixtures without the `with { type: 'json' }` syntax.
 ## Fixture Structure
 
 **game-feed.json** (static snapshot of completed game):
+
 ```json
 {
   "liveData": {
@@ -45,6 +46,7 @@ Never import fixtures without the `with { type: 'json' }` syntax.
 ```
 
 **game-feed-live.json** (in-progress game, includes `currentPlay`):
+
 ```json
 {
   "liveData": {
@@ -71,6 +73,7 @@ The helper pattern allows tests to mutate a specific boundary (e.g., `currentPla
 ## Updates on API Changes
 
 When the API adds new fields (e.g., new tracking data on `pitchData`):
+
 1. Fetch a fresh game feed with the updated schema.
 2. Extract 2–3 representative plays.
 3. Replace the entire `allPlays` section (or `currentPlay` if updating the live feed).

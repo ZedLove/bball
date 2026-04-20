@@ -961,26 +961,33 @@ describe('live at-bat state', () => {
 
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_UPDATE,
-      expect.objectContaining({ gamePk: GAME_PK, atBat: null }),
+      expect.objectContaining({ gamePk: GAME_PK, atBat: null })
     );
     scheduler.stop();
   });
 
   it('populates atBat from feed/live when game is active and currentPlay is present', async () => {
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
-    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse({
-      currentPlay: {
-        about: { atBatIndex: 12, halfInning: 'top', inning: 3, isComplete: false },
-        count: { balls: 1, strikes: 0, outs: 1 },
-        matchup: {
-          batter: { id: 596019, fullName: 'Francisco Lindor' },
-          pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
-          batSide: { code: 'R' },
-          pitchHand: { code: 'R' },
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 12,
+            halfInning: 'top',
+            inning: 3,
+            isComplete: false,
+          },
+          count: { balls: 1, strikes: 0, outs: 1 },
+          matchup: {
+            batter: { id: 596019, fullName: 'Francisco Lindor' },
+            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'R' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [],
         },
-        playEvents: [],
-      },
-    }));
+      })
+    );
 
     const io = createMockIo();
     const scheduler = startScheduler(io);
@@ -992,14 +999,20 @@ describe('live at-bat state', () => {
       expect.objectContaining({
         gamePk: GAME_PK,
         atBat: expect.objectContaining({
-          batter: expect.objectContaining({ id: 596019, fullName: 'Francisco Lindor' }),
-          pitcher: expect.objectContaining({ id: 660271, fullName: 'Shohei Ohtani' }),
+          batter: expect.objectContaining({
+            id: 596019,
+            fullName: 'Francisco Lindor',
+          }),
+          pitcher: expect.objectContaining({
+            id: 660271,
+            fullName: 'Shohei Ohtani',
+          }),
           batSide: 'R',
           pitchHand: 'R',
           count: { balls: 1, strikes: 0 },
           pitchSequence: [],
         }),
-      }),
+      })
     );
     scheduler.stop();
   });
@@ -1014,7 +1027,7 @@ describe('live at-bat state', () => {
 
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_UPDATE,
-      expect.objectContaining({ trackingMode: 'between-innings', atBat: null }),
+      expect.objectContaining({ trackingMode: 'between-innings', atBat: null })
     );
     // feed/live must NOT be called for between-innings
     expect(mockFetchGameFeedLive).not.toHaveBeenCalled();
@@ -1037,20 +1050,26 @@ describe('live at-bat state', () => {
     vi.runOnlyPendingTimers();
     await drainMicrotasks(); // tick 2 (final)
 
-    const gameUpdateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
-      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE,
-    );
+    const gameUpdateCalls = (
+      io.emit as ReturnType<typeof vi.fn>
+    ).mock.calls.filter(([event]) => event === SOCKET_EVENTS.GAME_UPDATE);
     const finalUpdate = gameUpdateCalls.find(
-      ([, payload]) => (payload as { trackingMode: string }).trackingMode === 'final',
+      ([, payload]) =>
+        (payload as { trackingMode: string }).trackingMode === 'final'
     );
     expect(finalUpdate).toBeDefined();
-    expect(finalUpdate![1]).toMatchObject({ trackingMode: 'final', atBat: null });
+    expect(finalUpdate![1]).toMatchObject({
+      trackingMode: 'final',
+      atBat: null,
+    });
     scheduler.stop();
   });
 
   it('emits game-update with atBat: null and does not suppress it when feed/live throws', async () => {
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
-    mockFetchGameFeedLive.mockRejectedValueOnce(new Error('live feed unavailable'));
+    mockFetchGameFeedLive.mockRejectedValueOnce(
+      new Error('live feed unavailable')
+    );
 
     const io = createMockIo();
     const scheduler = startScheduler(io);
@@ -1060,26 +1079,33 @@ describe('live at-bat state', () => {
     // game-update must still be emitted despite the feed/live failure
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_UPDATE,
-      expect.objectContaining({ gamePk: GAME_PK, atBat: null }),
+      expect.objectContaining({ gamePk: GAME_PK, atBat: null })
     );
     scheduler.stop();
   });
 
   it('emits atBat: null when currentPlay.isComplete is true', async () => {
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
-    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse({
-      currentPlay: {
-        about: { atBatIndex: 12, halfInning: 'top', inning: 3, isComplete: true },
-        count: { balls: 3, strikes: 2, outs: 2 },
-        matchup: {
-          batter: { id: 596019, fullName: 'Francisco Lindor' },
-          pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
-          batSide: { code: 'L' },
-          pitchHand: { code: 'R' },
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 12,
+            halfInning: 'top',
+            inning: 3,
+            isComplete: true,
+          },
+          count: { balls: 3, strikes: 2, outs: 2 },
+          matchup: {
+            batter: { id: 596019, fullName: 'Francisco Lindor' },
+            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'L' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [],
         },
-        playEvents: [],
-      },
-    }));
+      })
+    );
 
     const io = createMockIo();
     const scheduler = startScheduler(io);
@@ -1088,7 +1114,7 @@ describe('live at-bat state', () => {
 
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_UPDATE,
-      expect.objectContaining({ gamePk: GAME_PK, atBat: null }),
+      expect.objectContaining({ gamePk: GAME_PK, atBat: null })
     );
     scheduler.stop();
   });

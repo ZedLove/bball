@@ -15,7 +15,7 @@ describe('fetchGameFeedLive', () => {
     expect(mockGet).toHaveBeenCalledOnce();
     expect(mockGet).toHaveBeenCalledWith(
       'https://statsapi.mlb.com/api/v1.1/game/822750/feed/live',
-      expect.objectContaining({ timeout: 8_000 }),
+      expect.objectContaining({ timeout: 8_000 })
     );
   });
 
@@ -25,7 +25,9 @@ describe('fetchGameFeedLive', () => {
     await fetchGameFeedLive(999999);
 
     const calledUrl = mockGet.mock.calls[0][0] as string;
-    expect(calledUrl).toBe('https://statsapi.mlb.com/api/v1.1/game/999999/feed/live');
+    expect(calledUrl).toBe(
+      'https://statsapi.mlb.com/api/v1.1/game/999999/feed/live'
+    );
   });
 
   it('sends the correct User-Agent header', async () => {
@@ -35,7 +37,9 @@ describe('fetchGameFeedLive', () => {
 
     expect(mockGet).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ headers: { 'User-Agent': 'mlb-gameday-ping/0.1' } }),
+      expect.objectContaining({
+        headers: { 'User-Agent': 'mlb-gameday-ping/0.1' },
+      })
     );
   });
 
@@ -59,9 +63,12 @@ describe('fetchGameFeedLive', () => {
   });
 
   it('propagates non-2xx HTTP errors to the caller', async () => {
-    const axiosError = Object.assign(new Error('Request failed with status code 503'), {
-      response: { status: 503 },
-    });
+    const axiosError = Object.assign(
+      new Error('Request failed with status code 503'),
+      {
+        response: { status: 503 },
+      }
+    );
     mockGet.mockRejectedValueOnce(axiosError);
 
     await expect(fetchGameFeedLive(822750)).rejects.toThrow('503');
