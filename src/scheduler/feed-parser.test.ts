@@ -278,61 +278,63 @@ describe('parseFeedEvents', () => {
 
       const [p1, p2, p3, p4] = strikeout.pitchSequence as PitchEvent[];
 
-      expect(p1).toEqual<PitchEvent>({
+      expect(p1).toMatchObject({
         pitchNumber: 1,
         pitchType: 'Four-Seam Fastball',
+        pitchTypeCode: 'FF',
         call: 'Called Strike',
         isBall: false,
         isStrike: true,
         isInPlay: false,
         speedMph: 96.0,
         countAfter: { balls: 0, strikes: 1 },
-        pitchTypeCode: null,
-        tracking: null,
         hitData: null,
       });
+      expect(p1.tracking).not.toBeNull();
+      expect(p1.tracking!.startSpeed).toBe(96.0);
+      expect(p1.tracking!.breaks.spinRate).toBe(2380);
 
-      expect(p2).toEqual<PitchEvent>({
+      expect(p2).toMatchObject({
         pitchNumber: 2,
         pitchType: 'Curveball',
+        pitchTypeCode: 'CU',
         call: 'Ball',
         isBall: true,
         isStrike: false,
         isInPlay: false,
         speedMph: 78.5,
         countAfter: { balls: 1, strikes: 1 },
-        pitchTypeCode: null,
-        tracking: null,
         hitData: null,
       });
+      expect(p2.tracking).not.toBeNull();
 
-      expect(p3).toEqual<PitchEvent>({
+      expect(p3).toMatchObject({
         pitchNumber: 3,
         pitchType: 'Cutter',
+        pitchTypeCode: 'FC',
         call: 'Foul',
         isBall: false,
         isStrike: true,
         isInPlay: false,
         speedMph: 91.3,
         countAfter: { balls: 1, strikes: 2 },
-        pitchTypeCode: null,
-        tracking: null,
         hitData: null,
       });
+      expect(p3.tracking).not.toBeNull();
 
-      expect(p4).toEqual<PitchEvent>({
+      expect(p4).toMatchObject({
         pitchNumber: 4,
         pitchType: 'Four-Seam Fastball',
+        pitchTypeCode: 'FF',
         call: 'Swinging Strike',
         isBall: false,
         isStrike: true,
         isInPlay: false,
         speedMph: 97.1,
         countAfter: { balls: 1, strikes: 3 },
-        pitchTypeCode: null,
-        tracking: null,
         hitData: null,
       });
+      expect(p4.tracking).not.toBeNull();
     });
 
     it('preserves pitch order by pitchNumber', () => {
@@ -357,6 +359,9 @@ describe('parseFeedEvents', () => {
       expect(lastPitch.isInPlay).toBe(true);
       expect(lastPitch.call).toBe('In play, run(s)');
       expect(lastPitch.speedMph).toBe(94.8);
+      expect(lastPitch.hitData).not.toBeNull();
+      expect(lastPitch.hitData!.totalDistance).toBe(425.0);
+      expect(lastPitch.hitData!.trajectory).toBe('fly_ball');
     });
 
     it('excludes pickoff events from pitchSequence', () => {
