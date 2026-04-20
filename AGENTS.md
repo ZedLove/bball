@@ -32,6 +32,7 @@ src/
   config/          # Zod env validation (env.ts) + team resolution (teams.ts)
   scheduler/       # MLB API polling, feed parsing, event enrichment
   server/          # Express app, Socket.IO setup, socket event contracts
+  routes/          # Express route handlers for runtime requests (e.g. health.ts)
   dev/             # Simulator (DEV_MODE=true replaces scheduler)
 plans/             # Markdown feature plans — source of truth for roadmap
 ```
