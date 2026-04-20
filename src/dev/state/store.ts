@@ -43,7 +43,9 @@ export function createStateStore(): StateStore {
           home: { ...state.teams.home },
         },
         score: { ...state.score },
-        currentPitcher: state.currentPitcher ? { ...state.currentPitcher } : null,
+        currentPitcher: state.currentPitcher
+          ? { ...state.currentPitcher }
+          : null,
       };
     },
 

@@ -68,7 +68,10 @@ async function createTestServer(scheduler: Scheduler): Promise<TestServer> {
   return { io, httpServer, port };
 }
 
-async function destroyTestServer({ io, httpServer }: TestServer): Promise<void> {
+async function destroyTestServer({
+  io,
+  httpServer,
+}: TestServer): Promise<void> {
   await new Promise<void>((resolve) => io.close(() => resolve()));
   await new Promise<void>((resolve) => httpServer.close(() => resolve()));
 }
@@ -94,9 +97,13 @@ describe('registerConnectionHandlers', () => {
     // Register the game-update listener before connecting to avoid a race
     // where the server emits during the connection handler before the client
     // has set up its listener.
-    const client = ioc(`http://localhost:${server.port}`, { autoConnect: false });
+    const client = ioc(`http://localhost:${server.port}`, {
+      autoConnect: false,
+    });
     const receivedPromise = new Promise<GameUpdate>((resolve) => {
-      client.once(SOCKET_EVENTS.GAME_UPDATE, (data: GameUpdate) => resolve(data));
+      client.once(SOCKET_EVENTS.GAME_UPDATE, (data: GameUpdate) =>
+        resolve(data)
+      );
     });
     client.connect();
 
@@ -116,7 +123,9 @@ describe('registerConnectionHandlers', () => {
     const received: unknown[] = [];
 
     const client = ioc(`http://localhost:${server.port}`);
-    client.on(SOCKET_EVENTS.GAME_UPDATE, (data: unknown) => received.push(data));
+    client.on(SOCKET_EVENTS.GAME_UPDATE, (data: unknown) =>
+      received.push(data)
+    );
 
     await new Promise<void>((resolve) => client.once('connect', resolve));
     await waitMs(50);
@@ -137,7 +146,9 @@ describe('registerConnectionHandlers', () => {
     const gameEventsReceived: unknown[] = [];
 
     const client = ioc(`http://localhost:${server.port}`);
-    client.on(SOCKET_EVENTS.GAME_EVENTS, (data: unknown) => gameEventsReceived.push(data));
+    client.on(SOCKET_EVENTS.GAME_EVENTS, (data: unknown) =>
+      gameEventsReceived.push(data)
+    );
 
     await new Promise<void>((resolve) => client.once('connect', resolve));
     await waitMs(50);
@@ -158,7 +169,9 @@ describe('registerConnectionHandlers', () => {
     const gameSummaryReceived: unknown[] = [];
 
     const client = ioc(`http://localhost:${server.port}`);
-    client.on(SOCKET_EVENTS.GAME_SUMMARY, (data: unknown) => gameSummaryReceived.push(data));
+    client.on(SOCKET_EVENTS.GAME_SUMMARY, (data: unknown) =>
+      gameSummaryReceived.push(data)
+    );
 
     await new Promise<void>((resolve) => client.once('connect', resolve));
     await waitMs(50);

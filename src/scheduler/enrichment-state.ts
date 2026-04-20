@@ -49,7 +49,10 @@ export interface EnrichmentState {
  *                      Used as the initial `startTimecode` for the first
  *                      `diffPatch` call.
  */
-export function createEnrichmentState(gamePk: number, seedTimestamp: string): EnrichmentState {
+export function createEnrichmentState(
+  gamePk: number,
+  seedTimestamp: string
+): EnrichmentState {
   return {
     gamePk,
     lastTimestamp: seedTimestamp,

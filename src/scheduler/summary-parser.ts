@@ -39,11 +39,15 @@ export function buildGameSummary(
   feedResponse: GameFeedResponse,
   boxscoreResponse: BoxscoreResponse,
   nextGameScheduleResponse: NextGameScheduleResponse | null,
-  trackedTeamId: number,
+  trackedTeamId: number
 ): GameSummary {
   const decisions = parseDecisions(gamePk, feedResponse);
   const topPerformers = parseTopPerformers(gamePk, boxscoreResponse);
-  const nextGame = parseNextGame(nextGameScheduleResponse, trackedTeamId, gamePk);
+  const nextGame = parseNextGame(
+    nextGameScheduleResponse,
+    trackedTeamId,
+    gamePk
+  );
 
   return {
     gamePk,
@@ -57,10 +61,15 @@ export function buildGameSummary(
   };
 }
 
-function parseDecisions(gamePk: number, feedResponse: GameFeedResponse): GameDecisions {
+function parseDecisions(
+  gamePk: number,
+  feedResponse: GameFeedResponse
+): GameDecisions {
   const raw = feedResponse.liveData.decisions;
   if (!raw) {
-    throw new Error(`liveData.decisions missing from final feed response for gamePk ${gamePk}`);
+    throw new Error(
+      `liveData.decisions missing from final feed response for gamePk ${gamePk}`
+    );
   }
   return {
     winner: { id: raw.winner.id, fullName: raw.winner.fullName },
@@ -69,7 +78,10 @@ function parseDecisions(gamePk: number, feedResponse: GameFeedResponse): GameDec
   };
 }
 
-function parseTopPerformers(gamePk: number, boxscoreResponse: BoxscoreResponse): TopPerformer[] {
+function parseTopPerformers(
+  gamePk: number,
+  boxscoreResponse: BoxscoreResponse
+): TopPerformer[] {
   return boxscoreResponse.topPerformers.reduce<TopPerformer[]>((acc, entry) => {
     const { person, stats } = entry.player;
     // Pitching summary takes precedence over batting (a two-way player like Ohtani
@@ -90,7 +102,7 @@ function parseTopPerformers(gamePk: number, boxscoreResponse: BoxscoreResponse):
 function parseNextGame(
   response: NextGameScheduleResponse | null,
   trackedTeamId: number,
-  currentGamePk: number,
+  currentGamePk: number
 ): NextGame | null {
   if (!response) return null;
 
@@ -123,10 +135,16 @@ function parseNextGame(
     venue: game.venue.name,
     probablePitchers: {
       home: home.probablePitcher
-        ? { id: home.probablePitcher.id, fullName: home.probablePitcher.fullName }
+        ? {
+            id: home.probablePitcher.id,
+            fullName: home.probablePitcher.fullName,
+          }
         : null,
       away: away.probablePitcher
-        ? { id: away.probablePitcher.id, fullName: away.probablePitcher.fullName }
+        ? {
+            id: away.probablePitcher.id,
+            fullName: away.probablePitcher.fullName,
+          }
         : null,
     },
   };

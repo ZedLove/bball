@@ -15,7 +15,7 @@ const REQUEST_TIMEOUT_MS = 8_000;
  */
 export async function fetchNextGame(
   teamId: number,
-  startDate: string,
+  startDate: string
 ): Promise<NextGameScheduleResponse> {
   const url = `${MLB_SCHEDULE_ENDPOINT}?sportId=1&teamId=${teamId}&startDate=${startDate}&hydrate=team,probablePitcher`;
   const response = await axios.get<NextGameScheduleResponse>(url, {

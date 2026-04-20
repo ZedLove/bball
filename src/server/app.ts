@@ -24,14 +24,21 @@ export function createApp(): express.Application {
   });
 
   // ----- Central error handler ----------------------------------------------
-  app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || 500;
-    logger.error('❗  %s – %s', err.message, err.stack);
-    res.status(status).json({
-      error: err.message,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-    });
-  });
+  app.use(
+    (
+      err: Error & { status?: number },
+      _req: Request,
+      res: Response,
+      _next: NextFunction
+    ) => {
+      const status = err.status || 500;
+      logger.error('❗  %s – %s', err.message, err.stack);
+      res.status(status).json({
+        error: err.message,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      });
+    }
+  );
 
   return app;
 }

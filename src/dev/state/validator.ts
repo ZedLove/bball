@@ -4,7 +4,10 @@ import type { EventType, SimulationState } from '../types.ts';
  * Validate whether an event transition is legal given the current state.
  * Returns an error message string if invalid, or null if the event can proceed.
  */
-export function validateTransition(event: EventType, state: SimulationState): string | null {
+export function validateTransition(
+  event: EventType,
+  state: SimulationState
+): string | null {
   switch (event) {
     case 'game-start':
       if (state.gameStarted && !state.gameEnded) {

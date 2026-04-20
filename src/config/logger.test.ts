@@ -80,7 +80,6 @@ describe('logUpdate', () => {
       expect(allArgs).toContain('Max Scherzer');
     });
 
-
     it('includes [EXTRAS] flag for extra innings', () => {
       const update = makeUpdate({ trackingMode: 'outs', isExtraInnings: true });
       logUpdate(update);

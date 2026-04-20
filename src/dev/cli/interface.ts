@@ -105,7 +105,7 @@ function ask(rl: readline.Interface, question: string): Promise<string> {
 async function askWithDefault(
   rl: readline.Interface,
   question: string,
-  defaultValue: string,
+  defaultValue: string
 ): Promise<string> {
   const answer = await ask(rl, `  ${question} [${defaultValue}]: `);
   return answer.trim() || defaultValue;
@@ -115,7 +115,10 @@ async function askWithDefault(
 // Public entry point
 // ---------------------------------------------------------------------------
 
-export function createCliInterface(io: SocketIOServer, store: StateStore): void {
+export function createCliInterface(
+  io: SocketIOServer,
+  store: StateStore
+): void {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -139,7 +142,9 @@ export function createCliInterface(io: SocketIOServer, store: StateStore): void 
     // Allow numeric menu selection
     const n = parseInt(first, 10);
     const cmd =
-      !isNaN(n) && n >= 1 && n <= NUMBERED_COMMANDS.length ? NUMBERED_COMMANDS[n - 1] : first;
+      !isNaN(n) && n >= 1 && n <= NUMBERED_COMMANDS.length
+        ? NUMBERED_COMMANDS[n - 1]
+        : first;
 
     if (cmd === 'exit' || cmd === 'quit' || cmd === 'q') {
       console.log('\nGoodbye.\n');
@@ -168,7 +173,7 @@ async function dispatch(
   args: Record<string, string>,
   rl: readline.Interface,
   io: SocketIOServer,
-  store: StateStore,
+  store: StateStore
 ): Promise<void> {
   switch (cmd) {
     case 'game-start': {
@@ -192,7 +197,11 @@ async function dispatch(
       if (args['pitcher-id']) {
         opts.pitcherId = parseInt(args['pitcher-id'], 10);
       } else {
-        const raw = await askWithDefault(rl, 'New pitcher ID', String(randomId()));
+        const raw = await askWithDefault(
+          rl,
+          'New pitcher ID',
+          String(randomId())
+        );
         const parsed = parseInt(raw, 10);
         if (!isNaN(parsed)) opts.pitcherId = parsed;
       }
@@ -248,7 +257,7 @@ async function dispatch(
         const raw = await askWithDefault(
           rl,
           'Jump to inning',
-          String(store.getState().inning.number),
+          String(store.getState().inning.number)
         );
         n = parseInt(raw, 10);
       }
@@ -267,12 +276,12 @@ async function dispatch(
         const awayRaw = await askWithDefault(
           rl,
           `${s.teams.away.abbreviation} runs`,
-          String(s.score.away),
+          String(s.score.away)
         );
         const homeRaw = await askWithDefault(
           rl,
           `${s.teams.home.abbreviation} runs`,
-          String(s.score.home),
+          String(s.score.home)
         );
         away = parseInt(awayRaw, 10);
         home = parseInt(homeRaw, 10);
@@ -370,7 +379,9 @@ async function dispatch(
       break;
 
     default:
-      print(`⚠  Unknown command: "${cmd}". Type help or ? for the full command list.`);
+      print(
+        `⚠  Unknown command: "${cmd}". Type help or ? for the full command list.`
+      );
   }
 }
 

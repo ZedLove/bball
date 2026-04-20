@@ -101,9 +101,10 @@ export const KNOWN_EVENT_CATALOG: readonly CatalogEntry[] = [
  * Returns `undefined` for unknown or suppressed event types — those are logged
  * and suppressed before emission.
  */
-export const EVENT_TYPE_CATEGORY_MAP: ReadonlyMap<string, EventCategory> = new Map(
-  KNOWN_EVENT_CATALOG.map((entry) => [entry.eventType, entry.category])
-);
+export const EVENT_TYPE_CATEGORY_MAP: ReadonlyMap<string, EventCategory> =
+  new Map(
+    KNOWN_EVENT_CATALOG.map((entry) => [entry.eventType, entry.category])
+  );
 
 /**
  * Action event types that appear regularly in live game feeds but carry no
@@ -115,8 +116,8 @@ export const EVENT_TYPE_CATEGORY_MAP: ReadonlyMap<string, EventCategory> = new M
  * investigated and added to one of the two lists.
  */
 export const SUPPRESSED_ACTION_TYPES: ReadonlySet<string> = new Set([
-  'batter_timeout',   // pitch-clock violation or batter stepping out
-  'game_advisory',    // weather delays, official reviews, etc.
-  'mound_visit',      // coaching visit without pitching change
+  'batter_timeout', // pitch-clock violation or batter stepping out
+  'game_advisory', // weather delays, official reviews, etc.
+  'mound_visit', // coaching visit without pitching change
   'defensive_indiff', // runner advances unopposed late in a blowout
 ]);

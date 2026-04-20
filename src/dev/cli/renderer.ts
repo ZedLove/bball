@@ -44,15 +44,26 @@ export function renderMenu(state: SimulationState): string {
 /** Render a detailed current-state panel. */
 export function renderState(state: SimulationState): string {
   const batting =
-    state.inning.half === 'Top' ? state.teams.away.abbreviation : state.teams.home.abbreviation;
+    state.inning.half === 'Top'
+      ? state.teams.away.abbreviation
+      : state.teams.home.abbreviation;
   const defending =
-    state.inning.half === 'Top' ? state.teams.home.abbreviation : state.teams.away.abbreviation;
+    state.inning.half === 'Top'
+      ? state.teams.home.abbreviation
+      : state.teams.away.abbreviation;
   const pitcher = state.currentPitcher
     ? `${state.currentPitcher.fullName} (#${state.currentPitcher.id})`
     : 'None';
-  const extras = state.inning.number > state.scheduledInnings ? ' [EXTRAS]' : '';
-  const delayLine = state.isDelayed ? `\n  Delay:   ${state.delayDescription}` : '';
-  const status = state.gameEnded ? 'Final' : state.gameStarted ? 'In Progress' : 'Not Started';
+  const extras =
+    state.inning.number > state.scheduledInnings ? ' [EXTRAS]' : '';
+  const delayLine = state.isDelayed
+    ? `\n  Delay:   ${state.delayDescription}`
+    : '';
+  const status = state.gameEnded
+    ? 'Final'
+    : state.gameStarted
+      ? 'In Progress'
+      : 'Not Started';
 
   return `
 ╔════════════════════════════════════════════════════════════════╗
@@ -77,9 +88,12 @@ function formatStatusLine(state: SimulationState): string {
   }
 
   const batting =
-    state.inning.half === 'Top' ? state.teams.away.abbreviation : state.teams.home.abbreviation;
+    state.inning.half === 'Top'
+      ? state.teams.away.abbreviation
+      : state.teams.home.abbreviation;
   const delay = state.isDelayed ? ' | ⚠ DELAYED' : '';
-  const extras = state.inning.number > state.scheduledInnings ? ' [EXTRAS]' : '';
+  const extras =
+    state.inning.number > state.scheduledInnings ? ' [EXTRAS]' : '';
   return (
     `${state.inning.ordinal} ${state.inning.half}${extras}` +
     ` | ${batting} batting` +
