@@ -1,21 +1,37 @@
-import { vi, describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createServer } from 'http';
 import type { Server as HttpServer } from 'http';
 import type { AddressInfo } from 'net';
 import { io as ioc } from 'socket.io-client';
 import type { Server as SocketIOServer } from 'socket.io';
 
+// ── Hoisted mock state (must be declared before vi.mock factories run) ────────
+
+const mockConfig = vi.hoisted(
+  (): { CORS_ORIGIN: string; ENABLE_ADMIN_UI: boolean } => ({
+    CORS_ORIGIN: '*',
+    ENABLE_ADMIN_UI: false,
+  })
+);
+
+const mockInstrument = vi.hoisted(() => vi.fn());
+
 // ── Module mocks (hoisted before imports) ────────────────────────────────────
 
-vi.mock('../config/env.ts', () => ({
-  CONFIG: { CORS_ORIGIN: '*' },
-}));
+vi.mock('../config/env.ts', () => ({ CONFIG: mockConfig }));
 
 vi.mock('../config/logger.ts', () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-import { attachSocketServer, registerConnectionHandlers } from './socket.ts';
+vi.mock('@socket.io/admin-ui', () => ({ instrument: mockInstrument }));
+
+import {
+  attachSocketServer,
+  registerConnectionHandlers,
+  buildCorsOrigin,
+} from './socket.ts';
+import { logger } from '../config/logger.ts';
 import { SOCKET_EVENTS } from './socket-events.ts';
 import type { GameUpdate } from '../scheduler/parser.ts';
 import type { Scheduler } from '../scheduler/mlb-scheduler.ts';
@@ -68,7 +84,10 @@ async function createTestServer(scheduler: Scheduler): Promise<TestServer> {
   return { io, httpServer, port };
 }
 
-async function destroyTestServer({ io, httpServer }: TestServer): Promise<void> {
+async function destroyTestServer({
+  io,
+  httpServer,
+}: TestServer): Promise<void> {
   await new Promise<void>((resolve) => io.close(() => resolve()));
   await new Promise<void>((resolve) => httpServer.close(() => resolve()));
 }
@@ -94,9 +113,13 @@ describe('registerConnectionHandlers', () => {
     // Register the game-update listener before connecting to avoid a race
     // where the server emits during the connection handler before the client
     // has set up its listener.
-    const client = ioc(`http://localhost:${server.port}`, { autoConnect: false });
+    const client = ioc(`http://localhost:${server.port}`, {
+      autoConnect: false,
+    });
     const receivedPromise = new Promise<GameUpdate>((resolve) => {
-      client.once(SOCKET_EVENTS.GAME_UPDATE, (data: GameUpdate) => resolve(data));
+      client.once(SOCKET_EVENTS.GAME_UPDATE, (data: GameUpdate) =>
+        resolve(data)
+      );
     });
     client.connect();
 
@@ -116,7 +139,9 @@ describe('registerConnectionHandlers', () => {
     const received: unknown[] = [];
 
     const client = ioc(`http://localhost:${server.port}`);
-    client.on(SOCKET_EVENTS.GAME_UPDATE, (data: unknown) => received.push(data));
+    client.on(SOCKET_EVENTS.GAME_UPDATE, (data: unknown) =>
+      received.push(data)
+    );
 
     await new Promise<void>((resolve) => client.once('connect', resolve));
     await waitMs(50);
@@ -137,7 +162,9 @@ describe('registerConnectionHandlers', () => {
     const gameEventsReceived: unknown[] = [];
 
     const client = ioc(`http://localhost:${server.port}`);
-    client.on(SOCKET_EVENTS.GAME_EVENTS, (data: unknown) => gameEventsReceived.push(data));
+    client.on(SOCKET_EVENTS.GAME_EVENTS, (data: unknown) =>
+      gameEventsReceived.push(data)
+    );
 
     await new Promise<void>((resolve) => client.once('connect', resolve));
     await waitMs(50);
@@ -158,7 +185,9 @@ describe('registerConnectionHandlers', () => {
     const gameSummaryReceived: unknown[] = [];
 
     const client = ioc(`http://localhost:${server.port}`);
-    client.on(SOCKET_EVENTS.GAME_SUMMARY, (data: unknown) => gameSummaryReceived.push(data));
+    client.on(SOCKET_EVENTS.GAME_SUMMARY, (data: unknown) =>
+      gameSummaryReceived.push(data)
+    );
 
     await new Promise<void>((resolve) => client.once('connect', resolve));
     await waitMs(50);
@@ -167,5 +196,157 @@ describe('registerConnectionHandlers', () => {
 
     client.disconnect();
     await destroyTestServer(server);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildCorsOrigin unit tests
+// ---------------------------------------------------------------------------
+
+describe('buildCorsOrigin', () => {
+  it('returns the origin string unchanged when admin UI is disabled', () => {
+    expect(buildCorsOrigin('http://example.com', false, true)).toBe(
+      'http://example.com'
+    );
+  });
+
+  it('returns "*" unchanged even when admin UI is enabled (wildcard stays scalar)', () => {
+    expect(buildCorsOrigin('*', true, true)).toBe('*');
+  });
+
+  it('expands to an allowlist including localhost origins when admin UI is enabled in development', () => {
+    expect(buildCorsOrigin('http://example.com', true, true)).toEqual([
+      'http://example.com',
+      'https://admin.socket.io',
+      'http://localhost:3000',
+      'http://localhost:4000',
+      'http://127.0.0.1:4000',
+    ]);
+  });
+
+  it('excludes localhost origins when admin UI is enabled outside development', () => {
+    expect(buildCorsOrigin('http://example.com', true, false)).toEqual([
+      'http://example.com',
+      'https://admin.socket.io',
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// attachSocketServer — admin UI mounting
+// ---------------------------------------------------------------------------
+
+describe('attachSocketServer admin UI', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+
+  beforeEach(() => {
+    mockConfig.ENABLE_ADMIN_UI = false;
+    mockConfig.CORS_ORIGIN = '*';
+    process.env.NODE_ENV = 'development';
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    delete process.env.SOCKET_IO_ADMIN_USERNAME;
+    delete process.env.SOCKET_IO_ADMIN_PASSWORD;
+  });
+
+  it('does not mount admin UI when ENABLE_ADMIN_UI is false', async () => {
+    const httpServer = createServer();
+    const io = attachSocketServer(httpServer);
+
+    await waitMs(0);
+
+    expect(mockInstrument).not.toHaveBeenCalled();
+
+    io.close();
+    httpServer.close();
+  });
+
+  it('mounts admin UI and logs info when ENABLE_ADMIN_UI is true', async () => {
+    mockConfig.ENABLE_ADMIN_UI = true;
+
+    const httpServer = createServer();
+    const io = attachSocketServer(httpServer);
+
+    await waitMs(0);
+
+    expect(mockInstrument).toHaveBeenCalledWith(io, { auth: false });
+    expect(logger.info).toHaveBeenCalledWith('socket.io admin UI enabled');
+
+    io.close();
+    httpServer.close();
+  });
+
+  it('does not log a warning when ENABLE_ADMIN_UI is true in development', async () => {
+    mockConfig.ENABLE_ADMIN_UI = true;
+    process.env.NODE_ENV = 'development';
+
+    const httpServer = createServer();
+    const io = attachSocketServer(httpServer);
+
+    await waitMs(0);
+
+    expect(logger.warn).not.toHaveBeenCalled();
+
+    io.close();
+    httpServer.close();
+  });
+
+  it('logs an error and does not mount when ENABLE_ADMIN_UI is set outside development without credentials', () => {
+    mockConfig.ENABLE_ADMIN_UI = true;
+    process.env.NODE_ENV = 'production';
+
+    const httpServer = createServer();
+    const io = attachSocketServer(httpServer);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'ENABLE_ADMIN_UI is set outside development, but SOCKET_IO_ADMIN_USERNAME and SOCKET_IO_ADMIN_PASSWORD are not both configured; refusing to enable the socket.io admin UI'
+    );
+    expect(mockInstrument).not.toHaveBeenCalled();
+
+    io.close();
+    httpServer.close();
+  });
+
+  it('mounts with basic auth when ENABLE_ADMIN_UI is set outside development with credentials', async () => {
+    mockConfig.ENABLE_ADMIN_UI = true;
+    process.env.NODE_ENV = 'production';
+    process.env.SOCKET_IO_ADMIN_USERNAME = 'admin';
+    process.env.SOCKET_IO_ADMIN_PASSWORD = 'secret';
+
+    const httpServer = createServer();
+    const io = attachSocketServer(httpServer);
+
+    await waitMs(0);
+
+    expect(mockInstrument).toHaveBeenCalledWith(io, {
+      auth: { type: 'basic', username: 'admin', password: 'secret' },
+    });
+    expect(logger.info).toHaveBeenCalledWith('socket.io admin UI enabled');
+
+    io.close();
+    httpServer.close();
+  });
+
+  it('catches and logs an error when the admin UI setup throws', async () => {
+    mockConfig.ENABLE_ADMIN_UI = true;
+    mockInstrument.mockImplementationOnce(() => {
+      throw new Error('setup error');
+    });
+
+    const httpServer = createServer();
+    const io = attachSocketServer(httpServer);
+
+    await waitMs(0);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'Failed to enable socket.io admin UI: %o',
+      expect.any(Error)
+    );
+
+    io.close();
+    httpServer.close();
   });
 });

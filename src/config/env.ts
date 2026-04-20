@@ -26,6 +26,9 @@ const _env = EnvSchema.parse(process.env);
 /** True when DEV_MODE=true is set – disables real polling, activates the dev simulator. */
 const DEV_MODE = process.env.DEV_MODE === 'true';
 
+/** True when ENABLE_ADMIN_UI=true is set – mounts the @socket.io/admin-ui panel. Requires explicit opt-in. */
+const ENABLE_ADMIN_UI = process.env.ENABLE_ADMIN_UI === 'true';
+
 function resolveTeamId(): number {
   const abbrev = process.env.TEAM?.toUpperCase();
   if (abbrev) {
@@ -52,6 +55,9 @@ export const CONFIG = {
 
   /** When true, real MLB polling is disabled and the dev event simulator runs instead. */
   DEV_MODE,
+
+  /** When true, mounts the @socket.io/admin-ui panel. Set ENABLE_ADMIN_UI=true to opt in (dev tool only). */
+  ENABLE_ADMIN_UI,
 
   /** MLB team ID – resolved from TEAM abbreviation or TEAM_ID env var */
   TEAM_ID: DEV_MODE ? 0 : resolveTeamId(),
