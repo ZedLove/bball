@@ -72,6 +72,16 @@ export interface Linescore {
    */
   offense?: {
     batter?: { id: number; fullName: string };
+    onDeck?: { id: number; fullName: string };
+    inHole?: { id: number; fullName: string };
+    /** Runner on first base. Absent when unoccupied. */
+    first?: { id: number; fullName: string };
+    /** Runner on second base. Absent when unoccupied. */
+    second?: { id: number; fullName: string };
+    /** Runner on third base. Absent when unoccupied. */
+    third?: { id: number; fullName: string };
+    /** Current batter's position in the batting order (1–9). */
+    battingOrder?: number;
   };
 }
 
