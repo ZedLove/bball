@@ -7,11 +7,11 @@ import { logUpdate } from './logger.ts';
 import type { GameUpdate } from './parser.ts';
 import { logger } from '../config/logger.ts';
 import { fetchGameFeed } from './game-feed-client.ts';
-import type { GameFeedResponse } from './game-feed-types.ts';
-import type {
-  BoxscoreResponse,
-  NextGameScheduleResponse,
-} from './game-feed-types.ts';
+import { fetchGameFeedLive } from './game-feed-live-client.ts';
+import type { GameFeedResponse, GameFeedLiveResponse } from './game-feed-types.ts';
+import type { BoxscoreResponse, NextGameScheduleResponse } from './game-feed-types.ts';
+import { parseCurrentPlay } from './current-play-parser.ts';
+import type { AtBatState } from '../server/socket-events.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import { parseFeedEvents } from './feed-parser.ts';
@@ -148,9 +148,80 @@ export function startScheduler(io: SocketIOServer): Scheduler {
       }
     }
 
-    // ── 4. Emit baseline game-update ──────────────────────────────────────────
-    // Emitted before enrichment so clients receive current game state before
-    // the enriched events that explain it — a consistent state-first ordering.
+    // ── 4. Parallel enrichment fetches ────────────────────────────────────────
+    // Fire feed/live and diffPatch fetches concurrently after the schedule
+    // resolves and gamePk is known. Both are conditional; either may be absent.
+    // Promise.allSettled ensures a failure in one does not cancel the other.
+
+    const shouldFetchAtBat =
+      update !== null &&
+      update.trackingMode !== 'between-innings' &&
+      update.trackingMode !== 'final' &&
+      update.gamePk !== undefined;
+
+    let shouldEnrich = false;
+    let isFinal = false;
+    let isFirstTick = false;
+
+    if (enrichmentState !== null) {
+      isFinal = update?.trackingMode === 'final';
+      isFirstTick = enrichmentState.lastLinescoreSnapshot === null;
+      shouldEnrich =
+        !isFirstTick &&
+        (isFinal ||
+          (currentLinescore !== null &&
+            hasLinescoreDelta(currentLinescore, enrichmentState.lastLinescoreSnapshot)));
+    }
+
+    const liveFeedPromise: Promise<GameFeedLiveResponse | null> = shouldFetchAtBat
+      ? fetchGameFeedLive(update!.gamePk).catch((err) => {
+          logger.warn('feed/live fetch failed — atBat will be null', {
+            gamePk: update!.gamePk,
+            message: err instanceof Error ? err.message : String(err),
+          });
+          return null;
+        })
+      : Promise.resolve(null);
+
+    const diffPatchPromise: Promise<GameFeedResponse | null> =
+      shouldEnrich && enrichmentState !== null
+        ? fetchGameFeed(enrichmentState.gamePk, enrichmentState.lastTimestamp).catch((err) => {
+            const isError = err instanceof Error;
+            const httpErr = err as { code?: string; response?: { status?: number; statusText?: string } };
+            logger.error(
+              'Enrichment fetch failed — baseline game-update will still be emitted',
+              {
+                gamePk: enrichmentState!.gamePk,
+                name: isError ? err.name : 'Unknown',
+                message: isError ? err.message : String(err),
+                code: httpErr.code,
+                status: httpErr.response?.status,
+                statusText: httpErr.response?.statusText,
+              },
+            );
+            return null;
+          })
+        : Promise.resolve(null);
+
+    const [liveFeedResult, diffPatchResult] = await Promise.all([
+      liveFeedPromise,
+      diffPatchPromise,
+    ]);
+    if (stopped) return;
+
+    // ── 5. Assemble atBat and build full update ───────────────────────────────
+    const atBat: AtBatState | null =
+      liveFeedResult !== null && currentLinescore !== null
+        ? parseCurrentPlay(liveFeedResult, currentLinescore)
+        : null;
+
+    const fullUpdate: GameUpdate | null =
+      update !== null ? { ...update, atBat } : null;
+
+    // ── 6. Emit baseline game-update ──────────────────────────────────────────
+    // Emitted before enrichment events so clients receive current game state
+    // before the enriched events that explain it — a consistent state-first
+    // ordering.
     //
     // Transition-only modes: emit once when entering, then stay quiet until the
     // mode changes.  'outs' and 'runs' emit every tick because their values
@@ -159,160 +230,122 @@ export function startScheduler(io: SocketIOServer): Scheduler {
       mode === 'batting' || mode === 'between-innings' || mode === 'final';
 
     const shouldEmit =
-      update !== null &&
-      (!isTransitionMode(update.trackingMode) ||
-        lastTrackingMode !== update.trackingMode);
+      fullUpdate !== null &&
+      (!isTransitionMode(fullUpdate.trackingMode) ||
+        lastTrackingMode !== fullUpdate.trackingMode);
 
-    if (shouldEmit && update !== null) {
-      logUpdate(update);
-      io.emit(SOCKET_EVENTS.GAME_UPDATE, update);
-      lastEmittedUpdate = update;
+    if (shouldEmit && fullUpdate !== null) {
+      logUpdate(fullUpdate);
+      io.emit(SOCKET_EVENTS.GAME_UPDATE, fullUpdate);
+      lastEmittedUpdate = fullUpdate;
     }
 
-    lastTrackingMode = update?.trackingMode ?? null;
+    lastTrackingMode = fullUpdate?.trackingMode ?? null;
 
-    // ── 5. Enrichment fetch ───────────────────────────────────────────────────
+    // ── 7. Process diffPatch result ───────────────────────────────────────────
     let feedResponseForFinal: GameFeedResponse | null = null;
 
-    if (enrichmentState !== null) {
-      const isFinal = update?.trackingMode === 'final';
-      // First tick for this gamePk: lastLinescoreSnapshot is null.
-      // Enrichment is intentionally skipped to avoid a full-game replay on
-      // bootstrap; the cursor is seeded from gameDate in step 3.
-      const isFirstTick = enrichmentState.lastLinescoreSnapshot === null;
-      const shouldEnrich =
-        !isFirstTick &&
-        (isFinal ||
-          (currentLinescore !== null &&
-            hasLinescoreDelta(
-              currentLinescore,
-              enrichmentState.lastLinescoreSnapshot
-            )));
-
-      if (shouldEnrich) {
-        logger.info('Enrichment fetch triggered', {
-          gamePk: enrichmentState.gamePk,
-          reason: isFinal ? 'final' : 'linescore-delta',
-        });
-
-        // When diffPatch returns [] (null), the linescore already reflects a
-        // completed play but diffPatch hasn't indexed it yet.  Keep the snapshot
-        // stale so hasLinescoreDelta continues to return true on every subsequent
-        // tick, guaranteeing a retry every 10 s regardless of whether the
-        // linescore changes again.  The flag is reset to true in every other
-        // code path so the snapshot advances normally in all non-retry cases.
-        let retryPending = false;
-
-        try {
-          const feedResponse = await fetchGameFeed(
-            enrichmentState.gamePk,
-            enrichmentState.lastTimestamp
-          );
-
-          // The diffPatch endpoint returns [] when there are no new events since
-          // the cursor timecode. This is a normal race: the linescore endpoint
-          // detects a change before diffPatch has indexed the new events.
-          // Leave the cursor unchanged and hold the snapshot stale so the
-          // scheduler retries on the very next tick.
-          if (feedResponse === null) {
-            retryPending = true;
-            logger.debug(
-              'Enrichment fetch returned empty — will retry next tick',
-              {
-                gamePk: enrichmentState.gamePk,
-              }
-            );
-          } else {
-            // Parse completed plays into domain events and emit if non-empty.
-            const gameEvents = parseFeedEvents(
-              feedResponse,
-              enrichmentState.gamePk,
-              enrichmentState.lastProcessedAtBatIndex
-            );
-
-            if (gameEvents.length > 0) {
-              const batch: GameEventsPayload = {
-                gamePk: enrichmentState.gamePk,
-                events: gameEvents,
-              };
-              io.emit(SOCKET_EVENTS.GAME_EVENTS, batch);
-              const maxAtBatIndex = Math.max(
-                ...gameEvents.map((e) => e.atBatIndex)
-              );
-              enrichmentState.lastProcessedAtBatIndex = maxAtBatIndex;
-              logger.info('game-events emitted', {
-                gamePk: enrichmentState.gamePk,
-                count: gameEvents.length,
-                lastProcessedAtBatIndex: maxAtBatIndex,
-              });
-            } else {
-              logger.debug('Enrichment fetch returned no new events', {
-                gamePk: enrichmentState.gamePk,
-              });
-            }
-
-            // Advance the cursor for the next diffPatch call.
-            enrichmentState.lastTimestamp = feedResponse.metaData.timeStamp;
-            logger.debug('Enrichment cursor advanced', {
-              gamePk: enrichmentState.gamePk,
-              lastTimestamp: enrichmentState.lastTimestamp,
-              lastProcessedAtBatIndex: enrichmentState.lastProcessedAtBatIndex,
-            });
-
-            if (isFinal) {
-              feedResponseForFinal = feedResponse;
-            }
-          }
-        } catch (err) {
-          const isError = err instanceof Error;
-          // Cast to the superset of fields an AxiosError exposes so we can log
-          // HTTP status and network-level error codes without using `any`.
-          const httpErr = err as {
-            code?: string;
-            response?: { status?: number; statusText?: string };
-          };
-          logger.error(
-            'Enrichment fetch failed — baseline game-update will still be emitted',
-            {
-              gamePk: enrichmentState.gamePk,
-              name: isError ? err.name : 'Unknown',
-              message: isError ? err.message : String(err),
-              code: httpErr.code,
-              status: httpErr.response?.status,
-              statusText: httpErr.response?.statusText,
-            }
-          );
-        }
-
-        // Hold the linescore snapshot stale when diffPatch returned empty so
-        // hasLinescoreDelta returns true next tick and the scheduler retries
-        // without waiting for a further linescore change.
-        if (!retryPending && currentLinescore !== null) {
-          enrichmentState.lastLinescoreSnapshot = currentLinescore;
-        }
-      } else {
+    if (enrichmentState !== null && shouldEnrich) {
+      if (!isFinal) {
         if (isFirstTick) {
           logger.debug('Enrichment skipped on first tick for new gamePk', {
             gamePk: enrichmentState.gamePk,
           });
         } else {
-          logger.debug('Enrichment skipped — no linescore delta', {
+          logger.info('Enrichment fetch triggered', {
+            gamePk: enrichmentState.gamePk,
+            reason: 'linescore-delta',
+          });
+        }
+      } else {
+        logger.info('Enrichment fetch triggered', {
+          gamePk: enrichmentState.gamePk,
+          reason: 'final',
+        });
+      }
+
+      // When diffPatch returns null (either [] from API or an error), the
+      // linescore already reflects a completed play but diffPatch hasn't
+      // indexed it yet. Keep the snapshot stale so hasLinescoreDelta
+      // continues to return true on every subsequent tick, guaranteeing a
+      // retry. The flag is reset in all non-retry cases below.
+      let retryPending = false;
+
+      if (diffPatchResult === null && shouldEnrich) {
+        // null means either an error (already logged above) or an empty []
+        // response (normal race condition). Either way, hold snapshot stale.
+        retryPending = true;
+        logger.debug('Enrichment fetch returned empty or failed — will retry next tick', {
+          gamePk: enrichmentState.gamePk,
+        });
+      } else if (diffPatchResult !== null) {
+        const feedResponse = diffPatchResult;
+
+        const gameEvents = parseFeedEvents(
+          feedResponse,
+          enrichmentState.gamePk,
+          enrichmentState.lastProcessedAtBatIndex,
+        );
+
+        if (gameEvents.length > 0) {
+          const batch: GameEventsPayload = {
+            gamePk: enrichmentState.gamePk,
+            events: gameEvents,
+          };
+          io.emit(SOCKET_EVENTS.GAME_EVENTS, batch);
+          const maxAtBatIndex = Math.max(...gameEvents.map((e) => e.atBatIndex));
+          enrichmentState.lastProcessedAtBatIndex = maxAtBatIndex;
+          logger.info('game-events emitted', {
+            gamePk: enrichmentState.gamePk,
+            count: gameEvents.length,
+            lastProcessedAtBatIndex: maxAtBatIndex,
+          });
+        } else {
+          logger.debug('Enrichment fetch returned no new events', {
             gamePk: enrichmentState.gamePk,
           });
         }
 
-        // Enrichment was legitimately skipped (no delta or first tick): advance
-        // the snapshot so the next tick uses the current linescore as its baseline.
-        if (currentLinescore !== null) {
-          enrichmentState.lastLinescoreSnapshot = currentLinescore;
+        enrichmentState.lastTimestamp = feedResponse.metaData.timeStamp;
+        logger.debug('Enrichment cursor advanced', {
+          gamePk: enrichmentState.gamePk,
+          lastTimestamp: enrichmentState.lastTimestamp,
+          lastProcessedAtBatIndex: enrichmentState.lastProcessedAtBatIndex,
+        });
+
+        if (isFinal) {
+          feedResponseForFinal = feedResponse;
         }
+      }
+
+      // Hold the linescore snapshot stale when diffPatch returned empty so
+      // hasLinescoreDelta returns true next tick and the scheduler retries
+      // without waiting for a further linescore change.
+      if (!retryPending && currentLinescore !== null) {
+        enrichmentState.lastLinescoreSnapshot = currentLinescore;
+      }
+    } else if (enrichmentState !== null) {
+      if (isFirstTick) {
+        logger.debug('Enrichment skipped on first tick for new gamePk', {
+          gamePk: enrichmentState.gamePk,
+        });
+      } else {
+        logger.debug('Enrichment skipped — no linescore delta', {
+          gamePk: enrichmentState.gamePk,
+        });
+      }
+
+      // Enrichment was legitimately skipped (no delta or first tick): advance
+      // the snapshot so the next tick uses the current linescore as its baseline.
+      if (currentLinescore !== null) {
+        enrichmentState.lastLinescoreSnapshot = currentLinescore;
       }
     }
 
-    // ── 6. Final game handling ─────────────────────────────────────────────────
+    // ── 8. Final game handling ─────────────────────────────────────────────────
     // Runs only once: enrichmentState is set to null at the end of this block,
     // preventing re-execution on subsequent idle-poll ticks.
-    if (update?.trackingMode === 'final' && enrichmentState !== null) {
+    if (fullUpdate?.trackingMode === 'final' && enrichmentState !== null) {
       const gamePkForFinal = enrichmentState.gamePk;
 
       // Fetch boxscore (topPerformers) and next-game data in parallel.
@@ -349,9 +382,9 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         try {
           const summary = buildGameSummary(
             gamePkForFinal,
-            { away: update.score.away, home: update.score.home },
-            update.inning.number,
-            update.isExtraInnings,
+            { away: fullUpdate.score.away, home: fullUpdate.score.home },
+            fullUpdate.inning.number,
+            fullUpdate.isExtraInnings,
             feedResponseForFinal,
             boxscoreResponse,
             nextGameResponse,
@@ -378,7 +411,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
       });
     }
 
-    // ── 7. Schedule next tick ─────────────────────────────────────────────────
+    // ── 9. Schedule next tick ─────────────────────────────────────────────────
     const getNextIntervalSec = (update: GameUpdate | null): number => {
       if (
         update === null ||
@@ -399,7 +432,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
       }
     };
 
-    const intervalSec = getNextIntervalSec(update);
+    const intervalSec = getNextIntervalSec(fullUpdate);
     logger.info(`Next tick in ${intervalSec}s`);
     timer = setTimeout(() => {
       loop().catch((err) => logger.error('Scheduler loop error: %s', err));

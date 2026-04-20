@@ -1,4 +1,5 @@
 import type { ScheduleResponse } from './schedule-client.ts';
+import type { AtBatState } from '../server/socket-events.ts';
 
 /** Enriched game update emitted via Socket.IO and logged for observability. */
 export interface GameUpdate {
@@ -66,6 +67,12 @@ export interface GameUpdate {
    * The scheduler uses this (plus a configurable buffer) as its sleep interval.
    */
   inningBreakLength: number | null;
+  /**
+   * Live at-bat snapshot. null during between-innings, final, pre-game,
+   * or when the feed/live fetch is unavailable.
+   * Populated by the scheduler after the feed/live fetch resolves.
+   */
+  atBat: AtBatState | null;
 }
 
 export interface TeamInfo {
@@ -213,5 +220,6 @@ export function parseGameUpdate(
     upcomingPitcher,
     gamePk: game.gamePk,
     inningBreakLength,
+    atBat: null,
   };
 }

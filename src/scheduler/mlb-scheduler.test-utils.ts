@@ -10,6 +10,7 @@ import type {
   GameFeedResponse,
   BoxscoreResponse,
   NextGameScheduleResponse,
+  GameFeedLiveResponse,
 } from './game-feed-types.ts';
 
 // ── Test constants ───────────────────────────────────────────────────────────
@@ -253,5 +254,25 @@ export function makeNextGameResponse(): NextGameScheduleResponse {
         ],
       },
     ],
+  };
+}
+
+/**
+ * Creates a minimal `GameFeedLiveResponse` for use in scheduler tests.
+ * By default, `currentPlay` is null — produces `atBat: null` from parseCurrentPlay.
+ *
+ * Pass `overrides` to supply a `currentPlay` for tests that assert a populated
+ * `atBat`.
+ */
+export function makeGameFeedLiveResponse(
+  overrides: Partial<GameFeedLiveResponse['liveData']['plays']> = {},
+): GameFeedLiveResponse {
+  return {
+    liveData: {
+      plays: {
+        currentPlay: null,
+        ...overrides,
+      },
+    },
   };
 }
