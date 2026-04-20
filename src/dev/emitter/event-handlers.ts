@@ -370,7 +370,9 @@ export function handlePlateAppearance(
   // Clear the active at-bat: simulate the gap before the next batter steps in.
   store.setState({ currentAtBat: null });
 
-  return ok(`✓ Plate appearance: ${eventType} | ${state.inning.ordinal} ${state.inning.half}`);
+  return ok(
+    `✓ Plate appearance: ${eventType} | ${state.inning.ordinal} ${state.inning.half}`
+  );
 }
 
 export function handleScore(
@@ -553,7 +555,7 @@ export function handleSimGameSummary(
 export function handleNewBatter(
   store: StateStore,
   io: SocketIOServer,
-  options: NewBatterOptions,
+  options: NewBatterOptions
 ): HandlerResult {
   const state = store.getState();
   const error = validateTransition('out', state); // requires game active, not final
@@ -565,8 +567,11 @@ export function handleNewBatter(
     battingOrder: 1,
   };
   const pitcher = {
-    id: options.pitcherId ?? (state.currentPitcher?.id ?? randomPitcherId()),
-    fullName: options.pitcherName ?? (state.currentPitcher?.fullName ?? 'Simulated Pitcher'),
+    id: options.pitcherId ?? state.currentPitcher?.id ?? randomPitcherId(),
+    fullName:
+      options.pitcherName ??
+      state.currentPitcher?.fullName ??
+      'Simulated Pitcher',
   };
 
   store.setState({
@@ -588,14 +593,14 @@ export function handleNewBatter(
   emitUpdate(io, store, 'outs');
   return ok(
     `✓ New batter: ${batter.fullName} (#${batter.id}) vs ${pitcher.fullName}` +
-      ` | ${state.inning.ordinal} ${state.inning.half} | Count 0-0`,
+      ` | ${state.inning.ordinal} ${state.inning.half} | Count 0-0`
   );
 }
 
 export function handlePitch(
   store: StateStore,
   io: SocketIOServer,
-  options: PitchOptions,
+  options: PitchOptions
 ): HandlerResult {
   const state = store.getState();
   const error = validateTransition('out', state);
@@ -612,9 +617,10 @@ export function handlePitch(
 
   const currentCount = state.currentAtBat.count;
   const newBalls = isBall ? currentCount.balls + 1 : currentCount.balls;
-  const newStrikes = isStrike && currentCount.strikes < 2
-    ? currentCount.strikes + 1
-    : currentCount.strikes;
+  const newStrikes =
+    isStrike && currentCount.strikes < 2
+      ? currentCount.strikes + 1
+      : currentCount.strikes;
 
   const pitchNumber = state.currentAtBat.pitchSequence.length + 1;
   const newPitch = {
@@ -642,7 +648,7 @@ export function handlePitch(
   emitUpdate(io, store, 'outs');
   return ok(
     `✓ Pitch ${pitchNumber}: ${newPitch.pitchType} | ${call}` +
-      ` | Count ${newBalls}-${newStrikes} | ${options.speed ?? 93} mph`,
+      ` | Count ${newBalls}-${newStrikes} | ${options.speed ?? 93} mph`
   );
 }
 
