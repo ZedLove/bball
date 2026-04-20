@@ -8,9 +8,10 @@ import type { Server as SocketIOServer } from 'socket.io';
 // ── Hoisted mock state (must be declared before vi.mock factories run) ────────
 
 const mockConfig = vi.hoisted(
-  (): { CORS_ORIGIN: string; ENABLE_ADMIN_UI: boolean } => ({
+  (): { CORS_ORIGIN: string; ENABLE_ADMIN_UI: boolean; PORT: number } => ({
     CORS_ORIGIN: '*',
     ENABLE_ADMIN_UI: false,
+    PORT: 4000,
   })
 );
 
@@ -205,17 +206,26 @@ describe('registerConnectionHandlers', () => {
 
 describe('buildCorsOrigin', () => {
   it('returns the origin string unchanged when admin UI is disabled', () => {
-    expect(buildCorsOrigin('http://example.com', false, true)).toBe(
+    expect(buildCorsOrigin('http://example.com', false, true, 4000)).toBe(
       'http://example.com'
     );
   });
 
-  it('returns "*" unchanged even when admin UI is enabled (wildcard stays scalar)', () => {
-    expect(buildCorsOrigin('*', true, true)).toBe('*');
+  it('expands to an allowlist of admin+localhost origins when admin UI is enabled with wildcard CORS in development', () => {
+    expect(buildCorsOrigin('*', true, true, 4000)).toEqual([
+      'https://admin.socket.io',
+      'http://localhost:3000',
+      'http://localhost:4000',
+      'http://127.0.0.1:4000',
+    ]);
+  });
+
+  it('returns "*" unchanged when admin UI is enabled with wildcard CORS outside development', () => {
+    expect(buildCorsOrigin('*', true, false, 4000)).toBe('*');
   });
 
   it('expands to an allowlist including localhost origins when admin UI is enabled in development', () => {
-    expect(buildCorsOrigin('http://example.com', true, true)).toEqual([
+    expect(buildCorsOrigin('http://example.com', true, true, 4000)).toEqual([
       'http://example.com',
       'https://admin.socket.io',
       'http://localhost:3000',
@@ -225,9 +235,19 @@ describe('buildCorsOrigin', () => {
   });
 
   it('excludes localhost origins when admin UI is enabled outside development', () => {
-    expect(buildCorsOrigin('http://example.com', true, false)).toEqual([
+    expect(buildCorsOrigin('http://example.com', true, false, 4000)).toEqual([
       'http://example.com',
       'https://admin.socket.io',
+    ]);
+  });
+
+  it('derives localhost origins from the configured server port', () => {
+    expect(buildCorsOrigin('http://example.com', true, true, 8080)).toEqual([
+      'http://example.com',
+      'https://admin.socket.io',
+      'http://localhost:3000',
+      'http://localhost:8080',
+      'http://127.0.0.1:8080',
     ]);
   });
 });
@@ -296,6 +316,7 @@ describe('attachSocketServer admin UI', () => {
 
   it('logs an error and does not mount when ENABLE_ADMIN_UI is set outside development without credentials', () => {
     mockConfig.ENABLE_ADMIN_UI = true;
+    mockConfig.CORS_ORIGIN = 'http://example.com';
     process.env.NODE_ENV = 'production';
 
     const httpServer = createServer();
@@ -310,8 +331,26 @@ describe('attachSocketServer admin UI', () => {
     httpServer.close();
   });
 
+  it('logs an error and does not mount when ENABLE_ADMIN_UI is set outside development with wildcard CORS_ORIGIN', () => {
+    mockConfig.ENABLE_ADMIN_UI = true;
+    mockConfig.CORS_ORIGIN = '*';
+    process.env.NODE_ENV = 'production';
+
+    const httpServer = createServer();
+    const io = attachSocketServer(httpServer);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      'ENABLE_ADMIN_UI is set outside development with a wildcard CORS_ORIGIN; the admin UI uses credentialed requests which are incompatible with a wildcard origin. Set CORS_ORIGIN to your server URL to enable the admin UI.'
+    );
+    expect(mockInstrument).not.toHaveBeenCalled();
+
+    io.close();
+    httpServer.close();
+  });
+
   it('mounts with basic auth when ENABLE_ADMIN_UI is set outside development with credentials', async () => {
     mockConfig.ENABLE_ADMIN_UI = true;
+    mockConfig.CORS_ORIGIN = 'http://example.com';
     process.env.NODE_ENV = 'production';
     process.env.SOCKET_IO_ADMIN_USERNAME = 'admin';
     process.env.SOCKET_IO_ADMIN_PASSWORD = 'secret';

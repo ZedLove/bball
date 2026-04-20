@@ -2,5 +2,5 @@
   "watch": ["src"],
   "ext": "ts",
   "ignore": ["dist"],
-  "exec": "node --import ts-node/esm  ./src/index.ts"
+  "exec": "NODE_ENV=development node --import ts-node/esm  ./src/index.ts"
 }

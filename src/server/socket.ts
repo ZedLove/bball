@@ -8,11 +8,16 @@ import { SOCKET_EVENTS } from './socket-events.ts';
 /**
  * Builds the Socket.IO CORS origin config.
  *
- * When the admin UI is enabled and CORS_ORIGIN is not a wildcard, we expand the
- * allowlist to include the admin.socket.io panel origin. In development we also
- * include common local dev addresses. A wildcard CORS_ORIGIN is incompatible with
- * `credentials: true`, so in that case we keep the plain string value and skip
- * the expanded allowlist.
+ * When the admin UI is enabled, we expand the allowlist to include the
+ * admin.socket.io panel origin. In development we also include common local dev
+ * addresses, derived from the server port so the list stays accurate when PORT
+ * differs from the default.
+ *
+ * The admin UI browser client always sends `withCredentials: true`, so the server
+ * must respond with a specific origin rather than a wildcard. When CORS_ORIGIN is
+ * `'*'` and admin is enabled in development, we replace the wildcard with an
+ * explicit allowlist. Outside development the admin UI refuses to mount when
+ * CORS_ORIGIN is a wildcard (handled in attachSocketServer).
  *
  * Localhost origins are intentionally excluded outside development: because the
  * `Origin` header is client-controlled, adding `http://localhost:*` to a
@@ -24,30 +29,46 @@ import { SOCKET_EVENTS } from './socket-events.ts';
 export function buildCorsOrigin(
   corsOrigin: string,
   adminEnabled: boolean,
-  isDevelopment: boolean
+  isDevelopment: boolean,
+  serverPort: number
 ): string | string[] {
-  if (!adminEnabled || corsOrigin === '*') {
+  if (!adminEnabled) {
     return corsOrigin;
   }
-  const origins = [corsOrigin, 'https://admin.socket.io'];
-  if (isDevelopment) {
-    origins.push(
-      'http://localhost:3000',
-      'http://localhost:4000',
-      'http://127.0.0.1:4000'
-    );
+  // Dev-only localhost origins, derived from the configured port.
+  const devOrigins = isDevelopment
+    ? [
+        'http://localhost:3000',
+        `http://localhost:${serverPort}`,
+        `http://127.0.0.1:${serverPort}`,
+      ]
+    : [];
+  if (corsOrigin === '*') {
+    // The admin UI client sends withCredentials: true, incompatible with a wildcard
+    // origin. In dev mode, swap to an explicit allowlist. Outside dev, the admin UI
+    // is blocked at the mount stage (attachSocketServer logs an error and skips it).
+    if (!isDevelopment) {
+      return corsOrigin;
+    }
+    return ['https://admin.socket.io', ...devOrigins];
   }
-  return origins;
+  return [corsOrigin, 'https://admin.socket.io', ...devOrigins];
 }
 
 export function attachSocketServer(httpServer: HttpServer): SocketIOServer {
   const adminEnabled = CONFIG.ENABLE_ADMIN_UI;
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const useExpandedOrigins = adminEnabled && CONFIG.CORS_ORIGIN !== '*';
+  const corsOriginConfig = buildCorsOrigin(
+    CONFIG.CORS_ORIGIN,
+    adminEnabled,
+    isDevelopment,
+    CONFIG.PORT
+  );
+  const useExpandedOrigins = Array.isArray(corsOriginConfig);
 
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: buildCorsOrigin(CONFIG.CORS_ORIGIN, adminEnabled, isDevelopment),
+      origin: corsOriginConfig,
       methods: ['GET', 'POST'],
       credentials: useExpandedOrigins,
     },
@@ -58,7 +79,11 @@ export function attachSocketServer(httpServer: HttpServer): SocketIOServer {
     const adminUsername = process.env.SOCKET_IO_ADMIN_USERNAME;
     const adminPassword = process.env.SOCKET_IO_ADMIN_PASSWORD;
 
-    if (!isDevelopment && (!adminUsername || !adminPassword)) {
+    if (!isDevelopment && CONFIG.CORS_ORIGIN === '*') {
+      logger.error(
+        'ENABLE_ADMIN_UI is set outside development with a wildcard CORS_ORIGIN; the admin UI uses credentialed requests which are incompatible with a wildcard origin. Set CORS_ORIGIN to your server URL to enable the admin UI.'
+      );
+    } else if (!isDevelopment && (!adminUsername || !adminPassword)) {
       logger.error(
         'ENABLE_ADMIN_UI is set outside development, but SOCKET_IO_ADMIN_USERNAME and SOCKET_IO_ADMIN_PASSWORD are not both configured; refusing to enable the socket.io admin UI'
       );
