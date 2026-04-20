@@ -12,7 +12,7 @@ const feed = fixture as unknown as GameFeedLiveResponse;
 // ---------------------------------------------------------------------------
 
 function makeLinescore(
-  overrides: Partial<NonNullable<Linescore['offense']>> = {},
+  overrides: Partial<NonNullable<Linescore['offense']>> = {}
 ): Linescore {
   return {
     currentInning: 7,
@@ -37,7 +37,9 @@ function makeLinescore(
 }
 
 function withCurrentPlay(
-  overrides: Partial<NonNullable<GameFeedLiveResponse['liveData']['plays']['currentPlay']>>,
+  overrides: Partial<
+    NonNullable<GameFeedLiveResponse['liveData']['plays']['currentPlay']>
+  >
 ): GameFeedLiveResponse {
   return {
     liveData: {
@@ -63,7 +65,11 @@ describe('parseCurrentPlay', () => {
       expect(result).not.toBeNull();
       const state = result as AtBatState;
 
-      expect(state.batter).toEqual({ id: 678554, fullName: 'Curtis Mead', battingOrder: 2 });
+      expect(state.batter).toEqual({
+        id: 678554,
+        fullName: 'Curtis Mead',
+        battingOrder: 2,
+      });
       expect(state.pitcher).toEqual({ id: 676775, fullName: 'Keaton Winn' });
       expect(state.batSide).toBe('R');
       expect(state.pitchHand).toBe('R');
@@ -80,12 +86,17 @@ describe('parseCurrentPlay', () => {
       expect(result.pitchSequence[0]).toMatchObject({
         pitchNumber: 1,
         pitchType: 'Sinker',
+        pitchTypeCode: 'SI',
         call: 'Called Strike',
         isStrike: true,
         isBall: false,
         speedMph: 96.8,
         countAfter: { balls: 0, strikes: 1 },
+        hitData: null,
       });
+      expect(result.pitchSequence[0].tracking).not.toBeNull();
+      expect(result.pitchSequence[0].tracking!.startSpeed).toBe(96.8);
+      expect(result.pitchSequence[0].tracking!.breaks.spinRate).toBe(2290);
       expect(result.pitchSequence[1]).toMatchObject({
         pitchNumber: 2,
         pitchType: 'Four-Seam Fastball',
@@ -207,7 +218,10 @@ describe('parseCurrentPlay', () => {
   describe('pitch sequence edge cases', () => {
     it('returns an empty pitchSequence when playEvents is empty', () => {
       const emptyEvents = withCurrentPlay({ playEvents: [] });
-      const result = parseCurrentPlay(emptyEvents, makeLinescore()) as AtBatState;
+      const result = parseCurrentPlay(
+        emptyEvents,
+        makeLinescore()
+      ) as AtBatState;
 
       expect(result.pitchSequence).toEqual([]);
     });
@@ -223,11 +237,17 @@ describe('parseCurrentPlay', () => {
           {
             type: 'pickoff',
             isPitch: false,
-            details: { description: 'Pickoff Attempt 1B', eventType: 'pickoff_1b' },
+            details: {
+              description: 'Pickoff Attempt 1B',
+              eventType: 'pickoff_1b',
+            },
           },
         ],
       });
-      const result = parseCurrentPlay(onlyActions, makeLinescore()) as AtBatState;
+      const result = parseCurrentPlay(
+        onlyActions,
+        makeLinescore()
+      ) as AtBatState;
 
       expect(result.pitchSequence).toEqual([]);
     });
