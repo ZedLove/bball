@@ -8,8 +8,14 @@ import type { GameUpdate } from './parser.ts';
 import { logger } from '../config/logger.ts';
 import { fetchGameFeed } from './game-feed-client.ts';
 import { fetchGameFeedLive } from './game-feed-live-client.ts';
-import type { GameFeedResponse, GameFeedLiveResponse } from './game-feed-types.ts';
-import type { BoxscoreResponse, NextGameScheduleResponse } from './game-feed-types.ts';
+import type {
+  GameFeedResponse,
+  GameFeedLiveResponse,
+} from './game-feed-types.ts';
+import type {
+  BoxscoreResponse,
+  NextGameScheduleResponse,
+} from './game-feed-types.ts';
 import { parseCurrentPlay } from './current-play-parser.ts';
 import type { AtBatState } from '../server/socket-events.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
@@ -170,24 +176,34 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         !isFirstTick &&
         (isFinal ||
           (currentLinescore !== null &&
-            hasLinescoreDelta(currentLinescore, enrichmentState.lastLinescoreSnapshot)));
+            hasLinescoreDelta(
+              currentLinescore,
+              enrichmentState.lastLinescoreSnapshot
+            )));
     }
 
-    const liveFeedPromise: Promise<GameFeedLiveResponse | null> = shouldFetchAtBat
-      ? fetchGameFeedLive(update!.gamePk).catch((err) => {
-          logger.warn('feed/live fetch failed — atBat will be null', {
-            gamePk: update!.gamePk,
-            message: err instanceof Error ? err.message : String(err),
-          });
-          return null;
-        })
-      : Promise.resolve(null);
+    const liveFeedPromise: Promise<GameFeedLiveResponse | null> =
+      shouldFetchAtBat
+        ? fetchGameFeedLive(update!.gamePk).catch((err) => {
+            logger.warn('feed/live fetch failed — atBat will be null', {
+              gamePk: update!.gamePk,
+              message: err instanceof Error ? err.message : String(err),
+            });
+            return null;
+          })
+        : Promise.resolve(null);
 
     const diffPatchPromise: Promise<GameFeedResponse | null> =
       shouldEnrich && enrichmentState !== null
-        ? fetchGameFeed(enrichmentState.gamePk, enrichmentState.lastTimestamp).catch((err) => {
+        ? fetchGameFeed(
+            enrichmentState.gamePk,
+            enrichmentState.lastTimestamp
+          ).catch((err) => {
             const isError = err instanceof Error;
-            const httpErr = err as { code?: string; response?: { status?: number; statusText?: string } };
+            const httpErr = err as {
+              code?: string;
+              response?: { status?: number; statusText?: string };
+            };
             logger.error(
               'Enrichment fetch failed — baseline game-update will still be emitted',
               {
@@ -197,7 +213,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
                 code: httpErr.code,
                 status: httpErr.response?.status,
                 statusText: httpErr.response?.statusText,
-              },
+              }
             );
             return null;
           })
@@ -275,16 +291,19 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         // null means either an error (already logged above) or an empty []
         // response (normal race condition). Either way, hold snapshot stale.
         retryPending = true;
-        logger.debug('Enrichment fetch returned empty or failed — will retry next tick', {
-          gamePk: enrichmentState.gamePk,
-        });
+        logger.debug(
+          'Enrichment fetch returned empty or failed — will retry next tick',
+          {
+            gamePk: enrichmentState.gamePk,
+          }
+        );
       } else if (diffPatchResult !== null) {
         const feedResponse = diffPatchResult;
 
         const gameEvents = parseFeedEvents(
           feedResponse,
           enrichmentState.gamePk,
-          enrichmentState.lastProcessedAtBatIndex,
+          enrichmentState.lastProcessedAtBatIndex
         );
 
         if (gameEvents.length > 0) {
@@ -293,7 +312,9 @@ export function startScheduler(io: SocketIOServer): Scheduler {
             events: gameEvents,
           };
           io.emit(SOCKET_EVENTS.GAME_EVENTS, batch);
-          const maxAtBatIndex = Math.max(...gameEvents.map((e) => e.atBatIndex));
+          const maxAtBatIndex = Math.max(
+            ...gameEvents.map((e) => e.atBatIndex)
+          );
           enrichmentState.lastProcessedAtBatIndex = maxAtBatIndex;
           logger.info('game-events emitted', {
             gamePk: enrichmentState.gamePk,

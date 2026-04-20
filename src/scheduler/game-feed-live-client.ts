@@ -14,7 +14,9 @@ const REQUEST_TIMEOUT_MS = 8_000;
  *
  * @param gamePk  MLB game identifier.
  */
-export async function fetchGameFeedLive(gamePk: number): Promise<GameFeedLiveResponse> {
+export async function fetchGameFeedLive(
+  gamePk: number
+): Promise<GameFeedLiveResponse> {
   const url = `${MLB_GAME_FEED_BASE}/${gamePk}/feed/live`;
   const response = await axios.get<GameFeedLiveResponse>(url, {
     timeout: REQUEST_TIMEOUT_MS,

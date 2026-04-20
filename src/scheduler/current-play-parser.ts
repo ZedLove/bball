@@ -19,7 +19,7 @@ import { mapPitchEvent } from './pitch-mapper.ts';
  */
 export function parseCurrentPlay(
   feed: GameFeedLiveResponse,
-  linescore: Linescore,
+  linescore: Linescore
 ): AtBatState | null {
   const currentPlay = feed.liveData.plays.currentPlay;
 

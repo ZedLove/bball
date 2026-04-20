@@ -265,7 +265,7 @@ export function makeNextGameResponse(): NextGameScheduleResponse {
  * `atBat`.
  */
 export function makeGameFeedLiveResponse(
-  overrides: Partial<GameFeedLiveResponse['liveData']['plays']> = {},
+  overrides: Partial<GameFeedLiveResponse['liveData']['plays']> = {}
 ): GameFeedLiveResponse {
   return {
     liveData: {
