@@ -15,7 +15,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
     languageOptions: {
       parserOptions: {
         project: './tsconfig.json',
@@ -66,7 +66,19 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'scripts/**/*.ts'],
+    // Dev monitor writes directly to Ink — console.log is intentional here
+    files: ['src/monitor/**/*.ts', 'src/monitor/**/*.tsx'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
+    files: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'src/**/*.spec.ts',
+      'scripts/**/*.ts',
+    ],
     languageOptions: {
       globals: {
         describe: 'readonly',

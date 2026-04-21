@@ -22,7 +22,8 @@
     "test": "vitest",
     "test:ci": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:socket": "tsx scripts/test-socket.ts"
+    "monitor": "tsx src/monitor/entry.tsx",
+    "test:socket": "tsx src/monitor/entry.tsx"
   },
   "dependencies": {
     "axios": "^1.13.6",
@@ -39,14 +40,18 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.3.3",
+    "@types/react": "^19.2.14",
     "@types/supertest": "^7.2.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "@vitest/coverage-v8": "^4.1.4",
     "eslint": "^10.0.2",
     "eslint-plugin-security": "^4.0.0",
+    "ink": "^7.0.1",
+    "ink-testing-library": "^4.0.0",
     "nodemon": "^3.1.14",
     "prettier": "^3.8.2",
+    "react": "^19.2.5",
     "socket.io-client": "^4.8.3",
     "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
