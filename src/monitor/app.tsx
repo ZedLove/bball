@@ -11,7 +11,7 @@ import { GameSummaryPanel } from './components/GameSummaryPanel.tsx';
 import { AtBatPanel } from './components/AtBatPanel.tsx';
 import { StrikeZone } from './components/StrikeZone.tsx';
 import { BaseDiamond } from './components/BaseDiamond.tsx';
-import { OnDeckPanel } from './components/OnDeckPanel.tsx';
+import { LineupPanel } from './components/LineupPanel.tsx';
 
 export function App() {
   const { exit } = useApp();
@@ -121,7 +121,7 @@ export function App() {
             second={atBat?.second ?? null}
             third={atBat?.third ?? null}
           />
-          <OnDeckPanel atBat={atBat} />
+          <LineupPanel atBat={atBat} />
         </Box>
       )}
     </Box>

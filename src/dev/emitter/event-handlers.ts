@@ -24,6 +24,7 @@ import type {
   OffensiveSubstitutionEvent,
   DefensiveSubstitutionEvent,
   GameSummary,
+  LineupEntry,
   PitchTrackingData,
   BattedBallData,
 } from '../../server/socket-events.ts';
@@ -620,6 +621,11 @@ export function handleSimGameSummary(
     },
   };
 
+  // Emit game-update with trackingMode: 'final' first so the monitor header
+  // transitions to "🏁 FINAL" before the summary panel appears.
+  store.setState({ gameEnded: true, currentAtBat: null });
+  emitUpdate(io, store, 'final', { atBat: null });
+
   io.emit(SOCKET_EVENTS.GAME_SUMMARY, summary);
   return ok(
     `✓ Game summary emitted | ${state.teams.away.abbreviation} ${state.score.away} – ${state.teams.home.abbreviation} ${state.score.home}`
@@ -639,10 +645,14 @@ export function handleNewBatter(
   const error = validateTransition('out', state); // requires game active, not final
   if (error) return fail(error);
 
+  const batterId = options.batterId ?? randomPitcherId();
+  const batterName = options.batterName ?? 'Simulated Batter';
+
   const batter = {
-    id: options.batterId ?? randomPitcherId(),
-    fullName: options.batterName ?? 'Simulated Batter',
-    battingOrder: 1,
+    id: batterId,
+    fullName: batterName,
+    // MLB battingOrder encoding: slot×100. Batter occupies slot 1 (lead-off).
+    battingOrder: 100,
   };
   const pitcher = {
     id: options.pitcherId ?? state.currentPitcher?.id ?? randomPitcherId(),
@@ -652,19 +662,29 @@ export function handleNewBatter(
       'Simulated Pitcher',
   };
 
+  // Build a plausible 9-player lineup for the monitor's LineupPanel.
+  const lineup = buildSimulatedLineup(batterId, batterName);
+
+  // On-deck and in-hole are the next two batters in the simulated lineup.
+  const onDeck = lineup[1] ?? null;
+  const inHole = lineup[2] ?? null;
+
   store.setState({
     currentAtBat: {
       batter,
       pitcher,
       batSide: 'R',
       pitchHand: 'R',
-      onDeck: null,
-      inHole: null,
+      onDeck:
+        onDeck !== null ? { id: onDeck.id, fullName: onDeck.fullName } : null,
+      inHole:
+        inHole !== null ? { id: inHole.id, fullName: inHole.fullName } : null,
       first: null,
       second: null,
       third: null,
       count: { balls: 0, strikes: 0 },
       pitchSequence: [],
+      lineup,
     },
   });
 
@@ -758,6 +778,50 @@ function randomPitcherId(): number {
 
 function randomAtBatIndex(): number {
   return Math.floor(Math.random() * 50);
+}
+
+/**
+ * Builds a simulated 9-player lineup with the given batter in slot 1 and
+ * eight generated teammates in slots 2–9. Slots use the MLB encoding (slot×100).
+ */
+function buildSimulatedLineup(
+  batterId: number,
+  batterName: string
+): LineupEntry[] {
+  const teammates = [
+    { name: 'Simulated Teammate 2', ops: '.741' },
+    { name: 'Simulated Teammate 3', ops: '.698' },
+    { name: 'Simulated Teammate 4', ops: '.812' },
+    { name: 'Simulated Teammate 5', ops: '.767' },
+    { name: 'Simulated Teammate 6', ops: '.723' },
+    { name: 'Simulated Teammate 7', ops: '.680' },
+    { name: 'Simulated Teammate 8', ops: '.634' },
+    { name: 'Simulated Teammate 9', ops: '.601' },
+  ];
+
+  const entries: LineupEntry[] = [
+    {
+      id: batterId,
+      fullName: batterName,
+      battingOrder: 100,
+      atBats: 0,
+      hits: 0,
+      seasonOps: '.750',
+    },
+  ];
+
+  for (let i = 0; i < teammates.length; i++) {
+    entries.push({
+      id: randomPitcherId(),
+      fullName: teammates[i]!.name,
+      battingOrder: (i + 2) * 100,
+      atBats: 0,
+      hits: 0,
+      seasonOps: teammates[i]!.ops,
+    });
+  }
+
+  return entries;
 }
 
 /** Convert an eventType string like 'grounded_into_double_play' to human readable form. */

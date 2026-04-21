@@ -101,11 +101,11 @@ describe('mapPitchToGrid', () => {
 
   describe('in-bounds pitches', () => {
     it('maps center-plate pitch to center of grid', () => {
-      // pX = 0 → col = 8 (center of 17-wide grid)
+      // pX = 0 → col = 12 (center of 25-wide grid)
       // pZ = 2.5 → middle of viewport
       const result = mapPitchToGrid(0, 2.5, viewport, GRID_WIDTH, GRID_HEIGHT);
       expect(result).not.toBeNull();
-      expect(result!.col).toBe(8); // center of 17
+      expect(result!.col).toBe(12); // center of 25
     });
 
     it('maps far-left pitch to left edge (col 0)', () => {
@@ -120,7 +120,7 @@ describe('mapPitchToGrid', () => {
       expect(result!.col).toBe(0);
     });
 
-    it('maps far-right pitch to right edge (col 16)', () => {
+    it('maps far-right pitch to right edge (col 24)', () => {
       const result = mapPitchToGrid(
         1.5,
         2.5,
@@ -129,7 +129,7 @@ describe('mapPitchToGrid', () => {
         GRID_HEIGHT
       );
       expect(result).not.toBeNull();
-      expect(result!.col).toBe(16);
+      expect(result!.col).toBe(24);
     });
 
     it('maps top-of-viewport pitch to row 0', () => {

@@ -17,6 +17,7 @@ function makeAtBat(overrides: Partial<AtBatState> = {}): AtBatState {
     third: null,
     count: { balls: 1, strikes: 2 },
     pitchSequence: [],
+    lineup: [],
     ...overrides,
   };
 }
