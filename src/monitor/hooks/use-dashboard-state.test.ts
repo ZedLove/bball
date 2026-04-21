@@ -39,6 +39,7 @@ function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
     upcomingPitcher: null,
     inningBreakLength: null,
     atBat: null,
+    trackedTeamAbbr: 'BOS',
     ...overrides,
   };
 }
@@ -96,9 +97,11 @@ function makeGameSummary(overrides: Partial<GameSummary> = {}): GameSummary {
 function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
   return {
     lastUpdate: null,
+    trackedTeamAbbr: null,
     events: [],
     summary: null,
     lastHit: null,
+    celebration: null,
     filter: 'all',
     pitchDisplay: 'all',
     connectedAt: null,
@@ -441,6 +444,192 @@ describe('dashboardReducer', () => {
         payload: makeGameUpdate(),
       });
       expect(next).not.toBe(state);
+    });
+  });
+
+  describe('game-update — trackedTeamAbbr latch', () => {
+    it('latches trackedTeamAbbr from the first payload', () => {
+      const state = makeState({ trackedTeamAbbr: null });
+      const next = dashboardReducer(state, {
+        type: 'game-update',
+        payload: makeGameUpdate({ trackedTeamAbbr: 'BOS' }),
+      });
+      expect(next.trackedTeamAbbr).toBe('BOS');
+    });
+
+    it('does not overwrite a latched trackedTeamAbbr', () => {
+      const state = makeState({ trackedTeamAbbr: 'BOS' });
+      const next = dashboardReducer(state, {
+        type: 'game-update',
+        payload: makeGameUpdate({ trackedTeamAbbr: 'NYY' }),
+      });
+      expect(next.trackedTeamAbbr).toBe('BOS');
+    });
+  });
+
+  describe('game-events — celebration detection', () => {
+    function makeHomeRunEvent(
+      overrides: Partial<PlateAppearanceCompletedEvent> = {}
+    ): PlateAppearanceCompletedEvent {
+      return makePlateAppearance({
+        eventType: 'Home Run',
+        battingTeam: 'NYY',
+        batter: { id: 592450, fullName: 'Aaron Judge' },
+        ...overrides,
+      });
+    }
+
+    it('sets positive celebration when tracked team hits HR', () => {
+      // BOS is tracked; BOS bats HR
+      const state = makeState({ trackedTeamAbbr: 'BOS' });
+      const hrEvent = makeHomeRunEvent({ battingTeam: 'BOS' });
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([hrEvent]),
+      });
+      expect(next.celebration).not.toBeNull();
+      expect(next.celebration!.polarity).toBe('positive');
+      expect(next.celebration!.kind).toBe('home-run');
+      expect(next.celebration!.frame).toBe(0);
+    });
+
+    it('sets negative celebration when opponent hits HR', () => {
+      // BOS is tracked; NYY bats HR
+      const state = makeState({ trackedTeamAbbr: 'BOS' });
+      const hrEvent = makeHomeRunEvent({ battingTeam: 'NYY' });
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([hrEvent]),
+      });
+      expect(next.celebration).not.toBeNull();
+      expect(next.celebration!.polarity).toBe('negative');
+      expect(next.celebration!.kind).toBe('home-run');
+    });
+
+    it('includes batter name in home-run celebration', () => {
+      const state = makeState({ trackedTeamAbbr: 'NYY' });
+      const hrEvent = makeHomeRunEvent({
+        battingTeam: 'NYY',
+        batter: { id: 592450, fullName: 'Aaron Judge' },
+      });
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([hrEvent]),
+      });
+      expect(next.celebration!.batterName).toBe('Aaron Judge');
+    });
+
+    it('does not set celebration for non-HR events', () => {
+      const state = makeState({ trackedTeamAbbr: 'BOS' });
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([
+          makePlateAppearance({ eventType: 'Single' }),
+        ]),
+      });
+      expect(next.celebration).toBeNull();
+    });
+  });
+
+  describe('game-summary — win/loss celebration', () => {
+    it('sets positive celebration when tracked team wins as home team', () => {
+      // home=BOS, away=NYY; home wins 5-3; BOS is tracked
+      const state = makeState({
+        trackedTeamAbbr: 'BOS',
+        lastUpdate: makeGameUpdate(),
+      });
+      const next = dashboardReducer(state, {
+        type: 'game-summary',
+        payload: makeGameSummary({ finalScore: { home: 5, away: 3 } }),
+      });
+      expect(next.celebration!.kind).toBe('win');
+      expect(next.celebration!.polarity).toBe('positive');
+    });
+
+    it('sets negative celebration when tracked team loses as home team', () => {
+      const state = makeState({
+        trackedTeamAbbr: 'BOS',
+        lastUpdate: makeGameUpdate(),
+      });
+      const next = dashboardReducer(state, {
+        type: 'game-summary',
+        payload: makeGameSummary({ finalScore: { home: 2, away: 5 } }),
+      });
+      expect(next.celebration!.kind).toBe('loss');
+      expect(next.celebration!.polarity).toBe('negative');
+    });
+
+    it('sets positive celebration when tracked team wins as away team', () => {
+      // NYY is tracked; NYY is away (score: away=5, home=3 → NYY wins)
+      const state = makeState({
+        trackedTeamAbbr: 'NYY',
+        lastUpdate: makeGameUpdate(),
+      });
+      const next = dashboardReducer(state, {
+        type: 'game-summary',
+        payload: makeGameSummary({ finalScore: { home: 3, away: 5 } }),
+      });
+      expect(next.celebration!.kind).toBe('win');
+      expect(next.celebration!.polarity).toBe('positive');
+    });
+
+    it('leaves celebration null when trackedTeamAbbr is null', () => {
+      const state = makeState({ trackedTeamAbbr: null });
+      const next = dashboardReducer(state, {
+        type: 'game-summary',
+        payload: makeGameSummary(),
+      });
+      expect(next.celebration).toBeNull();
+    });
+  });
+
+  describe('advance-celebration-frame action', () => {
+    function makeCelebration(): import('../types.ts').CelebrationState {
+      return {
+        kind: 'home-run',
+        polarity: 'positive',
+        frame: 0,
+        batterName: 'Test',
+        expiresAt: Date.now() + 3_000,
+      };
+    }
+
+    it('increments the frame counter', () => {
+      const state = makeState({ celebration: makeCelebration() });
+      const next = dashboardReducer(state, {
+        type: 'advance-celebration-frame',
+      });
+      expect(next.celebration!.frame).toBe(1);
+    });
+
+    it('is a no-op when celebration is null', () => {
+      const state = makeState({ celebration: null });
+      const next = dashboardReducer(state, {
+        type: 'advance-celebration-frame',
+      });
+      expect(next).toBe(state);
+    });
+  });
+
+  describe('dismiss-celebration action', () => {
+    it('clears celebration', () => {
+      const state = makeState({
+        celebration: {
+          kind: 'win',
+          polarity: 'positive',
+          frame: 10,
+          batterName: '',
+          expiresAt: Date.now() + 1_000,
+        },
+      });
+      const next = dashboardReducer(state, { type: 'dismiss-celebration' });
+      expect(next.celebration).toBeNull();
+    });
+
+    it('is a no-op when celebration is already null', () => {
+      const state = makeState({ celebration: null });
+      const next = dashboardReducer(state, { type: 'dismiss-celebration' });
+      expect(next.celebration).toBeNull();
     });
   });
 });

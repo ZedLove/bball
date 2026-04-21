@@ -35,6 +35,7 @@ describe('logUpdate', () => {
     upcomingPitcher: null,
     inningBreakLength: null,
     atBat: null,
+    trackedTeamAbbr: 'STL',
     ...overrides,
   });
 

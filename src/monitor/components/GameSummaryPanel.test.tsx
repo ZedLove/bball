@@ -64,14 +64,22 @@ describe('GameSummaryPanel', () => {
   describe('score display', () => {
     it('renders final score with team abbreviations', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).toContain('NYY 3 – BOS 5');
     });
 
     it('renders innings count', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).toContain('9 innings');
     });
@@ -79,7 +87,11 @@ describe('GameSummaryPanel', () => {
     it('appends (extras) for extra-innings games', () => {
       const summary = makeSummary({ innings: 12, isExtraInnings: true });
       const { lastFrame } = render(
-        <GameSummaryPanel summary={summary} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={summary}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).toContain('12 innings (extras)');
     });
@@ -88,7 +100,11 @@ describe('GameSummaryPanel', () => {
   describe('null teams fallback', () => {
     it('renders Away / Home placeholders when teams is null', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={null} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={null}
+          trackedTeamAbbr={null}
+        />
       );
       const frame = lastFrame() ?? '';
       expect(frame).toContain('Away 3 – Home 5');
@@ -98,7 +114,11 @@ describe('GameSummaryPanel', () => {
   describe('decisions', () => {
     it('renders winner and loser', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       const frame = lastFrame() ?? '';
       expect(frame).toContain('W: Chris Sale');
@@ -114,7 +134,11 @@ describe('GameSummaryPanel', () => {
         },
       });
       const { lastFrame } = render(
-        <GameSummaryPanel summary={summary} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={summary}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).toContain('S: Craig Kimbrel');
     });
@@ -130,6 +154,7 @@ describe('GameSummaryPanel', () => {
             },
           })}
           teams={makeTeams()}
+          trackedTeamAbbr={null}
         />
       );
       expect(lastFrame()).not.toContain('S:');
@@ -139,7 +164,11 @@ describe('GameSummaryPanel', () => {
   describe('top performers', () => {
     it('renders each performer with name and summary', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       const frame = lastFrame() ?? '';
       expect(frame).toContain('Gleyber Torres');
@@ -150,7 +179,11 @@ describe('GameSummaryPanel', () => {
 
     it('renders Top Performers label', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).toContain('Top Performers');
     });
@@ -158,7 +191,11 @@ describe('GameSummaryPanel', () => {
     it('omits Top Performers section when empty', () => {
       const summary = makeSummary({ topPerformers: [] });
       const { lastFrame } = render(
-        <GameSummaryPanel summary={summary} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={summary}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).not.toContain('Top Performers');
     });
@@ -167,7 +204,11 @@ describe('GameSummaryPanel', () => {
   describe('boxscore URL', () => {
     it('renders the boxscore URL', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).toContain('mlb.com/gameday/823556/final/box-score');
     });
@@ -176,7 +217,11 @@ describe('GameSummaryPanel', () => {
   describe('next game', () => {
     it('renders next game opponent and venue', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       const frame = lastFrame() ?? '';
       expect(frame).toContain('TOR');
@@ -185,7 +230,11 @@ describe('GameSummaryPanel', () => {
 
     it('renders probable pitchers', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       const frame = lastFrame() ?? '';
       expect(frame).toContain('Carlos Rodón');
@@ -199,7 +248,11 @@ describe('GameSummaryPanel', () => {
         }),
       });
       const { lastFrame } = render(
-        <GameSummaryPanel summary={summary} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={summary}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).toContain('TBD');
     });
@@ -207,14 +260,22 @@ describe('GameSummaryPanel', () => {
     it('renders "No upcoming game found" when nextGame is null', () => {
       const summary = makeSummary({ nextGame: null });
       const { lastFrame } = render(
-        <GameSummaryPanel summary={summary} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={summary}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).toContain('No upcoming game found');
     });
 
     it('does not render "No upcoming game found" when nextGame is present', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).not.toContain('No upcoming game found');
     });
@@ -223,9 +284,65 @@ describe('GameSummaryPanel', () => {
   describe('game final label', () => {
     it('renders Game Final header', () => {
       const { lastFrame } = render(
-        <GameSummaryPanel summary={makeSummary()} teams={makeTeams()} />
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
       );
       expect(lastFrame()).toContain('Game Final');
+    });
+  });
+
+  describe('win/loss styling', () => {
+    it('shows win header when tracked team wins as home team', () => {
+      // makeSummary default: home=5, away=3 → home wins
+      const { lastFrame } = render(
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={'BOS'}
+        />
+      );
+      expect(lastFrame()).toContain('Win!');
+    });
+
+    it('shows win header when tracked team wins as away team', () => {
+      // Flip score so away wins
+      const { lastFrame } = render(
+        <GameSummaryPanel
+          summary={makeSummary({ finalScore: { away: 5, home: 3 } })}
+          teams={makeTeams()}
+          trackedTeamAbbr={'NYY'}
+        />
+      );
+      expect(lastFrame()).toContain('Win!');
+    });
+
+    it('shows loss header when tracked team loses', () => {
+      // makeSummary default: home=5, away=3 → away loses
+      const { lastFrame } = render(
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={'NYY'}
+        />
+      );
+      expect(lastFrame()).toContain('Loss');
+    });
+
+    it('shows neutral header when trackedTeamAbbr is null', () => {
+      const { lastFrame } = render(
+        <GameSummaryPanel
+          summary={makeSummary()}
+          teams={makeTeams()}
+          trackedTeamAbbr={null}
+        />
+      );
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('Game Final');
+      expect(frame).not.toContain('Win!');
+      expect(frame).not.toContain('Loss');
     });
   });
 });

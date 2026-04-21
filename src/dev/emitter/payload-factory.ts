@@ -76,6 +76,8 @@ export function buildPayload(
       trackingMode === 'between-innings' || trackingMode === 'final'
         ? null
         : (state.currentAtBat ?? null),
+    // In the simulator the tracked team is always the home team.
+    trackedTeamAbbr: state.teams.home.abbreviation,
   };
 
   return overrides ? { ...base, ...overrides } : base;
