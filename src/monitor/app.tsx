@@ -9,6 +9,9 @@ import type {
 import type { GameUpdate } from '../scheduler/parser.ts';
 import { useDashboardState } from './hooks/use-dashboard-state.ts';
 import { THEME } from './theme.ts';
+import { StatusBar } from './components/StatusBar.tsx';
+import { Header } from './components/Header.tsx';
+import { EventsPanel } from './components/EventsPanel.tsx';
 
 const SOCKET_URL = process.env['SOCKET_URL'] ?? 'http://localhost:4000';
 
@@ -45,41 +48,46 @@ export function App() {
   }, [dispatch]);
 
   useInput((input) => {
-    if (input === 'q') {
-      exit();
+    switch (input) {
+      case 'q':
+        exit();
+        break;
+      case 'a':
+        dispatch({ type: 'set-filter', filter: 'all' });
+        break;
+      case 's':
+        dispatch({ type: 'set-filter', filter: 'scoring' });
+        break;
+      case 'p':
+        dispatch({ type: 'toggle-pitch-display' });
+        break;
     }
   });
 
-  const isConnected = state.connectedAt !== null;
-
   return (
-    <Box flexDirection="column" padding={1}>
-      <Box marginBottom={1}>
+    <Box flexDirection="column">
+      <StatusBar
+        connectedAt={state.connectedAt}
+        filter={state.filter}
+        pitchDisplay={state.pitchDisplay}
+      />
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor={THEME.borderAccent}
+        paddingX={1}
+        marginTop={1}
+      >
         <Text color={THEME.borderAccent} bold>
-          bball dev socket monitor
+          {'bball dev socket monitor'}
         </Text>
+        <Header lastUpdate={state.lastUpdate} />
       </Box>
-      <Box>
-        <Text color={isConnected ? THEME.connected : THEME.disconnected}>
-          {isConnected ? '● Connected' : '○ Disconnected'}
-        </Text>
-        <Text color={THEME.fgDim}>{' — press q to quit'}</Text>
-      </Box>
-      {state.lastUpdate !== null && (
-        <Box marginTop={1}>
-          <Text color={THEME.fg}>
-            {state.lastUpdate.teams.away.abbreviation}{' '}
-            {state.lastUpdate.score.away} –{' '}
-            {state.lastUpdate.teams.home.abbreviation}{' '}
-            {state.lastUpdate.score.home}
-          </Text>
-        </Box>
-      )}
-      {state.lastUpdate === null && isConnected && (
-        <Box marginTop={1}>
-          <Text color={THEME.fgDim}>Waiting for game data…</Text>
-        </Box>
-      )}
+      <EventsPanel
+        lastUpdate={state.lastUpdate}
+        events={state.events}
+        filter={state.filter}
+      />
     </Box>
   );
 }
