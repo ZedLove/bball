@@ -7,7 +7,7 @@ import { abbreviateCall } from '../formatters/pitch-formatter.ts';
 // Grid constants — start at 14 rows, tuned during manual testing
 // ---------------------------------------------------------------------------
 
-export const GRID_WIDTH = 17;
+export const GRID_WIDTH = 25;
 export const GRID_HEIGHT = 14;
 
 // Viewport in feet — horizontal extends ±1.5ft from center; vertical adds
@@ -216,13 +216,7 @@ export function StrikeZone({
   }
 
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="single"
-      borderColor={THEME.border}
-      paddingX={1}
-      width={21}
-    >
+    <Box flexDirection="column" paddingX={1}>
       <Text color={THEME.fgDim}>{'Strike Zone'}</Text>
       {grid.map((row, rowIdx) => (
         <Box key={rowIdx}>

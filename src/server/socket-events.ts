@@ -305,6 +305,45 @@ export interface GameSummary {
 // ---------------------------------------------------------------------------
 
 /**
+ * A base runner on the field, enriched with season stolen-base stats sourced
+ * from the live boxscore (`liveData.boxscore`).
+ */
+export interface RunnerState {
+  id: number;
+  fullName: string;
+  /** Season stolen bases to date. */
+  seasonSb: number;
+  /**
+   * Season caught-stealing attempts (SB + CS). Used to compute SB%.
+   * 0 means no attempts — percentage should not be shown.
+   */
+  seasonSbAttempts: number;
+}
+
+/**
+ * One slot in the batting order, sourced from the live boxscore.
+ * Reflects the current occupant of each slot (including pinch-hitters/runners).
+ */
+export interface LineupEntry {
+  id: number;
+  fullName: string;
+  /**
+   * Batting order slot encoded as slot×100 (100=1st, …, 900=9th).
+   * Display slot: `Math.floor(battingOrder / 100)`.
+   */
+  battingOrder: number;
+  /** Today's at-bats in this game (from boxscore stats.batting). */
+  atBats: number;
+  /** Today's hits in this game (from boxscore stats.batting). */
+  hits: number;
+  /**
+   * Season OPS as a decimal string (e.g. ".752").
+   * null when unavailable in the boxscore seasonStats.
+   */
+  seasonOps: string | null;
+}
+
+/**
  * Snapshot of the current plate appearance, attached to every `game-update`
  * emission while a plate appearance is in progress.
  *
@@ -324,11 +363,11 @@ export interface AtBatState {
   onDeck: { id: number; fullName: string } | null;
   inHole: { id: number; fullName: string } | null;
   /** Runner on first base. null when unoccupied. */
-  first: { id: number; fullName: string } | null;
+  first: RunnerState | null;
   /** Runner on second base. null when unoccupied. */
-  second: { id: number; fullName: string } | null;
+  second: RunnerState | null;
   /** Runner on third base. null when unoccupied. */
-  third: { id: number; fullName: string } | null;
+  third: RunnerState | null;
   /** Live ball/strike count for this plate appearance. */
   count: { balls: number; strikes: number };
   /**
@@ -338,4 +377,11 @@ export interface AtBatState {
    * PlateAppearanceCompletedEvent.pitchSequence.
    */
   pitchSequence: PitchEvent[];
+  /**
+   * Full batting order for the batting team, ordered by batting slot.
+   * Nine entries reflecting live substitutions — the current occupant of
+   * each slot. Empty array when unavailable (first poll before boxscore
+   * resolves).
+   */
+  lineup: LineupEntry[];
 }

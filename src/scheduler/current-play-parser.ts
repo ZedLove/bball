@@ -1,6 +1,13 @@
-import type { GameFeedLiveResponse } from './game-feed-types.ts';
+import type {
+  GameFeedLiveResponse,
+  LiveBoxscoreTeam,
+} from './game-feed-types.ts';
 import type { Linescore } from './schedule-client.ts';
-import type { AtBatState } from '../server/socket-events.ts';
+import type {
+  AtBatState,
+  LineupEntry,
+  RunnerState,
+} from '../server/socket-events.ts';
 import { mapPitchEvent } from './pitch-mapper.ts';
 
 /**
@@ -35,6 +42,17 @@ export function parseCurrentPlay(
     .filter((pe) => pe.type === 'pitch')
     .map(mapPitchEvent);
 
+  // Determine which team is batting from the half-inning.
+  const battingSide =
+    currentPlay.about.halfInning === 'bottom' ? 'home' : 'away';
+  const battingTeam = feed.liveData.boxscore?.teams[battingSide];
+
+  // Build lineup from the batting team's boxscore data.
+  const lineup = buildLineup(battingTeam);
+
+  // Enrich base runners with season SB stats from the boxscore.
+  const players = battingTeam?.players ?? {};
+
   return {
     batter: {
       id: batter.id,
@@ -46,13 +64,72 @@ export function parseCurrentPlay(
     pitchHand: pitchHand.code,
     onDeck: offense.onDeck ?? null,
     inHole: offense.inHole ?? null,
-    first: offense.first ?? null,
-    second: offense.second ?? null,
-    third: offense.third ?? null,
+    first: enrichRunner(offense.first ?? null, players),
+    second: enrichRunner(offense.second ?? null, players),
+    third: enrichRunner(offense.third ?? null, players),
     count: {
       balls: currentPlay.count.balls,
       strikes: currentPlay.count.strikes,
     },
     pitchSequence,
+    lineup,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a `LineupEntry[]` from the batting team's boxscore data, ordered by
+ * batting slot ascending. Only includes players with a non-zero battingOrder.
+ */
+function buildLineup(team: LiveBoxscoreTeam | undefined): LineupEntry[] {
+  if (!team) return [];
+
+  return team.battingOrder
+    .map((playerId) => {
+      const key = `ID${playerId}`;
+      const player = team.players[key];
+      if (!player) return null;
+
+      const ops = player.seasonStats.batting.ops;
+
+      return {
+        id: player.person.id,
+        fullName: player.person.fullName,
+        battingOrder: player.battingOrder,
+        atBats: player.stats.batting.atBats,
+        hits: player.stats.batting.hits,
+        seasonOps: ops !== '' ? ops : null,
+      } satisfies LineupEntry;
+    })
+    .filter((entry): entry is LineupEntry => entry !== null)
+    .sort((a, b) => a.battingOrder - b.battingOrder);
+}
+
+/**
+ * Enriches a base runner from the linescore with season stolen-base stats
+ * sourced from the boxscore player map. Returns null when no runner is present.
+ */
+function enrichRunner(
+  runner: { id: number; fullName: string } | null | undefined,
+  players: Record<
+    string,
+    {
+      seasonStats: { batting: { stolenBases: number; caughtStealing: number } };
+    }
+  >
+): RunnerState | null {
+  if (!runner) return null;
+  const key = `ID${runner.id}`;
+  const player = players[key];
+  const seasonSb = player?.seasonStats.batting.stolenBases ?? 0;
+  const caughtStealing = player?.seasonStats.batting.caughtStealing ?? 0;
+  return {
+    id: runner.id,
+    fullName: runner.fullName,
+    seasonSb,
+    seasonSbAttempts: seasonSb + caughtStealing,
   };
 }

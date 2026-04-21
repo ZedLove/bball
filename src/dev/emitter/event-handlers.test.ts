@@ -335,6 +335,27 @@ describe('handleSimGameSummary', () => {
     );
   });
 
+  it('emits game-update with trackingMode final before game-summary', () => {
+    handleSimGameSummary(store, io);
+
+    const calls = (io.emit as ReturnType<typeof vi.fn>).mock.calls as [
+      string,
+      unknown,
+    ][];
+    const updateIdx = calls.findIndex(
+      (c) => c[0] === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const summaryIdx = calls.findIndex(
+      (c) => c[0] === SOCKET_EVENTS.GAME_SUMMARY
+    );
+    expect(updateIdx).toBeGreaterThanOrEqual(0);
+    expect(summaryIdx).toBeGreaterThan(updateIdx);
+
+    const update = calls[updateIdx]![1] as GameUpdate;
+    expect(update.trackingMode).toBe('final');
+    expect(update.atBat).toBeNull();
+  });
+
   it('emitted payload satisfies the GameSummary interface shape', () => {
     handleSimGameSummary(store, io);
 
@@ -444,6 +465,12 @@ describe('handleNewBatter', () => {
     expect(atBat.pitcher.id).toBe(543037);
   });
 
+  it('uses MLB battingOrder encoding (100 for slot 1)', () => {
+    handleNewBatter(store, io, {});
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.batter.battingOrder).toBe(100);
+  });
+
   it('defaults batSide to R and pitchHand to R', () => {
     handleNewBatter(store, io, {});
 
@@ -467,6 +494,29 @@ describe('handleNewBatter', () => {
     const update = firstGameUpdate(io);
     expect(update.atBat).not.toBeNull();
     expect((update.atBat as AtBatState).batter.fullName).toBe('Pete Alonso');
+  });
+
+  it('emits a 9-player lineup', () => {
+    handleNewBatter(store, io, {});
+    const atBat = store.getState().currentAtBat as AtBatState;
+    expect(atBat.lineup).toHaveLength(9);
+  });
+
+  it('lineup slots use MLB battingOrder encoding (100-900)', () => {
+    handleNewBatter(store, io, {});
+    const atBat = store.getState().currentAtBat as AtBatState;
+    const orders = atBat.lineup
+      .map((e) => e.battingOrder)
+      .sort((a, b) => a - b);
+    expect(orders).toEqual([100, 200, 300, 400, 500, 600, 700, 800, 900]);
+  });
+
+  it('batter occupies the first lineup slot', () => {
+    handleNewBatter(store, io, { batterName: 'Test Batter', batterId: 77777 });
+    const atBat = store.getState().currentAtBat as AtBatState;
+    const slot1 = atBat.lineup.find((e) => e.battingOrder === 100);
+    expect(slot1?.id).toBe(77777);
+    expect(slot1?.fullName).toBe('Test Batter');
   });
 
   it('fails when game is not started', () => {

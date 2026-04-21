@@ -49,6 +49,8 @@ function withCurrentPlay(
           ...overrides,
         },
       },
+      // Preserve the boxscore so lineup/runner enrichment still works.
+      boxscore: feed.liveData.boxscore,
     },
   };
 }
@@ -152,9 +154,19 @@ describe('parseCurrentPlay', () => {
       });
       const result = parseCurrentPlay(feed, linescore) as AtBatState;
 
-      expect(result.first).toEqual({ id: 656555, fullName: 'Rhys Hoskins' });
-      expect(result.second).toEqual({ id: 671218, fullName: 'Heliot Ramos' });
-      expect(result.third).toEqual({ id: 669065, fullName: 'Kyle Stowers' });
+      // RunnerState — id and fullName preserved
+      expect(result.first).toMatchObject({
+        id: 656555,
+        fullName: 'Rhys Hoskins',
+      });
+      expect(result.second).toMatchObject({
+        id: 671218,
+        fullName: 'Heliot Ramos',
+      });
+      expect(result.third).toMatchObject({
+        id: 669065,
+        fullName: 'Kyle Stowers',
+      });
     });
 
     it('sets first, second, third to null when all bases are empty', () => {
@@ -172,9 +184,107 @@ describe('parseCurrentPlay', () => {
       });
       const result = parseCurrentPlay(feed, linescore) as AtBatState;
 
-      expect(result.first).toEqual({ id: 656555, fullName: 'Rhys Hoskins' });
+      expect(result.first).toMatchObject({
+        id: 656555,
+        fullName: 'Rhys Hoskins',
+      });
       expect(result.second).toBeNull();
-      expect(result.third).toEqual({ id: 669065, fullName: 'Kyle Stowers' });
+      expect(result.third).toMatchObject({
+        id: 669065,
+        fullName: 'Kyle Stowers',
+      });
+    });
+
+    it('enriches runner with season SB stats from fixture boxscore (home team batting)', () => {
+      // Kyle Stowers (669065) is on the home team in the fixture;
+      // fixture has stolenBases: 5, caughtStealing: 2 → attempts = 7
+      const linescore = makeLinescore({
+        third: { id: 669065, fullName: 'Kyle Stowers' },
+      });
+      const result = parseCurrentPlay(feed, linescore) as AtBatState;
+
+      expect(result.third).toEqual({
+        id: 669065,
+        fullName: 'Kyle Stowers',
+        seasonSb: 5,
+        seasonSbAttempts: 7,
+      });
+    });
+
+    it('defaults seasonSb and seasonSbAttempts to 0 when runner is not in boxscore player map', () => {
+      // Player id 999999 is not in the fixture boxscore
+      const linescore = makeLinescore({
+        first: { id: 999999, fullName: 'Unknown Runner' },
+      });
+      const result = parseCurrentPlay(feed, linescore) as AtBatState;
+
+      expect(result.first).toEqual({
+        id: 999999,
+        fullName: 'Unknown Runner',
+        seasonSb: 0,
+        seasonSbAttempts: 0,
+      });
+    });
+  });
+
+  describe('lineup', () => {
+    it('returns a 9-player lineup from the fixture boxscore', () => {
+      const result = parseCurrentPlay(feed, makeLinescore()) as AtBatState;
+      // Fixture home team has 9 players in battingOrder
+      expect(result.lineup).toHaveLength(9);
+    });
+
+    it('orders lineup by battingOrder ascending', () => {
+      const result = parseCurrentPlay(feed, makeLinescore()) as AtBatState;
+      const orders = result.lineup.map((e) => e.battingOrder);
+      expect(orders).toEqual([100, 200, 300, 400, 500, 600, 700, 800, 900]);
+    });
+
+    it('populates atBats, hits, and seasonOps from boxscore stats', () => {
+      const result = parseCurrentPlay(feed, makeLinescore()) as AtBatState;
+      // Curtis Mead (678554) is at slot 300 in fixture: atBats: 2, hits: 0, ops: ".743"
+      const mead = result.lineup.find((e) => e.id === 678554);
+      expect(mead).toBeDefined();
+      expect(mead!.atBats).toBe(2);
+      expect(mead!.hits).toBe(0);
+      expect(mead!.seasonOps).toBe('.743');
+    });
+
+    it('sets seasonOps to null when ops string is empty', () => {
+      // Keaton Winn (676775) is on the away team (pitcher) — not in home lineup
+      // but verify a home player with empty ops would be null. Use away-half fixture.
+      // For this test: halfInning 'bottom' → home team; all home players have non-empty ops
+      // except a player with empty string. We test indirectly via the away team.
+      // Build a feed with halfInning: 'top' so away team is batting; Keaton Winn has ops: ""
+      const awayBatting = withCurrentPlay({
+        about: {
+          atBatIndex: 57,
+          halfInning: 'top',
+          inning: 7,
+          isComplete: false,
+        },
+      });
+      const result2 = parseCurrentPlay(
+        awayBatting,
+        makeLinescore()
+      ) as AtBatState;
+      const winn = result2.lineup.find((e) => e.id === 676775);
+      expect(winn).toBeDefined();
+      expect(winn!.seasonOps).toBeNull();
+    });
+
+    it('returns empty lineup when boxscore is absent', () => {
+      const noBoxscore: GameFeedLiveResponse = {
+        liveData: {
+          plays: { currentPlay: feed.liveData.plays.currentPlay },
+          // boxscore intentionally absent
+        },
+      };
+      const result = parseCurrentPlay(
+        noBoxscore,
+        makeLinescore()
+      ) as AtBatState;
+      expect(result.lineup).toEqual([]);
     });
   });
 

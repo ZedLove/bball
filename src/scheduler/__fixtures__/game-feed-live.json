@@ -230,6 +230,238 @@
           }
         ]
       }
+    },
+    "boxscore": {
+      "teams": {
+        "home": {
+          "battingOrder": [
+            672515, 676665, 678554, 656555, 691781, 682928, 676096, 669065,
+            669457
+          ],
+          "players": {
+            "ID672515": {
+              "person": { "id": 672515, "fullName": "Jose Siri" },
+              "battingOrder": 100,
+              "stats": { "batting": { "atBats": 3, "hits": 1 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 14,
+                  "caughtStealing": 3,
+                  "ops": ".712"
+                }
+              }
+            },
+            "ID676665": {
+              "person": { "id": 676665, "fullName": "Yandy Diaz" },
+              "battingOrder": 200,
+              "stats": { "batting": { "atBats": 3, "hits": 2 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 0,
+                  "caughtStealing": 0,
+                  "ops": ".821"
+                }
+              }
+            },
+            "ID678554": {
+              "person": { "id": 678554, "fullName": "Curtis Mead" },
+              "battingOrder": 300,
+              "stats": { "batting": { "atBats": 2, "hits": 0 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 2,
+                  "caughtStealing": 1,
+                  "ops": ".743"
+                }
+              }
+            },
+            "ID656555": {
+              "person": { "id": 656555, "fullName": "Rhys Hoskins" },
+              "battingOrder": 400,
+              "stats": { "batting": { "atBats": 3, "hits": 1 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 0,
+                  "caughtStealing": 0,
+                  "ops": ".768"
+                }
+              }
+            },
+            "ID691781": {
+              "person": { "id": 691781, "fullName": "Brady House" },
+              "battingOrder": 500,
+              "stats": { "batting": { "atBats": 3, "hits": 1 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 3,
+                  "caughtStealing": 1,
+                  "ops": ".698"
+                }
+              }
+            },
+            "ID682928": {
+              "person": { "id": 682928, "fullName": "CJ Abrams" },
+              "battingOrder": 600,
+              "stats": { "batting": { "atBats": 2, "hits": 0 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 22,
+                  "caughtStealing": 5,
+                  "ops": ".731"
+                }
+              }
+            },
+            "ID676096": {
+              "person": { "id": 676096, "fullName": "Jonathan Aranda" },
+              "battingOrder": 700,
+              "stats": { "batting": { "atBats": 3, "hits": 0 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 0,
+                  "caughtStealing": 0,
+                  "ops": ".659"
+                }
+              }
+            },
+            "ID669065": {
+              "person": { "id": 669065, "fullName": "Kyle Stowers" },
+              "battingOrder": 800,
+              "stats": { "batting": { "atBats": 2, "hits": 1 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 5,
+                  "caughtStealing": 2,
+                  "ops": ".682"
+                }
+              }
+            },
+            "ID669457": {
+              "person": { "id": 669457, "fullName": "Rene Pinto" },
+              "battingOrder": 900,
+              "stats": { "batting": { "atBats": 2, "hits": 0 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 0,
+                  "caughtStealing": 0,
+                  "ops": ".601"
+                }
+              }
+            }
+          }
+        },
+        "away": {
+          "battingOrder": [
+            671218, 543037, 676775, 660271, 605141, 621242, 607732, 669242,
+            680757
+          ],
+          "players": {
+            "ID671218": {
+              "person": { "id": 671218, "fullName": "Heliot Ramos" },
+              "battingOrder": 100,
+              "stats": { "batting": { "atBats": 3, "hits": 2 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 8,
+                  "caughtStealing": 2,
+                  "ops": ".798"
+                }
+              }
+            },
+            "ID543037": {
+              "person": { "id": 543037, "fullName": "Buster Posey" },
+              "battingOrder": 200,
+              "stats": { "batting": { "atBats": 3, "hits": 1 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 0,
+                  "caughtStealing": 0,
+                  "ops": ".752"
+                }
+              }
+            },
+            "ID676775": {
+              "person": { "id": 676775, "fullName": "Keaton Winn" },
+              "battingOrder": 300,
+              "stats": { "batting": { "atBats": 0, "hits": 0 } },
+              "seasonStats": {
+                "batting": { "stolenBases": 0, "caughtStealing": 0, "ops": "" }
+              }
+            },
+            "ID660271": {
+              "person": { "id": 660271, "fullName": "Matt Chapman" },
+              "battingOrder": 400,
+              "stats": { "batting": { "atBats": 3, "hits": 0 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 1,
+                  "caughtStealing": 0,
+                  "ops": ".741"
+                }
+              }
+            },
+            "ID605141": {
+              "person": { "id": 605141, "fullName": "LaMonte Wade Jr" },
+              "battingOrder": 500,
+              "stats": { "batting": { "atBats": 3, "hits": 1 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 0,
+                  "caughtStealing": 0,
+                  "ops": ".815"
+                }
+              }
+            },
+            "ID621242": {
+              "person": { "id": 621242, "fullName": "Wilmer Flores" },
+              "battingOrder": 600,
+              "stats": { "batting": { "atBats": 3, "hits": 1 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 0,
+                  "caughtStealing": 0,
+                  "ops": ".723"
+                }
+              }
+            },
+            "ID607732": {
+              "person": { "id": 607732, "fullName": "Mike Yastrzemski" },
+              "battingOrder": 700,
+              "stats": { "batting": { "atBats": 2, "hits": 0 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 2,
+                  "caughtStealing": 1,
+                  "ops": ".644"
+                }
+              }
+            },
+            "ID669242": {
+              "person": { "id": 669242, "fullName": "Tyler Fitzgerald" },
+              "battingOrder": 800,
+              "stats": { "batting": { "atBats": 2, "hits": 1 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 9,
+                  "caughtStealing": 2,
+                  "ops": ".709"
+                }
+              }
+            },
+            "ID680757": {
+              "person": { "id": 680757, "fullName": "Patrick Bailey" },
+              "battingOrder": 900,
+              "stats": { "batting": { "atBats": 2, "hits": 0 } },
+              "seasonStats": {
+                "batting": {
+                  "stolenBases": 0,
+                  "caughtStealing": 0,
+                  "ops": ".598"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

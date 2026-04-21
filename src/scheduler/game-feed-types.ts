@@ -268,6 +268,12 @@ export interface GameFeedLiveResponse {
        */
       currentPlay: LiveCurrentPlay | null | undefined;
     };
+    /**
+     * Live boxscore containing team lineups and per-player stats.
+     * May be absent on very early or malformed responses — use optional
+     * chaining when accessing.
+     */
+    boxscore?: LiveBoxscore;
   };
 }
 
@@ -293,4 +299,64 @@ export interface LiveCurrentPlay {
    * Filter to `type === 'pitch'` to get the pitch sequence.
    */
   playEvents: PlayEvent[];
+}
+
+// ---------------------------------------------------------------------------
+// Live boxscore — nested inside feed/live at liveData.boxscore
+// ---------------------------------------------------------------------------
+
+/** Today's batting stats for a player (from boxscore stats.batting). */
+export interface LiveBoxscoreBattingStats {
+  atBats: number;
+  hits: number;
+}
+
+/** Season-to-date batting stats for a player (from boxscore seasonStats.batting). */
+export interface LiveBoxscoreSeasonStats {
+  stolenBases: number;
+  /** Season caught stealing. Used together with stolenBases to compute SB%. */
+  caughtStealing: number;
+  /**
+   * Season OPS as a decimal string (e.g. ".752").
+   * Empty string when unavailable.
+   */
+  ops: string;
+}
+
+/** One player entry inside liveData.boxscore.teams.{side}.players. */
+export interface LiveBoxscorePlayer {
+  person: { id: number; fullName: string };
+  /**
+   * Batting order slot encoded as slot×100 (100=1st, …, 900=9th).
+   * 0 when the player is not in the batting order (e.g. a pitcher in AL).
+   */
+  battingOrder: number;
+  stats: {
+    batting: LiveBoxscoreBattingStats;
+  };
+  seasonStats: {
+    batting: LiveBoxscoreSeasonStats;
+  };
+}
+
+/** One team's live boxscore data. */
+export interface LiveBoxscoreTeam {
+  /**
+   * Player IDs in batting slot order (9 entries for a full lineup).
+   * Reflects live substitutions — the current occupant of each slot.
+   */
+  battingOrder: number[];
+  /**
+   * All players on the roster for this team, keyed as `ID${playerId}`.
+   * Includes position players, pitchers, and substitutes.
+   */
+  players: Record<string, LiveBoxscorePlayer>;
+}
+
+/** Live boxscore snapshot embedded in the feed/live response. */
+export interface LiveBoxscore {
+  teams: {
+    home: LiveBoxscoreTeam;
+    away: LiveBoxscoreTeam;
+  };
 }
