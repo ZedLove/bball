@@ -1,24 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { Box, Text, useApp, useInput, useWindowSize } from 'ink';
-import { io } from 'socket.io-client';
-import { SOCKET_EVENTS } from '../server/socket-events.ts';
-import type {
-  GameEventsPayload,
-  GameSummary,
-  PitchEvent,
-} from '../server/socket-events.ts';
-import type { GameUpdate } from '../scheduler/parser.ts';
+import type { PitchEvent } from '../server/socket-events.ts';
 import { useDashboardState } from './hooks/use-dashboard-state.ts';
+import { useSocket } from './hooks/use-socket.ts';
 import { THEME } from './theme.ts';
 import { StatusBar } from './components/StatusBar.tsx';
 import { Header } from './components/Header.tsx';
 import { EventsPanel } from './components/EventsPanel.tsx';
+import { GameSummaryPanel } from './components/GameSummaryPanel.tsx';
 import { AtBatPanel } from './components/AtBatPanel.tsx';
 import { StrikeZone } from './components/StrikeZone.tsx';
 import { BaseDiamond } from './components/BaseDiamond.tsx';
 import { OnDeckPanel } from './components/OnDeckPanel.tsx';
-
-const SOCKET_URL = process.env['SOCKET_URL'] ?? 'http://localhost:4000';
 
 export function App() {
   const { exit } = useApp();
@@ -53,33 +46,7 @@ export function App() {
 
   const showAtBatRow = atBat !== null || displayPitchSequence.length > 0;
 
-  useEffect(() => {
-    const socket = io(SOCKET_URL);
-
-    socket.on('connect', () => {
-      dispatch({ type: 'connected' });
-    });
-
-    socket.on('disconnect', () => {
-      dispatch({ type: 'disconnected' });
-    });
-
-    socket.on(SOCKET_EVENTS.GAME_UPDATE, (payload: GameUpdate) => {
-      dispatch({ type: 'game-update', payload });
-    });
-
-    socket.on(SOCKET_EVENTS.GAME_EVENTS, (payload: GameEventsPayload) => {
-      dispatch({ type: 'game-events', payload });
-    });
-
-    socket.on(SOCKET_EVENTS.GAME_SUMMARY, (payload: GameSummary) => {
-      dispatch({ type: 'game-summary', payload });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [dispatch]);
+  useSocket(dispatch);
 
   const { columns, rows } = useWindowSize();
 
@@ -128,11 +95,18 @@ export function App() {
         </Text>
         <Header lastUpdate={state.lastUpdate} />
       </Box>
-      <EventsPanel
-        lastUpdate={state.lastUpdate}
-        events={state.events}
-        filter={state.filter}
-      />
+      {state.summary !== null ? (
+        <GameSummaryPanel
+          summary={state.summary}
+          teams={state.lastUpdate?.teams ?? null}
+        />
+      ) : (
+        <EventsPanel
+          lastUpdate={state.lastUpdate}
+          events={state.events}
+          filter={state.filter}
+        />
+      )}
       {showAtBatRow && (
         <Box flexDirection="row" flexWrap="nowrap" marginTop={1}>
           <AtBatPanel atBat={atBat} pitchDisplay={state.pitchDisplay} />
