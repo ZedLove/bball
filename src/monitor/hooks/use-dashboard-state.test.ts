@@ -1,0 +1,361 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { dashboardReducer } from './use-dashboard-state.ts';
+import type { DashboardState } from '../types.ts';
+import { MAX_EVENTS } from '../types.ts';
+import type { GameUpdate } from '../../scheduler/parser.ts';
+import type {
+  GameEvent,
+  GameEventsPayload,
+  GameSummary,
+  PlateAppearanceCompletedEvent,
+} from '../../server/socket-events.ts';
+
+// ---------------------------------------------------------------------------
+// Factories
+// ---------------------------------------------------------------------------
+
+function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
+  return {
+    gameStatus: 'In Progress',
+    gamePk: 123456,
+    teams: {
+      away: { id: 147, name: 'New York Yankees', abbreviation: 'NYY' },
+      home: { id: 111, name: 'Boston Red Sox', abbreviation: 'BOS' },
+    },
+    score: { away: 3, home: 5 },
+    inning: { number: 7, half: 'Top', ordinal: '7th' },
+    outs: 1,
+    defendingTeam: 'BOS',
+    battingTeam: 'NYY',
+    isDelayed: false,
+    delayDescription: null,
+    isExtraInnings: false,
+    scheduledInnings: 9,
+    trackingMode: 'outs',
+    outsRemaining: 2,
+    totalOutsRemaining: 8,
+    runsNeeded: null,
+    currentPitcher: { id: 543037, fullName: 'Gerrit Cole' },
+    upcomingPitcher: null,
+    inningBreakLength: null,
+    atBat: null,
+    ...overrides,
+  };
+}
+
+function makePlateAppearance(
+  overrides: Partial<PlateAppearanceCompletedEvent> = {}
+): PlateAppearanceCompletedEvent {
+  return {
+    gamePk: 123456,
+    atBatIndex: 0,
+    inning: 7,
+    halfInning: 'top',
+    battingTeam: 'NYY',
+    defendingTeam: 'BOS',
+    eventType: 'strikeout',
+    description: 'Devers strikes out.',
+    category: 'plate-appearance-completed',
+    isScoringPlay: false,
+    rbi: 0,
+    batter: { id: 646240, fullName: 'Rafael Devers' },
+    pitcher: { id: 543037, fullName: 'Gerrit Cole' },
+    pitchSequence: [],
+    ...overrides,
+  };
+}
+
+function makeGameEvent(
+  overrides: Partial<PlateAppearanceCompletedEvent> = {}
+): GameEvent {
+  return makePlateAppearance(overrides);
+}
+
+function makeEventsPayload(events: GameEvent[]): GameEventsPayload {
+  return { gamePk: 123456, events };
+}
+
+function makeGameSummary(overrides: Partial<GameSummary> = {}): GameSummary {
+  return {
+    gamePk: 123456,
+    finalScore: { away: 3, home: 5 },
+    innings: 9,
+    isExtraInnings: false,
+    decisions: {
+      winner: { id: 519242, fullName: 'Chris Sale' },
+      loser: { id: 543037, fullName: 'Gerrit Cole' },
+      save: null,
+    },
+    topPerformers: [],
+    boxscoreUrl: 'https://www.mlb.com/gameday/123456/final/box-score',
+    nextGame: null,
+    ...overrides,
+  };
+}
+
+function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
+  return {
+    lastUpdate: null,
+    events: [],
+    summary: null,
+    filter: 'all',
+    pitchDisplay: 'all',
+    connectedAt: null,
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('dashboardReducer', () => {
+  describe('game-update action', () => {
+    it('sets lastUpdate from null', () => {
+      const state = makeState();
+      const update = makeGameUpdate();
+      const next = dashboardReducer(state, {
+        type: 'game-update',
+        payload: update,
+      });
+      expect(next.lastUpdate).toEqual(update);
+    });
+
+    it('replaces a previous lastUpdate', () => {
+      const first = makeGameUpdate({ score: { away: 1, home: 0 } });
+      const second = makeGameUpdate({ score: { away: 2, home: 0 } });
+      const state = makeState({ lastUpdate: first });
+      const next = dashboardReducer(state, {
+        type: 'game-update',
+        payload: second,
+      });
+      expect(next.lastUpdate).toEqual(second);
+    });
+
+    it('does not mutate other state fields', () => {
+      const state = makeState({ filter: 'scoring', pitchDisplay: 'last' });
+      const next = dashboardReducer(state, {
+        type: 'game-update',
+        payload: makeGameUpdate(),
+      });
+      expect(next.filter).toBe('scoring');
+      expect(next.pitchDisplay).toBe('last');
+    });
+  });
+
+  describe('game-events action', () => {
+    it('prepends new events in reverse-chronological order', () => {
+      const e1 = makeGameEvent({ atBatIndex: 0 });
+      const e2 = makeGameEvent({ atBatIndex: 1 });
+      const state = makeState();
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([e1, e2]),
+      });
+      // payload is [oldest, newest]; buffer should be [newest, oldest]
+      expect(next.events[0]).toEqual(e2);
+      expect(next.events[1]).toEqual(e1);
+    });
+
+    it('prepends to existing events', () => {
+      const existing = makeGameEvent({ atBatIndex: 0 });
+      const incoming = makeGameEvent({ atBatIndex: 1 });
+      const state = makeState({ events: [existing] });
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([incoming]),
+      });
+      expect(next.events[0]).toEqual(incoming);
+      expect(next.events[1]).toEqual(existing);
+    });
+
+    it('caps buffer at MAX_EVENTS', () => {
+      // Buffer stores newest-first (index 0 = newest, last index = oldest).
+      // Build existing events so atBatIndex 0 is the oldest (last position).
+      const existing = Array.from({ length: MAX_EVENTS }, (_, i) =>
+        makeGameEvent({ atBatIndex: MAX_EVENTS - 1 - i })
+      );
+      // existing[0].atBatIndex = 19 (newest), existing[19].atBatIndex = 0 (oldest)
+      const state = makeState({ events: existing });
+      const newEvent = makeGameEvent({ atBatIndex: MAX_EVENTS });
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([newEvent]),
+      });
+      expect(next.events).toHaveLength(MAX_EVENTS);
+      // newest event is at index 0
+      expect(next.events[0]).toEqual(newEvent);
+      // oldest event (atBatIndex 0) was dropped off the end
+      expect(
+        next.events.every(
+          (e) => (e as PlateAppearanceCompletedEvent).atBatIndex !== 0
+        )
+      ).toBe(true);
+    });
+
+    it('handles a payload with multiple events correctly', () => {
+      const events = [
+        makeGameEvent({ atBatIndex: 5 }),
+        makeGameEvent({ atBatIndex: 6 }),
+        makeGameEvent({ atBatIndex: 7 }),
+      ];
+      const state = makeState();
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload(events),
+      });
+      // Newest (index 7) first
+      expect((next.events[0] as PlateAppearanceCompletedEvent).atBatIndex).toBe(
+        7
+      );
+      expect((next.events[1] as PlateAppearanceCompletedEvent).atBatIndex).toBe(
+        6
+      );
+      expect((next.events[2] as PlateAppearanceCompletedEvent).atBatIndex).toBe(
+        5
+      );
+    });
+  });
+
+  describe('game-summary action', () => {
+    it('sets summary', () => {
+      const state = makeState();
+      const summary = makeGameSummary();
+      const next = dashboardReducer(state, {
+        type: 'game-summary',
+        payload: summary,
+      });
+      expect(next.summary).toEqual(summary);
+    });
+
+    it('preserves events when summary is set', () => {
+      const events = [makeGameEvent()];
+      const state = makeState({ events });
+      const next = dashboardReducer(state, {
+        type: 'game-summary',
+        payload: makeGameSummary(),
+      });
+      expect(next.events).toEqual(events);
+    });
+  });
+
+  describe('connected action', () => {
+    it('sets connectedAt to a Date', () => {
+      const before = new Date();
+      const state = makeState();
+      const next = dashboardReducer(state, { type: 'connected' });
+      const after = new Date();
+      expect(next.connectedAt).toBeInstanceOf(Date);
+      expect(next.connectedAt!.getTime()).toBeGreaterThanOrEqual(
+        before.getTime()
+      );
+      expect(next.connectedAt!.getTime()).toBeLessThanOrEqual(after.getTime());
+    });
+  });
+
+  describe('disconnected action', () => {
+    it('clears connectedAt', () => {
+      const state = makeState({ connectedAt: new Date() });
+      const next = dashboardReducer(state, { type: 'disconnected' });
+      expect(next.connectedAt).toBeNull();
+    });
+  });
+
+  describe('set-filter action', () => {
+    it('sets filter to scoring', () => {
+      const state = makeState({ filter: 'all' });
+      const next = dashboardReducer(state, {
+        type: 'set-filter',
+        filter: 'scoring',
+      });
+      expect(next.filter).toBe('scoring');
+    });
+
+    it('sets filter to all', () => {
+      const state = makeState({ filter: 'scoring' });
+      const next = dashboardReducer(state, {
+        type: 'set-filter',
+        filter: 'all',
+      });
+      expect(next.filter).toBe('all');
+    });
+  });
+
+  describe('toggle-pitch-display action', () => {
+    it('toggles from all to last', () => {
+      const state = makeState({ pitchDisplay: 'all' });
+      const next = dashboardReducer(state, { type: 'toggle-pitch-display' });
+      expect(next.pitchDisplay).toBe('last');
+    });
+
+    it('toggles from last to all', () => {
+      const state = makeState({ pitchDisplay: 'last' });
+      const next = dashboardReducer(state, { type: 'toggle-pitch-display' });
+      expect(next.pitchDisplay).toBe('all');
+    });
+
+    it('does not affect other state fields', () => {
+      const state = makeState({ filter: 'scoring', pitchDisplay: 'all' });
+      const next = dashboardReducer(state, { type: 'toggle-pitch-display' });
+      expect(next.filter).toBe('scoring');
+    });
+  });
+
+  describe('state immutability', () => {
+    it('returns a new object on every action', () => {
+      const state = makeState();
+      const next = dashboardReducer(state, {
+        type: 'game-update',
+        payload: makeGameUpdate(),
+      });
+      expect(next).not.toBe(state);
+    });
+  });
+});
+
+// Separate describe for initial state via multiple transitions
+describe('dashboardReducer — chained transitions', () => {
+  let state: DashboardState;
+
+  beforeEach(() => {
+    state = makeState();
+  });
+
+  it('handles connected → game-update → game-events → game-summary sequence', () => {
+    state = dashboardReducer(state, { type: 'connected' });
+    expect(state.connectedAt).toBeInstanceOf(Date);
+
+    state = dashboardReducer(state, {
+      type: 'game-update',
+      payload: makeGameUpdate(),
+    });
+    expect(state.lastUpdate).not.toBeNull();
+
+    state = dashboardReducer(state, {
+      type: 'game-events',
+      payload: makeEventsPayload([makeGameEvent()]),
+    });
+    expect(state.events).toHaveLength(1);
+
+    state = dashboardReducer(state, {
+      type: 'game-summary',
+      payload: makeGameSummary(),
+    });
+    expect(state.summary).not.toBeNull();
+    // events preserved
+    expect(state.events).toHaveLength(1);
+    // connectedAt still set
+    expect(state.connectedAt).toBeInstanceOf(Date);
+  });
+
+  it('handles disconnected clears connectedAt but preserves lastUpdate', () => {
+    state = dashboardReducer(state, { type: 'connected' });
+    state = dashboardReducer(state, {
+      type: 'game-update',
+      payload: makeGameUpdate(),
+    });
+    state = dashboardReducer(state, { type: 'disconnected' });
+    expect(state.connectedAt).toBeNull();
+    expect(state.lastUpdate).not.toBeNull();
+  });
+});
