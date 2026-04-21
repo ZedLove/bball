@@ -73,6 +73,12 @@ export interface GameUpdate {
    * Populated by the scheduler after the feed/live fetch resolves.
    */
   atBat: AtBatState | null;
+  /**
+   * Abbreviation of the team being tracked (i.e. the team tied to CONFIG.teamId).
+   * Constant for the lifetime of a game session. Used by the monitor to
+   * determine celebration polarity (win/loss, HR for us vs opponent).
+   */
+  trackedTeamAbbr: string;
 }
 
 export interface TeamInfo {
@@ -221,5 +227,9 @@ export function parseGameUpdate(
     gamePk: game.gamePk,
     inningBreakLength,
     atBat: null,
+    trackedTeamAbbr:
+      game.teams.home.team.id === targetTeamId
+        ? game.teams.home.team.abbreviation
+        : game.teams.away.team.abbreviation,
   };
 }

@@ -4,10 +4,12 @@ import type { PitchEvent } from '../server/socket-events.ts';
 import { useDashboardState } from './hooks/use-dashboard-state.ts';
 import { useSocket } from './hooks/use-socket.ts';
 import { THEME } from './theme.ts';
+import { CELEBRATION_FRAME_MS } from './types.ts';
 import { StatusBar } from './components/StatusBar.tsx';
 import { Header } from './components/Header.tsx';
 import { EventsPanel } from './components/EventsPanel.tsx';
 import { GameSummaryPanel } from './components/GameSummaryPanel.tsx';
+import { CelebrationPanel } from './components/CelebrationPanel.tsx';
 import { HitResultPanel } from './components/HitResultPanel.tsx';
 import { AtBatPanel } from './components/AtBatPanel.tsx';
 import { StrikeZone } from './components/StrikeZone.tsx';
@@ -53,9 +55,6 @@ export function App() {
 
   // When the terminal is resized, clear the scrollback buffer so mis-rendered
   // frames from the narrow phase don't accumulate above the current view.
-  // This matters even with alternateScreen:true because some terminals (e.g.
-  // iTerm2 with "Scroll alternate screen" enabled) maintain a scrollback in
-  // the alternate screen buffer.
   useEffect(() => {
     process.stdout.write('\x1b[3J');
   }, [columns, rows]);
@@ -70,7 +69,20 @@ export function App() {
     }
     const id = setTimeout(() => dispatch({ type: 'dismiss-hit' }), ms);
     return () => clearTimeout(id);
-  }, [state.lastHit?.expiresAt]); // re-runs each time a new hit arrives
+  }, [state.lastHit?.expiresAt]);
+
+  // Drive the celebration animation: advance frames and dismiss when done.
+  useEffect(() => {
+    if (!state.celebration) return;
+    const id = setInterval(() => {
+      if (Date.now() >= state.celebration!.expiresAt) {
+        dispatch({ type: 'dismiss-celebration' });
+      } else {
+        dispatch({ type: 'advance-celebration-frame' });
+      }
+    }, CELEBRATION_FRAME_MS);
+    return () => clearInterval(id);
+  }, [state.celebration !== null]);
 
   useInput((input) => {
     switch (input) {
@@ -88,6 +100,33 @@ export function App() {
         break;
     }
   });
+
+  // Render priority (events panel slot):
+  //   GameSummaryPanel > CelebrationPanel > HitResultPanel > EventsPanel
+  function renderMainPanel() {
+    if (state.summary !== null) {
+      return (
+        <GameSummaryPanel
+          summary={state.summary}
+          teams={state.lastUpdate?.teams ?? null}
+          trackedTeamAbbr={state.trackedTeamAbbr}
+        />
+      );
+    }
+    if (state.celebration !== null) {
+      return <CelebrationPanel celebration={state.celebration} />;
+    }
+    if (state.lastHit !== null) {
+      return <HitResultPanel hit={state.lastHit} />;
+    }
+    return (
+      <EventsPanel
+        lastUpdate={state.lastUpdate}
+        events={state.events}
+        filter={state.filter}
+      />
+    );
+  }
 
   return (
     <Box flexDirection="column">
@@ -108,20 +147,7 @@ export function App() {
         </Text>
         <Header lastUpdate={state.lastUpdate} />
       </Box>
-      {state.summary !== null ? (
-        <GameSummaryPanel
-          summary={state.summary}
-          teams={state.lastUpdate?.teams ?? null}
-        />
-      ) : state.lastHit !== null ? (
-        <HitResultPanel hit={state.lastHit} />
-      ) : (
-        <EventsPanel
-          lastUpdate={state.lastUpdate}
-          events={state.events}
-          filter={state.filter}
-        />
-      )}
+      {renderMainPanel()}
       {showAtBatRow && (
         <Box flexDirection="row" flexWrap="nowrap" marginTop={1}>
           <AtBatPanel atBat={atBat} pitchDisplay={state.pitchDisplay} />

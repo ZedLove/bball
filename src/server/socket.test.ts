@@ -65,6 +65,7 @@ const SAMPLE_UPDATE: GameUpdate = {
   upcomingPitcher: null,
   inningBreakLength: null,
   atBat: null,
+  trackedTeamAbbr: 'NYM',
 };
 
 // ---------------------------------------------------------------------------

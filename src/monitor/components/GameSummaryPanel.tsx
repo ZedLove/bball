@@ -6,6 +6,8 @@ import { THEME } from '../theme.ts';
 interface GameSummaryPanelProps {
   summary: GameSummary;
   teams: GameUpdate['teams'] | null;
+  /** Abbreviation of the preferred (tracked) team — used for win/loss styling. */
+  trackedTeamAbbr: string | null;
 }
 
 function formatGameTime(isoString: string): string {
@@ -23,9 +25,37 @@ function formatGameTime(isoString: string): string {
   }
 }
 
-export function GameSummaryPanel({ summary, teams }: GameSummaryPanelProps) {
+export function GameSummaryPanel({
+  summary,
+  teams,
+  trackedTeamAbbr,
+}: GameSummaryPanelProps) {
   const awayAbbrev = teams?.away.abbreviation ?? 'Away';
   const homeAbbrev = teams?.home.abbreviation ?? 'Home';
+
+  // Determine win/loss polarity for preferred team.
+  const isHome = trackedTeamAbbr !== null && homeAbbrev === trackedTeamAbbr;
+  const isAway = trackedTeamAbbr !== null && awayAbbrev === trackedTeamAbbr;
+  const weWon =
+    (isHome && summary.finalScore.home > summary.finalScore.away) ||
+    (isAway && summary.finalScore.away > summary.finalScore.home);
+  const weLost = trackedTeamAbbr !== null && (isHome || isAway) && !weWon;
+
+  const borderColor = weWon
+    ? THEME.homeRun
+    : weLost
+      ? THEME.fgDim
+      : THEME.borderAccent;
+  const titleColor = weWon
+    ? THEME.homeRun
+    : weLost
+      ? THEME.fgDim
+      : THEME.borderAccent;
+  const titleText = weWon
+    ? '★  Game Final — Win!'
+    : weLost
+      ? '☁  Game Final — Loss'
+      : 'Game Final';
 
   const inningLabel = summary.isExtraInnings
     ? `${summary.innings} innings (extras)`
@@ -37,13 +67,13 @@ export function GameSummaryPanel({ summary, teams }: GameSummaryPanelProps) {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor={THEME.borderAccent}
+      borderColor={borderColor}
       paddingX={2}
       paddingY={1}
       marginTop={1}
     >
-      <Text color={THEME.borderAccent} bold>
-        {'Game Final'}
+      <Text color={titleColor} bold>
+        {titleText}
       </Text>
 
       <Box marginTop={1}>
