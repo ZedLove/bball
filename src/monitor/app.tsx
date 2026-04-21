@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Box, Text, useApp, useInput } from 'ink';
+import { Box, Text, useApp, useInput, useWindowSize } from 'ink';
 import { io } from 'socket.io-client';
 import { SOCKET_EVENTS } from '../server/socket-events.ts';
 import type {
@@ -80,6 +80,17 @@ export function App() {
       socket.disconnect();
     };
   }, [dispatch]);
+
+  const { columns, rows } = useWindowSize();
+
+  // When the terminal is resized, clear the scrollback buffer so mis-rendered
+  // frames from the narrow phase don't accumulate above the current view.
+  // This matters even with alternateScreen:true because some terminals (e.g.
+  // iTerm2 with "Scroll alternate screen" enabled) maintain a scrollback in
+  // the alternate screen buffer.
+  useEffect(() => {
+    process.stdout.write('\x1b[3J');
+  }, [columns, rows]);
 
   useInput((input) => {
     switch (input) {
