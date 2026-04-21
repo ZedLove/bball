@@ -98,6 +98,7 @@ function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
     lastUpdate: null,
     events: [],
     summary: null,
+    lastHit: null,
     filter: 'all',
     pitchDisplay: 'all',
     connectedAt: null,
@@ -298,6 +299,137 @@ describe('dashboardReducer', () => {
       const state = makeState({ filter: 'scoring', pitchDisplay: 'all' });
       const next = dashboardReducer(state, { type: 'toggle-pitch-display' });
       expect(next.filter).toBe('scoring');
+    });
+  });
+
+  describe('dismiss-hit action', () => {
+    it('clears lastHit', () => {
+      const hit: import('../types.ts').HitDisplay = {
+        hitData: {
+          launchSpeed: 107.4,
+          launchAngle: 28,
+          totalDistance: 425,
+          trajectory: 'fly_ball',
+          hardness: 'hard',
+          location: '8',
+          coordinates: { coordX: 113.48, coordY: 27.53 },
+        },
+        batter: { id: 1, fullName: 'Aaron Judge' },
+        eventType: 'Home Run',
+        isHomeRun: true,
+        expiresAt: Date.now() + 7_000,
+      };
+      const state = makeState({ lastHit: hit });
+      const next = dashboardReducer(state, { type: 'dismiss-hit' });
+      expect(next.lastHit).toBeNull();
+    });
+
+    it('is a no-op when lastHit is already null', () => {
+      const state = makeState();
+      const next = dashboardReducer(state, { type: 'dismiss-hit' });
+      expect(next.lastHit).toBeNull();
+    });
+  });
+
+  describe('game-events — hit detection', () => {
+    it('sets lastHit when a plate-appearance event has an in-play pitch with hitData', () => {
+      const inPlayEvent = makePlateAppearance({
+        eventType: 'Home Run',
+        pitchSequence: [
+          {
+            pitchNumber: 1,
+            pitchType: 'Four-Seam Fastball',
+            pitchTypeCode: 'FF',
+            call: 'In play, run(s)',
+            isBall: false,
+            isStrike: false,
+            isInPlay: true,
+            speedMph: 98.1,
+            countAfter: { balls: 0, strikes: 0 },
+            tracking: null,
+            hitData: {
+              launchSpeed: 107.4,
+              launchAngle: 28,
+              totalDistance: 425,
+              trajectory: 'fly_ball',
+              hardness: 'hard',
+              location: '8',
+              coordinates: { coordX: 113.48, coordY: 27.53 },
+            },
+          },
+        ],
+      });
+      const state = makeState();
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([inPlayEvent]),
+      });
+      expect(next.lastHit).not.toBeNull();
+      expect(next.lastHit!.isHomeRun).toBe(true);
+      expect(next.lastHit!.batter.fullName).toBe('Rafael Devers');
+      expect(next.lastHit!.hitData.totalDistance).toBe(425);
+    });
+
+    it('does not set lastHit when pitchSequence is empty', () => {
+      const event = makePlateAppearance({ pitchSequence: [] });
+      const state = makeState();
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([event]),
+      });
+      expect(next.lastHit).toBeNull();
+    });
+
+    it('does not set lastHit when no pitch has hitData', () => {
+      const event = makePlateAppearance({
+        pitchSequence: [
+          {
+            pitchNumber: 1,
+            pitchType: 'Slider',
+            pitchTypeCode: 'SL',
+            call: 'Strikeout',
+            isBall: false,
+            isStrike: true,
+            isInPlay: false,
+            speedMph: 85,
+            countAfter: { balls: 0, strikes: 3 },
+            tracking: null,
+            hitData: null,
+          },
+        ],
+      });
+      const state = makeState();
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([event]),
+      });
+      expect(next.lastHit).toBeNull();
+    });
+
+    it('preserves existing lastHit when new events have no in-play pitch', () => {
+      const existingHit: import('../types.ts').HitDisplay = {
+        hitData: {
+          launchSpeed: 95,
+          launchAngle: 12,
+          totalDistance: 180,
+          trajectory: 'ground_ball',
+          hardness: 'soft',
+          location: '6',
+          coordinates: null,
+        },
+        batter: { id: 2, fullName: 'Someone Else' },
+        eventType: 'Groundout',
+        isHomeRun: false,
+        expiresAt: Date.now() + 5_000,
+      };
+      const state = makeState({ lastHit: existingHit });
+      const next = dashboardReducer(state, {
+        type: 'game-events',
+        payload: makeEventsPayload([
+          makePlateAppearance({ pitchSequence: [] }),
+        ]),
+      });
+      expect(next.lastHit).toEqual(existingHit);
     });
   });
 

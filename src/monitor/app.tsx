@@ -8,6 +8,7 @@ import { StatusBar } from './components/StatusBar.tsx';
 import { Header } from './components/Header.tsx';
 import { EventsPanel } from './components/EventsPanel.tsx';
 import { GameSummaryPanel } from './components/GameSummaryPanel.tsx';
+import { HitResultPanel } from './components/HitResultPanel.tsx';
 import { AtBatPanel } from './components/AtBatPanel.tsx';
 import { StrikeZone } from './components/StrikeZone.tsx';
 import { BaseDiamond } from './components/BaseDiamond.tsx';
@@ -59,6 +60,18 @@ export function App() {
     process.stdout.write('\x1b[3J');
   }, [columns, rows]);
 
+  // Auto-dismiss the hit result panel after its display duration expires.
+  useEffect(() => {
+    if (!state.lastHit) return;
+    const ms = state.lastHit.expiresAt - Date.now();
+    if (ms <= 0) {
+      dispatch({ type: 'dismiss-hit' });
+      return;
+    }
+    const id = setTimeout(() => dispatch({ type: 'dismiss-hit' }), ms);
+    return () => clearTimeout(id);
+  }, [state.lastHit?.expiresAt]); // re-runs each time a new hit arrives
+
   useInput((input) => {
     switch (input) {
       case 'q':
@@ -100,6 +113,8 @@ export function App() {
           summary={state.summary}
           teams={state.lastUpdate?.teams ?? null}
         />
+      ) : state.lastHit !== null ? (
+        <HitResultPanel hit={state.lastHit} />
       ) : (
         <EventsPanel
           lastUpdate={state.lastUpdate}
