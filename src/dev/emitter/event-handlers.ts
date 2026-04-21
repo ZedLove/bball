@@ -688,10 +688,20 @@ export function handlePitch(
     return fail('No active at-bat. Use new-batter first.');
   }
 
-  const call = options.call ?? 'Ball';
-  const isBall = call === 'Ball';
-  const isStrike = call === 'Strike' || call === 'Foul';
-  const isInPlay = call === 'In play';
+  const rawCall = options.call ?? 'Ball';
+  const isBall = rawCall === 'Ball';
+  const isStrike = rawCall === 'Strike' || rawCall === 'Foul';
+  const isInPlay = rawCall === 'In play';
+
+  // Map the simulator's simplified call vocabulary to the full MLB call
+  // strings expected by the monitor's pitch formatter.
+  const MLB_CALL: Record<string, string> = {
+    Ball: 'Ball',
+    Strike: 'Swinging Strike',
+    Foul: 'Foul',
+    'In play': 'In play, out(s)',
+  };
+  const call = MLB_CALL[rawCall] ?? rawCall;
 
   const currentCount = state.currentAtBat.count;
   const newBalls = isBall ? currentCount.balls + 1 : currentCount.balls;
