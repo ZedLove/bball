@@ -8,7 +8,8 @@ export default defineConfig({
       reporter: ['text', 'html', 'json'],
       // Exclude dev-only tooling (simulator, CLI) — it is not production code
       // and its contract tests live in event-handlers.test.ts.
-      exclude: ['src/dev/**'],
+      // Exclude dev monitor — internal dev tool, not subject to coverage thresholds.
+      exclude: ['src/dev/**', 'src/monitor/**'],
       thresholds: {
         lines: 93,
         functions: 91,
@@ -16,6 +17,6 @@ export default defineConfig({
         statements: 93,
       },
     },
-    include: ['**/*.test.ts'],
+    include: ['**/*.test.ts', '**/*.test.tsx'],
   },
 });
