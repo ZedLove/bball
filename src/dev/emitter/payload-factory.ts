@@ -83,6 +83,8 @@ export function buildPayload(
         ? null
         : (state.currentAtBat ?? null),
     pitchHistory: [],
+    venueId: null,
+    venueFieldInfo: null,
     // In the simulator the tracked team is always the home team.
     trackedTeamAbbr: state.teams.home.abbreviation,
   };

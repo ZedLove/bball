@@ -1,5 +1,6 @@
 import { Box, Text } from 'ink';
 import type { HitDisplay } from '../types.ts';
+import type { VenueFieldInfo } from '../../server/socket-events.ts';
 import { THEME } from '../theme.ts';
 import { SprayChart } from './SprayChart.tsx';
 
@@ -30,13 +31,21 @@ function formatStat(
 
 interface HitResultPanelProps {
   lastHit: HitDisplay | null;
+  venueFieldInfo?: VenueFieldInfo | null;
 }
 
-export function HitResultPanel({ lastHit }: HitResultPanelProps) {
+export function HitResultPanel({
+  lastHit,
+  venueFieldInfo = null,
+}: HitResultPanelProps) {
   if (lastHit === null) {
     return (
       <Box flexDirection="row" marginTop={1} gap={2}>
-        <SprayChart hitData={null} isHomeRun={false} />
+        <SprayChart
+          hitData={null}
+          isHomeRun={false}
+          venueFieldInfo={venueFieldInfo}
+        />
       </Box>
     );
   }
@@ -62,7 +71,11 @@ export function HitResultPanel({ lastHit }: HitResultPanelProps) {
 
   return (
     <Box flexDirection="row" marginTop={1} gap={2}>
-      <SprayChart hitData={hitData} isHomeRun={isHomeRun} />
+      <SprayChart
+        hitData={hitData}
+        isHomeRun={isHomeRun}
+        venueFieldInfo={venueFieldInfo}
+      />
       <Box flexDirection="column" paddingTop={1}>
         <Text color={accentColor} bold>
           {headerParts.join('  ·  ')}

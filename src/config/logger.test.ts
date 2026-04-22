@@ -37,6 +37,8 @@ describe('logUpdate', () => {
     atBat: null,
     pitchHistory: [],
     trackedTeamAbbr: 'STL',
+    venueId: null,
+    venueFieldInfo: null,
     ...overrides,
   });
 

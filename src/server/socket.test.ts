@@ -73,6 +73,8 @@ const SAMPLE_UPDATE: GameUpdate = {
   inningBreakLength: null,
   atBat: null,
   pitchHistory: [],
+  venueId: null,
+  venueFieldInfo: null,
   trackedTeamAbbr: 'NYM',
 };
 
