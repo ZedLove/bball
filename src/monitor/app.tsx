@@ -169,7 +169,10 @@ export function App() {
         />
         <LineupPanel atBat={atBat} />
       </Box>
-      <HitResultPanel lastHit={state.lastHit} />
+      <HitResultPanel
+        lastHit={state.lastHit}
+        venueFieldInfo={state.lastUpdate?.venueFieldInfo ?? null}
+      />
       {renderMainPanel()}
     </Box>
   );
