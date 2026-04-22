@@ -85,11 +85,13 @@ describe('buildField', () => {
     expect(ballCell.color).toBe('ball');
   });
 
-  it('places a question mark at center field when coordinates are null', () => {
+  it('does not place a ball or question mark when coordinates are null', () => {
     const field = buildField(null, null);
     const row0 = field[0];
     const hasQuestionMark = row0.some((c) => c.char === '?');
-    expect(hasQuestionMark).toBe(true);
+    const hasBall = field.flat().some((c) => c.char === '\u25c6');
+    expect(hasQuestionMark).toBe(false);
+    expect(hasBall).toBe(false);
   });
 
   it('clamps ball position to grid bounds', () => {
@@ -153,15 +155,31 @@ describe('SprayChart', () => {
     expect(lastFrame()).toContain('◆');
   });
 
-  it('renders a question mark when coordinates are null', () => {
+  it('renders a clean field (no ball marker) when coordinates are null', () => {
     const { lastFrame } = render(
       <SprayChart
         hitData={makeHitData({ coordinates: null })}
         isHomeRun={false}
       />
     );
-    expect(lastFrame()).toContain('?');
-    expect(lastFrame()).not.toContain('◆');
+    expect(lastFrame()).not.toContain('?');
+    expect(lastFrame()).not.toContain('\u25c6');
+  });
+
+  it('renders a clean field when hitData is null', () => {
+    const { lastFrame } = render(
+      <SprayChart hitData={null} isHomeRun={false} />
+    );
+    expect(lastFrame()).not.toContain('?');
+    expect(lastFrame()).not.toContain('\u25c6');
+  });
+
+  it('renders CHART_H lines when hitData is null', () => {
+    const { lastFrame } = render(
+      <SprayChart hitData={null} isHomeRun={false} />
+    );
+    const lines = (lastFrame() ?? '').split('\n');
+    expect(lines).toHaveLength(CHART_H);
   });
 
   it('renders without throwing for a home run', () => {

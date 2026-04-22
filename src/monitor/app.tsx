@@ -126,9 +126,6 @@ export function App() {
     if (state.celebration !== null) {
       return <CelebrationPanel celebration={state.celebration} />;
     }
-    if (state.lastHit !== null) {
-      return <HitResultPanel hit={state.lastHit} />;
-    }
     return (
       <EventsPanel
         lastUpdate={state.lastUpdate}
@@ -157,7 +154,6 @@ export function App() {
         </Text>
         <Header lastUpdate={state.lastUpdate} />
       </Box>
-      {renderMainPanel()}
       <Box flexDirection="row" flexWrap="nowrap" marginTop={1}>
         <AtBatPanel atBat={atBat} pitchDisplay={state.pitchDisplay} />
         <StrikeZone
@@ -173,6 +169,8 @@ export function App() {
         />
         <LineupPanel atBat={atBat} />
       </Box>
+      <HitResultPanel lastHit={state.lastHit} />
+      {renderMainPanel()}
     </Box>
   );
 }

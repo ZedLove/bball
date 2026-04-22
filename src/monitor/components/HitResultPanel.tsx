@@ -29,11 +29,19 @@ function formatStat(
 // ---------------------------------------------------------------------------
 
 interface HitResultPanelProps {
-  hit: HitDisplay;
+  lastHit: HitDisplay | null;
 }
 
-export function HitResultPanel({ hit }: HitResultPanelProps) {
-  const { hitData, batter, eventType, isHomeRun } = hit;
+export function HitResultPanel({ lastHit }: HitResultPanelProps) {
+  if (lastHit === null) {
+    return (
+      <Box flexDirection="row" marginTop={1} gap={2}>
+        <SprayChart hitData={null} isHomeRun={false} />
+      </Box>
+    );
+  }
+
+  const { hitData, batter, eventType, isHomeRun } = lastHit;
 
   const accentColor = isHomeRun ? THEME.homeRun : THEME.zoneInPlay;
 
