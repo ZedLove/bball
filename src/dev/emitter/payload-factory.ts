@@ -59,7 +59,13 @@ export function buildPayload(
       trackingMode === 'between-innings'
         ? null
         : state.currentPitcher
-          ? { ...state.currentPitcher }
+          ? {
+              ...state.currentPitcher,
+              pitchesThrown: 0,
+              strikes: 0,
+              balls: 0,
+              usage: [],
+            }
           : null,
     upcomingPitcher:
       trackingMode === 'between-innings'
@@ -76,6 +82,7 @@ export function buildPayload(
       trackingMode === 'between-innings' || trackingMode === 'final'
         ? null
         : (state.currentAtBat ?? null),
+    pitchHistory: [],
     // In the simulator the tracked team is always the home team.
     trackedTeamAbbr: state.teams.home.abbreviation,
   };

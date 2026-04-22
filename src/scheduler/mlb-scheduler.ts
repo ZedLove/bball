@@ -27,6 +27,13 @@ import type { EnrichmentState } from './enrichment-state.ts';
 import { hasLinescoreDelta } from './change-detector.ts';
 import { SOCKET_EVENTS } from '../server/socket-events.ts';
 import type { GameEventsPayload } from '../server/socket-events.ts';
+import { mapPitchEvent } from './pitch-mapper.ts';
+import {
+  computePitcherStats,
+  mergePitcherStats,
+  ZERO_PITCHER_STATS,
+} from './pitcher-stats.ts';
+import type { PitcherGameStats } from './pitcher-stats.ts';
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -95,6 +102,16 @@ export function startScheduler(io: SocketIOServer): Scheduler {
   let lastTrackingMode: GameUpdate['trackingMode'] | null = null;
   let lastEmittedUpdate: GameUpdate | null = null;
   let enrichmentState: EnrichmentState | null = null;
+
+  /**
+   * Tracks per-pitcher stats derived from the last enrichment tick (allPlays).
+   * Reset when the pitcher ID changes or the game ends.
+   */
+  let cachedPitcherStats: {
+    pitcherId: number;
+    enrichmentStats: PitcherGameStats;
+    enrichmentPitchHistory: import('../server/socket-events.ts').PitchEvent[];
+  } | null = null;
 
   const loop = async () => {
     if (stopped) return;
@@ -225,14 +242,95 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     ]);
     if (stopped) return;
 
-    // ── 5. Assemble atBat and build full update ───────────────────────────────
+    // ── 5. Assemble atBat and pitcher stats, then build full update ───────────
     const atBat: AtBatState | null =
       liveFeedResult !== null && currentLinescore !== null
         ? parseCurrentPlay(liveFeedResult, currentLinescore)
         : null;
 
+    // ── 5b. Pitcher stats computation (B4 / C1) ───────────────────────────────
+    // Uses both diffPatchResult (allPlays enrichment) and liveFeedResult
+    // (current at-bat delta) — both already resolved above.
+    //
+    // Strategy: enrichmentBase + currentAtBatDelta, recomputed each tick.
+    //   enrichmentBase = stats from allPlays (authoritative, updated each tick)
+    //   currentAtBatDelta = pitches in the live currentPlay not yet in allPlays
+
+    if (update?.trackingMode === 'final') {
+      cachedPitcherStats = null;
+    }
+
+    const pitcherId = update?.currentPitcher?.id ?? null;
+
+    if (pitcherId !== null) {
+      // Reset cache when pitcher changes
+      if (
+        cachedPitcherStats === null ||
+        cachedPitcherStats.pitcherId !== pitcherId
+      ) {
+        cachedPitcherStats = {
+          pitcherId,
+          enrichmentStats: ZERO_PITCHER_STATS,
+          enrichmentPitchHistory: [],
+        };
+      }
+
+      // Refresh from allPlays when diffPatch returned data
+      const allPlaysList = diffPatchResult?.liveData.plays.allPlays ?? null;
+      if (allPlaysList !== null) {
+        const enrichmentStats = computePitcherStats(allPlaysList, pitcherId);
+        const enrichmentPitchHistory = allPlaysList
+          .filter((play) => play.matchup.pitcher.id === pitcherId)
+          .flatMap((play) =>
+            play.playEvents
+              .filter((ev) => ev.type === 'pitch')
+              .map(mapPitchEvent)
+          );
+        cachedPitcherStats = {
+          pitcherId,
+          enrichmentStats,
+          enrichmentPitchHistory,
+        };
+      }
+    }
+
+    // Compute current at-bat delta from the live feed
+    const currentPlay = liveFeedResult?.liveData.plays.currentPlay ?? null;
+    const currentAtBatPitches: import('../server/socket-events.ts').PitchEvent[] =
+      pitcherId !== null &&
+      currentPlay !== null &&
+      currentPlay.matchup.pitcher.id === pitcherId
+        ? currentPlay.playEvents
+            .filter((ev) => ev.type === 'pitch')
+            .map(mapPitchEvent)
+        : [];
+
+    // Merge enrichment base with current at-bat delta
+    const mergedStats =
+      cachedPitcherStats !== null
+        ? mergePitcherStats(
+            cachedPitcherStats.enrichmentStats,
+            currentAtBatPitches
+          )
+        : null;
+
+    const pitchHistory: import('../server/socket-events.ts').PitchEvent[] =
+      cachedPitcherStats !== null
+        ? [...cachedPitcherStats.enrichmentPitchHistory, ...currentAtBatPitches]
+        : [];
+
     const fullUpdate: GameUpdate | null =
-      update !== null ? { ...update, atBat } : null;
+      update !== null
+        ? {
+            ...update,
+            atBat,
+            pitchHistory,
+            currentPitcher:
+              update.currentPitcher !== null && mergedStats !== null
+                ? { ...update.currentPitcher, ...mergedStats }
+                : update.currentPitcher,
+          }
+        : null;
 
     // ── 6. Emit baseline game-update ──────────────────────────────────────────
     // Emitted before enrichment events so clients receive current game state

@@ -1,5 +1,6 @@
 import type { ScheduleResponse } from './schedule-client.ts';
-import type { AtBatState } from '../server/socket-events.ts';
+import type { AtBatState, PitchEvent } from '../server/socket-events.ts';
+import type { PitcherGameStats } from './pitcher-stats.ts';
 
 /** Enriched game update emitted via Socket.IO and logged for observability. */
 export interface GameUpdate {
@@ -52,8 +53,18 @@ export interface GameUpdate {
   totalOutsRemaining: number | null;
   /** Runs needed for the lead when batting in extras, null otherwise */
   runsNeeded: number | null;
-  /** Pitcher currently on the mound during active play. null when not defending or during between-innings. */
-  currentPitcher: { id: number; fullName: string } | null;
+  /**
+   * Pitcher currently on the mound during active play.
+   * Includes computed stats (populated by the scheduler each tick).
+   * null when not defending or during between-innings.
+   */
+  currentPitcher: (PitcherGameStats & { id: number; fullName: string }) | null;
+  /**
+   * All pitches thrown by the current pitcher this game, in chronological
+   * order. Populated by the scheduler each tick. Empty array until the
+   * first enrichment tick resolves.
+   */
+  pitchHistory: PitchEvent[];
   /**
    * Pitcher scheduled to take the mound for the next half-inning.
    * Sourced from `linescore.defense.pitcher`, which the MLB API rotates to
@@ -152,7 +163,17 @@ export function parseGameUpdate(
   // 'currentPitcher' during active play, and as 'upcomingPitcher' between
   // innings, so consumers always get semantically correct data.
   const linescorePitcher = linescore.defense?.pitcher ?? null;
-  const currentPitcher = isBetweenInnings ? null : linescorePitcher;
+  const currentPitcher = isBetweenInnings
+    ? null
+    : linescorePitcher !== null
+      ? {
+          ...linescorePitcher,
+          pitchesThrown: 0,
+          strikes: 0,
+          balls: 0,
+          usage: [],
+        }
+      : null;
   const upcomingPitcher = isBetweenInnings ? linescorePitcher : null;
 
   let trackingMode: GameUpdate['trackingMode'];
@@ -227,6 +248,7 @@ export function parseGameUpdate(
     gamePk: game.gamePk,
     inningBreakLength,
     atBat: null,
+    pitchHistory: [],
     trackedTeamAbbr:
       game.teams.home.team.id === targetTeamId
         ? game.teams.home.team.abbreviation

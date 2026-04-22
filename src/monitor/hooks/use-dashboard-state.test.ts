@@ -35,10 +35,18 @@ function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
     outsRemaining: 2,
     totalOutsRemaining: 8,
     runsNeeded: null,
-    currentPitcher: { id: 543037, fullName: 'Gerrit Cole' },
+    currentPitcher: {
+      id: 543037,
+      fullName: 'Gerrit Cole',
+      pitchesThrown: 0,
+      strikes: 0,
+      balls: 0,
+      usage: [],
+    },
     upcomingPitcher: null,
     inningBreakLength: null,
     atBat: null,
+    pitchHistory: [],
     trackedTeamAbbr: 'BOS',
     ...overrides,
   };
@@ -103,7 +111,7 @@ function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
     lastHit: null,
     celebration: null,
     filter: 'all',
-    pitchDisplay: 'all',
+    pitchDisplay: 'at-bat',
     connectedAt: null,
     ...overrides,
   };
@@ -286,20 +294,26 @@ describe('dashboardReducer', () => {
   });
 
   describe('toggle-pitch-display action', () => {
-    it('toggles from all to last', () => {
+    it('cycles from last to at-bat', () => {
+      const state = makeState({ pitchDisplay: 'last' });
+      const next = dashboardReducer(state, { type: 'toggle-pitch-display' });
+      expect(next.pitchDisplay).toBe('at-bat');
+    });
+
+    it('cycles from at-bat to all', () => {
+      const state = makeState({ pitchDisplay: 'at-bat' });
+      const next = dashboardReducer(state, { type: 'toggle-pitch-display' });
+      expect(next.pitchDisplay).toBe('all');
+    });
+
+    it('cycles from all back to last', () => {
       const state = makeState({ pitchDisplay: 'all' });
       const next = dashboardReducer(state, { type: 'toggle-pitch-display' });
       expect(next.pitchDisplay).toBe('last');
     });
 
-    it('toggles from last to all', () => {
-      const state = makeState({ pitchDisplay: 'last' });
-      const next = dashboardReducer(state, { type: 'toggle-pitch-display' });
-      expect(next.pitchDisplay).toBe('all');
-    });
-
     it('does not affect other state fields', () => {
-      const state = makeState({ filter: 'scoring', pitchDisplay: 'all' });
+      const state = makeState({ filter: 'scoring', pitchDisplay: 'at-bat' });
       const next = dashboardReducer(state, { type: 'toggle-pitch-display' });
       expect(next.filter).toBe('scoring');
     });

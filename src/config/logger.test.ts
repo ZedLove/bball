@@ -35,6 +35,7 @@ describe('logUpdate', () => {
     upcomingPitcher: null,
     inningBreakLength: null,
     atBat: null,
+    pitchHistory: [],
     trackedTeamAbbr: 'STL',
     ...overrides,
   });
@@ -74,7 +75,14 @@ describe('logUpdate', () => {
     it('includes pitcher name when available', () => {
       const update = makeUpdate({
         trackingMode: 'outs',
-        currentPitcher: { id: 12345, fullName: 'Max Scherzer' },
+        currentPitcher: {
+          id: 12345,
+          fullName: 'Max Scherzer',
+          pitchesThrown: 0,
+          strikes: 0,
+          balls: 0,
+          usage: [],
+        },
       });
       logUpdate(update);
       const calls = logSpy.mock.calls[0];
