@@ -55,7 +55,10 @@ export function Header({ lastUpdate }: HeaderProps) {
   }
 
   // outs | batting | runs — normal header
-  const pitchCount = atBat?.pitchSequence.length ?? 0;
+  const pitcherStats =
+    currentPitcher !== null && currentPitcher.pitchesThrown > 0
+      ? currentPitcher
+      : null;
 
   return (
     <Box>
@@ -76,8 +79,22 @@ export function Header({ lastUpdate }: HeaderProps) {
         <>
           <Text color={THEME.fgDim}>{'  │  '}</Text>
           <Text color={THEME.fg}>{currentPitcher.fullName}</Text>
-          <Text color={THEME.fgDim}>{'  P: '}</Text>
-          <Text color={THEME.fg}>{pitchCount}</Text>
+          {pitcherStats !== null && (
+            <>
+              <Text color={THEME.fgDim}>{'  P: '}</Text>
+              <Text
+                color={THEME.fg}
+              >{`${pitcherStats.pitchesThrown} (B-S: ${pitcherStats.balls}-${pitcherStats.strikes})`}</Text>
+              {pitcherStats.usage.length > 1 && (
+                <Text color={THEME.fgDim}>
+                  {'  '}
+                  {pitcherStats.usage
+                    .map((u) => `${u.typeCode} ${u.pct}%`)
+                    .join('  ')}
+                </Text>
+              )}
+            </>
+          )}
         </>
       )}
       {trackingMode === 'runs' && (
