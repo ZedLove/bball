@@ -61,10 +61,18 @@ const SAMPLE_UPDATE: GameUpdate = {
   outsRemaining: 2,
   totalOutsRemaining: 8,
   runsNeeded: null,
-  currentPitcher: { id: 605113, fullName: 'Kodai Senga' },
+  currentPitcher: {
+    id: 605113,
+    fullName: 'Kodai Senga',
+    pitchesThrown: 0,
+    strikes: 0,
+    balls: 0,
+    usage: [],
+  },
   upcomingPitcher: null,
   inningBreakLength: null,
   atBat: null,
+  pitchHistory: [],
   trackedTeamAbbr: 'NYM',
 };
 

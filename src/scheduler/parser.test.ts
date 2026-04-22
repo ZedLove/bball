@@ -700,7 +700,12 @@ describe('parseGameUpdate', () => {
       expect(result!.currentPitcher).toEqual({
         id: 12345,
         fullName: 'Max Scherzer',
+        pitchesThrown: 0,
+        strikes: 0,
+        balls: 0,
+        usage: [],
       });
+      expect(result!.pitchHistory).toEqual([]);
       expect(result!.upcomingPitcher).toBeNull();
     });
 

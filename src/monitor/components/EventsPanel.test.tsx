@@ -71,6 +71,7 @@ function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
     upcomingPitcher: null,
     inningBreakLength: null,
     atBat: null,
+    pitchHistory: [],
     trackedTeamAbbr: 'BOS',
     ...overrides,
   };

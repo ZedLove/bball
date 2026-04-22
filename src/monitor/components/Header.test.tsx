@@ -43,10 +43,18 @@ function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
     outsRemaining: 2,
     totalOutsRemaining: 8,
     runsNeeded: null,
-    currentPitcher: { id: 543037, fullName: 'Gerrit Cole' },
+    currentPitcher: {
+      id: 543037,
+      fullName: 'Gerrit Cole',
+      pitchesThrown: 0,
+      strikes: 0,
+      balls: 0,
+      usage: [],
+    },
     upcomingPitcher: null,
     inningBreakLength: null,
     atBat: null,
+    pitchHistory: [],
     trackedTeamAbbr: 'BOS',
     ...overrides,
   };
@@ -109,14 +117,82 @@ describe('Header', () => {
       expect(frame).not.toMatch(/\d-\d/);
     });
 
-    it('renders pitch count from pitchSequence length', () => {
-      const pitchSequence = [{} as never, {} as never, {} as never];
+    it('renders pitcher pitch count and B-S split when pitchesThrown > 0', () => {
       const update = makeGameUpdate({
-        atBat: makeAtBat({ pitchSequence }),
+        currentPitcher: {
+          id: 543037,
+          fullName: 'Gerrit Cole',
+          pitchesThrown: 95,
+          strikes: 60,
+          balls: 35,
+          usage: [],
+        },
       });
       const { lastFrame } = render(<Header lastUpdate={update} />);
       expect(lastFrame()).toContain('P: ');
-      expect(lastFrame()).toContain('3');
+      expect(lastFrame()).toContain('95 (B-S: 35-60)');
+    });
+
+    it('omits P: stat line when pitchesThrown is 0', () => {
+      const update = makeGameUpdate({
+        currentPitcher: {
+          id: 543037,
+          fullName: 'Gerrit Cole',
+          pitchesThrown: 0,
+          strikes: 0,
+          balls: 0,
+          usage: [],
+        },
+      });
+      const { lastFrame } = render(<Header lastUpdate={update} />);
+      expect(lastFrame()).toContain('Gerrit Cole');
+      expect(lastFrame()).not.toContain('P: ');
+    });
+
+    it('renders usage summary when usage has more than one type', () => {
+      const update = makeGameUpdate({
+        currentPitcher: {
+          id: 543037,
+          fullName: 'Gerrit Cole',
+          pitchesThrown: 10,
+          strikes: 6,
+          balls: 4,
+          usage: [
+            {
+              typeCode: 'FF',
+              typeName: 'Four-Seam Fastball',
+              count: 6,
+              pct: 60,
+            },
+            { typeCode: 'SL', typeName: 'Slider', count: 4, pct: 40 },
+          ],
+        },
+      });
+      const { lastFrame } = render(<Header lastUpdate={update} />);
+      expect(lastFrame()).toContain('FF 60%');
+      expect(lastFrame()).toContain('SL 40%');
+    });
+
+    it('omits usage summary when usage has a single type', () => {
+      const update = makeGameUpdate({
+        currentPitcher: {
+          id: 543037,
+          fullName: 'Gerrit Cole',
+          pitchesThrown: 10,
+          strikes: 6,
+          balls: 4,
+          usage: [
+            {
+              typeCode: 'FF',
+              typeName: 'Four-Seam Fastball',
+              count: 10,
+              pct: 100,
+            },
+          ],
+        },
+      });
+      const { lastFrame } = render(<Header lastUpdate={update} />);
+      expect(lastFrame()).not.toContain('FF 100%');
     });
 
     it('does not render [EXTRAS] in outs mode', () => {
