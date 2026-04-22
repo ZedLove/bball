@@ -106,10 +106,30 @@ describe('buildField', () => {
     expect(hasFence).toBe(true);
   });
 
-  it('includes at least one field position label (2B, 3B, etc.)', () => {
+  it('includes at least one field position label (<> markers)', () => {
     const field = buildField(null, null);
     const hasLabel = field.flat().some((c) => c.color === 'label');
     expect(hasLabel).toBe(true);
+  });
+
+  it('uses <> icon markers at base positions instead of 1B/2B/3B text', () => {
+    const field = buildField(null, null);
+    const labels = field.flat().filter((c) => c.color === 'label');
+    const chars = labels.map((c) => c.char);
+    expect(chars).toContain('<');
+    expect(chars).toContain('>');
+    // Old text labels removed
+    expect(chars).not.toContain('1');
+    expect(chars).not.toContain('2');
+    expect(chars).not.toContain('3');
+  });
+
+  it('does not include an SS position label', () => {
+    const field = buildField(null, null);
+    const ssLabels = field
+      .flat()
+      .filter((c) => c.color === 'label' && c.char === 'S');
+    expect(ssLabels).toHaveLength(0);
   });
 });
 

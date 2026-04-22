@@ -44,13 +44,14 @@ export function BaseDiamond({ first, second, third }: BaseDiamondProps) {
       minWidth={22}
     >
       <Text color={THEME.fgDim}>{'Bases'}</Text>
-      {/* Row 1: 2nd base (centered) */}
+      {/* Row 1: 2nd base (centered above gap between 3B and 1B) */}
       <Box>
-        <Text>{'  '}</Text>
+        <Text>{'         '}</Text>
         <Text color={colorSecond}>{b2}</Text>
       </Box>
-      {/* Row 2: 3rd base (left) and 1st base (right) */}
+      {/* Row 2: 3rd base (left) and 1st base (right), centered in box */}
       <Box>
+        <Text>{'       '}</Text>
         <Text color={colorThird}>{b3}</Text>
         <Text>{'   '}</Text>
         <Text color={colorFirst}>{b1}</Text>

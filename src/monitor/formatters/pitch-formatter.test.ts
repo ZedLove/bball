@@ -21,6 +21,7 @@ describe('abbreviateCall', () => {
     ['Missed Bunt', 'MB'],
     ['Foul Pitchout', 'FP'],
     ['Hit By Pitch', 'HBP'],
+    ['Ball In Dirt', 'BID'],
   ] as [string, string][])('"%s" → "%s"', (call, expected) => {
     expect(abbreviateCall(call)).toBe(expected);
   });

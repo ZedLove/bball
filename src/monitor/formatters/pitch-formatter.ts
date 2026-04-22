@@ -17,6 +17,7 @@ const CALL_ABBREVIATIONS: Record<string, string> = {
   'Missed Bunt': 'MB',
   'Foul Pitchout': 'FP',
   'Hit By Pitch': 'HBP',
+  'Ball In Dirt': 'BID',
 };
 
 export function abbreviateCall(call: string): string {

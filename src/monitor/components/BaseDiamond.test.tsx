@@ -219,4 +219,28 @@ describe('BaseDiamond', () => {
       expect(frame).toContain('3B');
     });
   });
+
+  describe('diamond alignment', () => {
+    it('renders 2B marker indented further right than the 3B/1B row', () => {
+      const { lastFrame } = render(
+        <BaseDiamond first={null} second={null} third={null} />
+      );
+      const frame = lastFrame() ?? '';
+      const lines = frame.split('\n');
+
+      // Find the line containing only a single base symbol (the 2B row)
+      const b2Line = lines.find((l) => /◇/u.test(l) && !/◇.*◇/u.test(l));
+      // Find the line containing two base symbols side by side (3B/1B row)
+      const b1b3Line = lines.find((l) => /◇.*◇/u.test(l));
+
+      expect(b2Line).toBeDefined();
+      expect(b1b3Line).toBeDefined();
+
+      // 2B symbol should appear further to the right (higher col index)
+      // than the first ◇ symbol in the 3B/1B row
+      const b2ColIdx = b2Line!.indexOf('◇');
+      const b1b3ColIdx = b1b3Line!.indexOf('◇');
+      expect(b2ColIdx).toBeGreaterThan(b1b3ColIdx);
+    });
+  });
 });

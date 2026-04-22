@@ -57,17 +57,14 @@ interface FieldLabel {
 
 const FIELD_LABELS: FieldLabel[] = [
   // 2B: sits between CF and home plate, near center
-  { col: 14, row: 7, char: '2' },
-  { col: 15, row: 7, char: 'B' },
-  // SS: left of 2B
-  { col: 10, row: 9, char: 'S' },
-  { col: 11, row: 9, char: 'S' },
+  { col: 14, row: 7, char: '<' },
+  { col: 15, row: 7, char: '>' },
   // 1B: right side
-  { col: 20, row: 9, char: '1' },
-  { col: 21, row: 9, char: 'B' },
+  { col: 20, row: 9, char: '<' },
+  { col: 21, row: 9, char: '>' },
   // 3B: left side
-  { col: 8, row: 9, char: '3' },
-  { col: 9, row: 9, char: 'B' },
+  { col: 8, row: 9, char: '<' },
+  { col: 9, row: 9, char: '>' },
   // Pitcher's mound
   { col: 14, row: 12, char: '○' },
   // Home plate
