@@ -1,5 +1,6 @@
 import { Box, Text } from 'ink';
 import type { PitchEvent } from '../../server/socket-events.ts';
+import type { PitchDisplayMode } from '../types.ts';
 import { THEME } from '../theme.ts';
 import { abbreviateCall } from '../formatters/pitch-formatter.ts';
 
@@ -142,8 +143,8 @@ function drawZoneBorder(
 interface StrikeZoneProps {
   /** Pitches to render in the zone. Empty array = empty zone with border only. */
   pitchSequence: PitchEvent[];
-  /** Pitch display toggle: 'all' = all pitches; 'last' = most recent only. */
-  mode: 'all' | 'last';
+  /** Pitch display toggle: 'last' = most recent only; 'at-bat'/'all' = all pitches in sequence. */
+  mode: PitchDisplayMode;
   /** Strike zone top bound in feet (batter-specific). */
   szTop?: number;
   /** Strike zone bottom bound in feet (batter-specific). */

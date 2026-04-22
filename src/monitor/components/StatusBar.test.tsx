@@ -36,34 +36,48 @@ describe('StatusBar', () => {
       expect(frame).toContain('[s] Scoring');
     });
 
-    it('shows [p] Pitch hint', () => {
+    it('shows [p] pitch mode hint', () => {
       const { lastFrame } = render(
-        <StatusBar connectedAt={null} filter="all" pitchDisplay="all" />
+        <StatusBar connectedAt={null} filter="all" pitchDisplay="at-bat" />
       );
-      expect(lastFrame()).toContain('[p] Pitch:');
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('[p]');
+      expect(frame).toContain('last');
+      expect(frame).toContain('at-bat');
+      expect(frame).toContain('all');
     });
 
     it('shows [q] Quit hint', () => {
       const { lastFrame } = render(
-        <StatusBar connectedAt={null} filter="all" pitchDisplay="all" />
+        <StatusBar connectedAt={null} filter="all" pitchDisplay="at-bat" />
       );
       expect(lastFrame()).toContain('[q] Quit');
     });
   });
 
   describe('pitch display mode', () => {
-    it('shows ALL when pitchDisplay is all', () => {
+    it('renders all three mode labels', () => {
       const { lastFrame } = render(
-        <StatusBar connectedAt={null} filter="all" pitchDisplay="all" />
+        <StatusBar connectedAt={null} filter="all" pitchDisplay="at-bat" />
       );
-      expect(lastFrame()).toContain('ALL');
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('last');
+      expect(frame).toContain('at-bat');
+      expect(frame).toContain('all');
     });
 
-    it('shows LAST when pitchDisplay is last', () => {
+    it('renders last mode without errors', () => {
       const { lastFrame } = render(
         <StatusBar connectedAt={null} filter="all" pitchDisplay="last" />
       );
-      expect(lastFrame()).toContain('LAST');
+      expect(lastFrame()).toContain('last');
+    });
+
+    it('renders all mode without errors', () => {
+      const { lastFrame } = render(
+        <StatusBar connectedAt={null} filter="all" pitchDisplay="all" />
+      );
+      expect(lastFrame()).toContain('all');
     });
   });
 });

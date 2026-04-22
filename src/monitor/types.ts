@@ -8,7 +8,7 @@ import type {
 } from '../server/socket-events.ts';
 
 export type FilterMode = 'all' | 'scoring';
-export type PitchDisplayMode = 'all' | 'last';
+export type PitchDisplayMode = 'last' | 'at-bat' | 'all';
 
 export const MAX_EVENTS = 20;
 

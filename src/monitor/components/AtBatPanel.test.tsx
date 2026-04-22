@@ -40,11 +40,11 @@ function makePitch(overrides: Partial<PitchEvent> = {}): PitchEvent {
 
 describe('AtBatPanel', () => {
   describe('null atBat', () => {
-    it('renders nothing when atBat is null', () => {
+    it('renders empty shell with At-Bat label when atBat is null', () => {
       const { lastFrame } = render(
-        <AtBatPanel atBat={null} pitchDisplay="all" />
+        <AtBatPanel atBat={null} pitchDisplay="at-bat" />
       );
-      expect(lastFrame()).toBe('');
+      expect(lastFrame()).toContain('At-Bat');
     });
   });
 

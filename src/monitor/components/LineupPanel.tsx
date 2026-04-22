@@ -18,7 +18,18 @@ function formatStat(entry: LineupEntry): string {
 }
 
 export function LineupPanel({ atBat }: LineupPanelProps) {
-  if (atBat === null) return null;
+  if (atBat === null) {
+    return (
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor={THEME.border}
+        paddingX={1}
+      >
+        <Text color={THEME.fgDim}>{'Lineup'}</Text>
+      </Box>
+    );
+  }
 
   const { lineup, batter, onDeck, inHole, batSide } = atBat;
 

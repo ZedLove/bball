@@ -40,9 +40,23 @@ export function StatusBar({
       <Text color={filter === 'scoring' ? THEME.keyActive : THEME.keyInactive}>
         {'[s] Scoring'}
       </Text>
-      <Text color={THEME.fgDim}>{'  [p] Pitch: '}</Text>
-      <Text color={THEME.keyActive}>
-        {pitchDisplay === 'all' ? 'ALL' : 'LAST'}
+      <Text color={THEME.fgDim}>{'  [p] '}</Text>
+      <Text
+        color={pitchDisplay === 'last' ? THEME.keyActive : THEME.keyInactive}
+      >
+        {'last'}
+      </Text>
+      <Text color={THEME.fgDim}>{' | '}</Text>
+      <Text
+        color={pitchDisplay === 'at-bat' ? THEME.keyActive : THEME.keyInactive}
+      >
+        {'at-bat'}
+      </Text>
+      <Text color={THEME.fgDim}>{' | '}</Text>
+      <Text
+        color={pitchDisplay === 'all' ? THEME.keyActive : THEME.keyInactive}
+      >
+        {'all'}
       </Text>
       <Text color={THEME.fgDim}>{'  [q] Quit'}</Text>
     </Box>
