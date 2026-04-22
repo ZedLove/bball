@@ -24,7 +24,7 @@ const DEFAULT_SZ_BOTTOM = 1.5;
 // ---------------------------------------------------------------------------
 
 const STRIKE_CALLS = new Set(['CS', 'SS', 'SS(B)', 'AS']);
-const BALL_CALLS = new Set(['B', 'IB', 'AB', 'PO']);
+const BALL_CALLS = new Set(['B', 'IB', 'AB', 'PO', 'BID']);
 const FOUL_CALLS = new Set(['F', 'FT', 'FB', 'FP', 'MB']);
 const IN_PLAY_CALLS = new Set(['IP', 'IP(O)', 'IP(R)']);
 

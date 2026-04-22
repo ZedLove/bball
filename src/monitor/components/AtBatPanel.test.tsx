@@ -49,7 +49,7 @@ describe('AtBatPanel', () => {
   });
 
   describe('with atBat', () => {
-    it('renders batting order position and batter name with bat side', () => {
+    it('renders batter name with bat side (no batting order number)', () => {
       const atBat = makeAtBat({
         batter: { id: 646240, fullName: 'Rafael Devers', battingOrder: 400 },
         batSide: 'L',
@@ -58,7 +58,8 @@ describe('AtBatPanel', () => {
         <AtBatPanel atBat={atBat} pitchDisplay="all" />
       );
       const frame = lastFrame() ?? '';
-      expect(frame).toContain('4. Rafael Devers (L)');
+      expect(frame).toContain('Rafael Devers (L)');
+      expect(frame).not.toContain('4. Rafael Devers');
     });
 
     it('renders pitcher name with pitch hand', () => {
@@ -100,15 +101,17 @@ describe('AtBatPanel', () => {
       expect(lastFrame()).toContain('Count: 2-1');
     });
 
-    it('derives batting order position from battingOrder field', () => {
-      // battingOrder 900 → position 9
+    it('renders batter name without batting order prefix', () => {
+      // battingOrder field still exists on the type but should not appear in display
       const atBat = makeAtBat({
         batter: { id: 999, fullName: 'Kyle Schwarber', battingOrder: 900 },
       });
       const { lastFrame } = render(
         <AtBatPanel atBat={atBat} pitchDisplay="all" />
       );
-      expect(lastFrame()).toContain('9. Kyle Schwarber');
+      const frame = lastFrame() ?? '';
+      expect(frame).toContain('Kyle Schwarber');
+      expect(frame).not.toContain('9.');
     });
 
     it('renders pitch sequence when pitches exist', () => {

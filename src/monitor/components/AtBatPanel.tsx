@@ -15,7 +15,7 @@ export function AtBatPanel({ atBat, pitchDisplay }: AtBatPanelProps) {
     return null;
   }
 
-  const batterLabel = `${Math.floor(atBat.batter.battingOrder / 100)}. ${atBat.batter.fullName} (${atBat.batSide})`;
+  const batterLabel = `${atBat.batter.fullName} (${atBat.batSide})`;
   const pitcherLabel = `vs ${atBat.pitcher.fullName} (${atBat.pitchHand})`;
 
   return (
