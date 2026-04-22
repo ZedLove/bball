@@ -72,6 +72,7 @@ Follow these rules throughout implementation:
 **Commits**
 
 - Use single-line Conventional Commits with a scope: `feat(scope): description`
+  - never mention copilot, planning documents or phases. only refer to the changes being made
 - Prefer including test/type changes inside `feat` commits — do not create separate `test:` or `types:` commits unless they are large and independently reviewable.
 - **No `fix` commits on a feature branch.** If you discover a bug while implementing, fix it silently inside the relevant `feat` commit or note it for a follow-up PR.
 - Commit after each logical unit of work (e.g., after types, after mapper, after tests). Do not stage everything in one commit unless the change is tiny.
@@ -93,11 +94,7 @@ Coverage must not regress below existing thresholds. If a new code path is untes
 
 ## Step 6 — Mark the Phase Complete
 
-After the final commit for this phase, edit the plan document to mark the phase as complete. Use whatever convention is already present in the document (e.g., add `✅` before the phase heading, or append `(implemented)` to the phase title). Commit this update as:
-
-```
-chore(plans): mark Phase N complete in <feature-name> plan
-```
+After the final commit for this phase, edit the plan document to mark the phase as complete. Use whatever convention is already present in the document (e.g., add `✅` before the phase heading, or append `(implemented)` to the phase title). Planning docs are not committed, so this change is only local.
 
 ## Step 7 — Summarize and Hand Off
 

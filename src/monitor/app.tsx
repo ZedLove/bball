@@ -33,12 +33,22 @@ export function App() {
     lastPitchSequenceRef.current = atBat.pitchSequence;
   }
 
-  // Pitches to display in the StrikeZone:
-  // – New batter, no pitches yet (empty sequence) → show empty zone (cleared).
-  // – Active at-bat with pitches → show current pitches.
-  // – Between PAs (atBat null) → persist last completed PA pitches.
-  const displayPitchSequence: PitchEvent[] =
+  // Pitches to display in the StrikeZone based on the current display mode:
+  // – 'last'   → only the most recent pitch (current at-bat or persisted).
+  // – 'at-bat' → all pitches in current plate appearance (or persisted).
+  // – 'all'    → full pitcher pitch history from GameUpdate.pitchHistory.
+  const currentSequence: PitchEvent[] =
     atBat !== null ? atBat.pitchSequence : lastPitchSequenceRef.current;
+  const displayPitchSequence: PitchEvent[] = (() => {
+    if (state.pitchDisplay === 'all') {
+      return state.lastUpdate?.pitchHistory ?? [];
+    }
+    if (state.pitchDisplay === 'last') {
+      const last = currentSequence[currentSequence.length - 1];
+      return last !== undefined ? [last] : [];
+    }
+    return currentSequence;
+  })();
 
   // Extract strike zone dimensions from the most recent tracked pitch, if any.
   const lastTracked = [...displayPitchSequence]
@@ -46,8 +56,6 @@ export function App() {
     .find((p) => p.tracking !== null);
   const szTop = lastTracked?.tracking?.strikeZoneTop;
   const szBottom = lastTracked?.tracking?.strikeZoneBottom;
-
-  const showAtBatRow = atBat !== null || displayPitchSequence.length > 0;
 
   useSocket(dispatch);
 
@@ -150,23 +158,21 @@ export function App() {
         <Header lastUpdate={state.lastUpdate} />
       </Box>
       {renderMainPanel()}
-      {showAtBatRow && (
-        <Box flexDirection="row" flexWrap="nowrap" marginTop={1}>
-          <AtBatPanel atBat={atBat} pitchDisplay={state.pitchDisplay} />
-          <StrikeZone
-            pitchSequence={displayPitchSequence}
-            mode={state.pitchDisplay}
-            szTop={szTop}
-            szBottom={szBottom}
-          />
-          <BaseDiamond
-            first={atBat?.first ?? null}
-            second={atBat?.second ?? null}
-            third={atBat?.third ?? null}
-          />
-          <LineupPanel atBat={atBat} />
-        </Box>
-      )}
+      <Box flexDirection="row" flexWrap="nowrap" marginTop={1}>
+        <AtBatPanel atBat={atBat} pitchDisplay={state.pitchDisplay} />
+        <StrikeZone
+          pitchSequence={displayPitchSequence}
+          mode={state.pitchDisplay}
+          szTop={szTop}
+          szBottom={szBottom}
+        />
+        <BaseDiamond
+          first={atBat?.first ?? null}
+          second={atBat?.second ?? null}
+          third={atBat?.third ?? null}
+        />
+        <LineupPanel atBat={atBat} />
+      </Box>
     </Box>
   );
 }

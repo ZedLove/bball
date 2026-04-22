@@ -12,7 +12,17 @@ interface AtBatPanelProps {
 
 export function AtBatPanel({ atBat, pitchDisplay }: AtBatPanelProps) {
   if (atBat === null) {
-    return null;
+    return (
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor={THEME.border}
+        paddingX={1}
+        width={36}
+      >
+        <Text color={THEME.fgDim}>{'At-Bat'}</Text>
+      </Box>
+    );
   }
 
   const batterLabel = `${atBat.batter.fullName} (${atBat.batSide})`;

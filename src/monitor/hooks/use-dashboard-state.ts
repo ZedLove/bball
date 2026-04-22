@@ -24,7 +24,7 @@ const INITIAL_STATE: DashboardState = {
   lastHit: null,
   celebration: null,
   filter: 'all',
-  pitchDisplay: 'all',
+  pitchDisplay: 'at-bat',
   connectedAt: null,
 };
 
@@ -151,11 +151,10 @@ export function dashboardReducer(
     case 'set-filter':
       return { ...state, filter: action.filter };
 
-    case 'toggle-pitch-display':
-      return {
-        ...state,
-        pitchDisplay: state.pitchDisplay === 'all' ? 'last' : 'all',
-      };
+    case 'toggle-pitch-display': {
+      const next = { last: 'at-bat', 'at-bat': 'all', all: 'last' } as const;
+      return { ...state, pitchDisplay: next[state.pitchDisplay] };
+    }
 
     case 'dismiss-hit':
       return { ...state, lastHit: null };

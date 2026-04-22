@@ -71,9 +71,9 @@ function makeAtBat(overrides: Partial<AtBatState> = {}): AtBatState {
 
 describe('LineupPanel', () => {
   describe('null atBat', () => {
-    it('renders nothing when atBat is null', () => {
+    it('renders empty shell with Lineup label when atBat is null', () => {
       const { lastFrame } = render(<LineupPanel atBat={null} />);
-      expect(lastFrame()).toBe('');
+      expect(lastFrame()).toContain('Lineup');
     });
   });
 

@@ -1,5 +1,6 @@
 import { Box, Text } from 'ink';
 import type { PitchEvent } from '../../server/socket-events.ts';
+import type { PitchDisplayMode } from '../types.ts';
 import { THEME } from '../theme.ts';
 import { abbreviateCall } from '../formatters/pitch-formatter.ts';
 
@@ -27,7 +28,7 @@ const MAX_PITCH_LINES = 10;
 
 interface PitchSequenceProps {
   pitchSequence: PitchEvent[];
-  mode: 'all' | 'last';
+  mode: PitchDisplayMode;
 }
 
 export function PitchSequence({ pitchSequence, mode }: PitchSequenceProps) {
