@@ -706,7 +706,18 @@ describe('parseGameUpdate', () => {
         usage: [],
       });
       expect(result!.pitchHistory).toEqual([]);
+      expect(result!.venueId).toBeNull();
+      expect(result!.venueFieldInfo).toBeNull();
       expect(result!.upcomingPitcher).toBeNull();
+    });
+
+    it('sets venueId from game.venue.id when present', () => {
+      const schedule = makeSchedule([
+        makeGame({ venue: { id: 3313, name: 'Yankee Stadium' } }),
+      ]);
+      const result = parseGameUpdate(schedule, STL_ID);
+      expect(result!.venueId).toBe(3313);
+      expect(result!.venueFieldInfo).toBeNull();
     });
 
     it('sets currentPitcher to null when defense is absent during active play', () => {

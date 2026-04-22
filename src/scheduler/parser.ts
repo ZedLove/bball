@@ -1,6 +1,7 @@
 import type { ScheduleResponse } from './schedule-client.ts';
 import type { AtBatState, PitchEvent } from '../server/socket-events.ts';
 import type { PitcherGameStats } from './pitcher-stats.ts';
+import type { VenueFieldInfo } from './venue-client.ts';
 
 /** Enriched game update emitted via Socket.IO and logged for observability. */
 export interface GameUpdate {
@@ -90,6 +91,19 @@ export interface GameUpdate {
    * determine celebration polarity (win/loss, HR for us vs opponent).
    */
   trackedTeamAbbr: string;
+  /**
+   * MLB venue identifier for the current game's ballpark.
+   * Used to fetch real fence dimensions for the SprayChart.
+   * null when the schedule response does not include venue data.
+   */
+  venueId: number | null;
+  /**
+   * Real ballpark fence distances fetched from the MLB venues API.
+   * Populated by the scheduler after the venue fetch resolves.
+   * null until fetched (or if the fetch fails) — callers treat null as
+   * "use fallback constants".
+   */
+  venueFieldInfo: VenueFieldInfo | null;
 }
 
 export interface TeamInfo {
@@ -253,5 +267,7 @@ export function parseGameUpdate(
       game.teams.home.team.id === targetTeamId
         ? game.teams.home.team.abbreviation
         : game.teams.away.team.abbreviation,
+    venueId: game.venue?.id ?? null,
+    venueFieldInfo: null,
   };
 }

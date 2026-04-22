@@ -28,6 +28,10 @@ export interface ScheduleGame {
   };
   /** Standard between-half-inning break duration in seconds (usually 120). May be absent for older games. */
   inningBreakLength?: number;
+  venue?: {
+    id: number;
+    name: string;
+  };
   linescore?: Linescore;
 }
 
@@ -92,7 +96,7 @@ const MLB_SCHEDULE_ENDPOINT = 'https://statsapi.mlb.com/api/v1/schedule';
  * with linescore and team hydrations for richer data.
  */
 export async function fetchSchedule(): Promise<ScheduleResponse> {
-  const url = `${MLB_SCHEDULE_ENDPOINT}?sportId=1&teamId=${CONFIG.TEAM_ID}&hydrate=linescore,team`;
+  const url = `${MLB_SCHEDULE_ENDPOINT}?sportId=1&teamId=${CONFIG.TEAM_ID}&hydrate=linescore,team,venue`;
   const response = await axios.get<ScheduleResponse>(url, {
     timeout: 8_000,
     headers: {
