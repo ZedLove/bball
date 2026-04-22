@@ -141,12 +141,8 @@ export function buildField(
     const col = Math.max(0, Math.min(CHART_W - 1, toChartCol(coordX)));
     const row = Math.max(0, Math.min(CHART_H - 1, toChartRow(coordY)));
     grid[row][col] = { char: '◆', color: 'ball' };
-  } else {
-    // No coordinates: show a question mark at center field
-    const cfRow = toChartRow(Y_CF);
-    const cfCol = Math.round((CHART_W - 1) / 2);
-    grid[Math.max(0, cfRow)][cfCol] = { char: '?', color: 'miss' };
   }
+  // When coordinates are absent, leave the field diagram clean (no marker).
 
   return grid;
 }
@@ -176,13 +172,13 @@ function cellColor(
 }
 
 interface SprayChartProps {
-  hitData: BattedBallData;
+  hitData: BattedBallData | null;
   isHomeRun: boolean;
 }
 
 export function SprayChart({ hitData, isHomeRun }: SprayChartProps) {
-  const coordX = hitData.coordinates?.coordX ?? null;
-  const coordY = hitData.coordinates?.coordY ?? null;
+  const coordX = hitData?.coordinates?.coordX ?? null;
+  const coordY = hitData?.coordinates?.coordY ?? null;
   const field = buildField(coordX, coordY);
 
   return (

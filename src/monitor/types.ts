@@ -13,7 +13,7 @@ export type PitchDisplayMode = 'last' | 'at-bat' | 'all';
 export const MAX_EVENTS = 20;
 
 /** How long to display the hit result panel after a ball is put in play. */
-export const HIT_DISPLAY_MS = 7_000;
+export const HIT_DISPLAY_MS = 15_000;
 
 /** Total duration of the celebration animation in milliseconds. */
 export const CELEBRATION_DURATION_MS = 3_000;
