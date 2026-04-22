@@ -72,6 +72,8 @@ export function App() {
   }, [state.lastHit?.expiresAt]);
 
   // Drive the celebration animation: advance frames and dismiss when done.
+  // Depend on expiresAt so back-to-back celebrations (e.g. two HRs) restart
+  // the interval with the new expiry rather than closing over the stale one.
   useEffect(() => {
     if (!state.celebration) return;
     const id = setInterval(() => {
@@ -82,7 +84,7 @@ export function App() {
       }
     }, CELEBRATION_FRAME_MS);
     return () => clearInterval(id);
-  }, [state.celebration !== null]);
+  }, [state.celebration?.expiresAt]);
 
   useInput((input) => {
     switch (input) {

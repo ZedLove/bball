@@ -337,7 +337,7 @@ describe('dashboardReducer', () => {
   describe('game-events — hit detection', () => {
     it('sets lastHit when a plate-appearance event has an in-play pitch with hitData', () => {
       const inPlayEvent = makePlateAppearance({
-        eventType: 'Home Run',
+        eventType: 'home_run',
         pitchSequence: [
           {
             pitchNumber: 1,
@@ -472,7 +472,7 @@ describe('dashboardReducer', () => {
       overrides: Partial<PlateAppearanceCompletedEvent> = {}
     ): PlateAppearanceCompletedEvent {
       return makePlateAppearance({
-        eventType: 'Home Run',
+        eventType: 'home_run',
         battingTeam: 'NYY',
         batter: { id: 592450, fullName: 'Aaron Judge' },
         ...overrides,

@@ -57,7 +57,9 @@ export function parseCurrentPlay(
     batter: {
       id: batter.id,
       fullName: batter.fullName,
-      battingOrder: offense.battingOrder ?? 0,
+      // linescore.offense.battingOrder is 1–9; normalise to slot×100 to match
+      // LineupEntry.battingOrder and AtBatPanel's Math.floor(x / 100) display.
+      battingOrder: (offense.battingOrder ?? 0) * 100,
     },
     pitcher: { id: pitcher.id, fullName: pitcher.fullName },
     batSide: batSide.code,
@@ -104,7 +106,10 @@ function buildLineup(team: LiveBoxscoreTeam | undefined): LineupEntry[] {
         seasonOps: ops !== '' ? ops : null,
       } satisfies LineupEntry;
     })
-    .filter((entry): entry is LineupEntry => entry !== null)
+    .filter(
+      (entry): entry is LineupEntry =>
+        entry !== null && entry.battingOrder !== 0
+    )
     .sort((a, b) => a.battingOrder - b.battingOrder);
 }
 

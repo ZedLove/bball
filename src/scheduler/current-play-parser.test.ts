@@ -70,7 +70,7 @@ describe('parseCurrentPlay', () => {
       expect(state.batter).toEqual({
         id: 678554,
         fullName: 'Curtis Mead',
-        battingOrder: 2,
+        battingOrder: 200,
       });
       expect(state.pitcher).toEqual({ id: 676775, fullName: 'Keaton Winn' });
       expect(state.batSide).toBe('R');

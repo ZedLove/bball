@@ -45,7 +45,7 @@ function detectHit(events: GameEvent[]): HitDisplay | null {
       hitData,
       batter: e.batter,
       eventType: e.eventType,
-      isHomeRun: e.eventType === 'Home Run',
+      isHomeRun: e.eventType === 'home_run',
       expiresAt: Date.now() + HIT_DISPLAY_MS,
     };
   }
@@ -64,7 +64,7 @@ function detectHomeRun(
   for (const event of events) {
     if (event.category !== 'plate-appearance-completed') continue;
     const e = event as PlateAppearanceCompletedEvent;
-    if (e.eventType !== 'Home Run') continue;
+    if (e.eventType !== 'home_run') continue;
     const polarity =
       trackedTeamAbbr !== null && e.battingTeam === trackedTeamAbbr
         ? 'positive'
@@ -159,6 +159,9 @@ export function dashboardReducer(
 
     case 'dismiss-hit':
       return { ...state, lastHit: null };
+
+    default:
+      return state;
   }
 }
 
