@@ -34,6 +34,8 @@ import {
   ZERO_PITCHER_STATS,
 } from './pitcher-stats.ts';
 import type { PitcherGameStats } from './pitcher-stats.ts';
+import { VenueClient } from './venue-client.ts';
+import type { VenueFieldInfo } from './venue-client.ts';
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -113,6 +115,10 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     enrichmentPitchHistory: import('../server/socket-events.ts').PitchEvent[];
   } | null = null;
 
+  const venueClient = new VenueClient();
+  let currentVenueFieldInfo: VenueFieldInfo | null = null;
+  let lastVenueId: number | null = null;
+
   const loop = async () => {
     if (stopped) return;
 
@@ -169,6 +175,20 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           seedTimestamp,
         });
       }
+    }
+
+    // ── 3b. Venue field info fetch (once per venueId) ─────────────────────────
+    // Fetch venue dimensions when a new venue is seen. Non-blocking: fetched
+    // concurrently with the enrichment promises in step 4, but we await it
+    // here so the result is ready before building fullUpdate.
+    const currentVenueId = update?.venueId ?? null;
+    if (currentVenueId !== null && currentVenueId !== lastVenueId) {
+      lastVenueId = currentVenueId;
+      currentVenueFieldInfo = null; // clear stale info immediately
+      currentVenueFieldInfo = await venueClient.fetchFieldInfo(currentVenueId);
+    } else if (currentVenueId === null) {
+      lastVenueId = null;
+      currentVenueFieldInfo = null;
     }
 
     // ── 4. Parallel enrichment fetches ────────────────────────────────────────
@@ -329,6 +349,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
               update.currentPitcher !== null && mergedStats !== null
                 ? { ...update.currentPitcher, ...mergedStats }
                 : update.currentPitcher,
+            venueFieldInfo: currentVenueFieldInfo,
           }
         : null;
 

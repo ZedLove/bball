@@ -3,6 +3,7 @@ export type {
   PitcherGameStats,
   PitchTypeUsage,
 } from '../scheduler/pitcher-stats.ts';
+export type { VenueFieldInfo } from '../scheduler/venue-client.ts';
 
 /** Socket.IO event name constants shared by the scheduler and dev simulator. */
 export const SOCKET_EVENTS = {
