@@ -1,4 +1,8 @@
 import type { EventCategory } from '../scheduler/known-event-types.ts';
+export type {
+  PitcherGameStats,
+  PitchTypeUsage,
+} from '../scheduler/pitcher-stats.ts';
 
 /** Socket.IO event name constants shared by the scheduler and dev simulator. */
 export const SOCKET_EVENTS = {
