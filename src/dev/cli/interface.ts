@@ -11,6 +11,7 @@ import type {
   PitchOptions,
 } from '../types.ts';
 import { renderMenu, renderState } from './renderer.ts';
+import { handleReplay } from './replay-command.ts';
 import {
   handleGameStart,
   handleGameEnd,
@@ -421,6 +422,23 @@ async function dispatch(
     case 'bb':
       print(handleBattingBegins(store, io).message);
       break;
+
+    case 'replay': {
+      const dirArg = args['dir'];
+      const dir =
+        dirArg !== undefined
+          ? dirArg
+          : await ask(
+              rl,
+              '  Capture directory (e.g. captures/2026-04-22-716463): '
+            );
+      if (dir.trim()) {
+        await handleReplay(dir.trim(), rl, io);
+      } else {
+        print('⚠  Capture directory is required.');
+      }
+      break;
+    }
 
     default:
       print(
