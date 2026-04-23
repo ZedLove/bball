@@ -28,11 +28,7 @@ import { hasLinescoreDelta } from './change-detector.ts';
 import { SOCKET_EVENTS } from '../server/socket-events.ts';
 import type { GameEventsPayload } from '../server/socket-events.ts';
 import { mapPitchEvent } from './pitch-mapper.ts';
-import {
-  computePitcherStats,
-  mergePitcherStats,
-  ZERO_PITCHER_STATS,
-} from './pitcher-stats.ts';
+import { mergePitcherStats, ZERO_PITCHER_STATS } from './pitcher-stats.ts';
 import type { PitcherGameStats } from './pitcher-stats.ts';
 import { VenueClient } from './venue-client.ts';
 import type { VenueFieldInfo } from './venue-client.ts';
@@ -178,18 +174,23 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     }
 
     // ── 3b. Venue field info fetch (once per venueId) ─────────────────────────
-    // Fetch venue dimensions when a new venue is seen. Non-blocking: fetched
-    // concurrently with the enrichment promises in step 4, but we await it
-    // here so the result is ready before building fullUpdate.
+    // Kicked off as a Promise and resolved concurrently with the live-feed /
+    // diffPatch fetches in step 4. lastVenueId is only advanced once a non-null
+    // result is received — a null result (transient failure) keeps lastVenueId
+    // unset so the next tick retries transparently.
     const currentVenueId = update?.venueId ?? null;
-    if (currentVenueId !== null && currentVenueId !== lastVenueId) {
-      lastVenueId = currentVenueId;
-      currentVenueFieldInfo = null; // clear stale info immediately
-      currentVenueFieldInfo = await venueClient.fetchFieldInfo(currentVenueId);
-    } else if (currentVenueId === null) {
+    if (currentVenueId === null) {
       lastVenueId = null;
       currentVenueFieldInfo = null;
     }
+    const needsVenueFetch =
+      currentVenueId !== null && currentVenueId !== lastVenueId;
+    if (needsVenueFetch) {
+      currentVenueFieldInfo = null; // clear stale info immediately
+    }
+    const venuePromise: Promise<VenueFieldInfo | null> = needsVenueFetch
+      ? venueClient.fetchFieldInfo(currentVenueId!)
+      : Promise.resolve(currentVenueFieldInfo);
 
     // ── 4. Parallel enrichment fetches ────────────────────────────────────────
     // Fire feed/live and diffPatch fetches concurrently after the schedule
@@ -256,11 +257,18 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           })
         : Promise.resolve(null);
 
-    const [liveFeedResult, diffPatchResult] = await Promise.all([
+    const [liveFeedResult, diffPatchResult, venueResult] = await Promise.all([
       liveFeedPromise,
       diffPatchPromise,
+      venuePromise,
     ]);
     if (stopped) return;
+
+    // Apply venue result; only advance lastVenueId on success to allow retry.
+    if (needsVenueFetch && venueResult !== null) {
+      currentVenueFieldInfo = venueResult;
+      lastVenueId = currentVenueId!;
+    }
 
     // ── 5. Assemble atBat and pitcher stats, then build full update ───────────
     const atBat: AtBatState | null =
@@ -268,19 +276,23 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         ? parseCurrentPlay(liveFeedResult, currentLinescore)
         : null;
 
-    // ── 5b. Pitcher stats computation (B4 / C1) ───────────────────────────────
+    // ── 5b. Pitcher stats computation ─────────────────────────────────────────
     // Uses both diffPatchResult (allPlays enrichment) and liveFeedResult
     // (current at-bat delta) — both already resolved above.
     //
-    // Strategy: enrichmentBase + currentAtBatDelta, recomputed each tick.
-    //   enrichmentBase = stats from allPlays (authoritative, updated each tick)
+    // Strategy: accumulate delta pitches into the running enrichment total each
+    // tick, then merge the live currentPlay pitches on top.
+    //   enrichmentBase = running total built from each diffPatch window
     //   currentAtBatDelta = pitches in the live currentPlay not yet in allPlays
 
-    if (update?.trackingMode === 'final') {
+    const pitcherId = update?.currentPitcher?.id ?? null;
+
+    // Clear cache on game-end or when there is no active pitcher (between
+    // innings, target team batting). This prevents stale pitch history from
+    // being emitted when currentPitcher is null.
+    if (update?.trackingMode === 'final' || pitcherId === null) {
       cachedPitcherStats = null;
     }
-
-    const pitcherId = update?.currentPitcher?.id ?? null;
 
     if (pitcherId !== null) {
       // Reset cache when pitcher changes
@@ -295,11 +307,12 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         };
       }
 
-      // Refresh from allPlays when diffPatch returned data
+      // Accumulate delta from the diffPatch window into the running game total.
+      // merge+append (not overwrite) ensures stats reflect all completed plays
+      // since the game started, not just the latest diffPatch window.
       const allPlaysList = diffPatchResult?.liveData.plays.allPlays ?? null;
       if (allPlaysList !== null) {
-        const enrichmentStats = computePitcherStats(allPlaysList, pitcherId);
-        const enrichmentPitchHistory = allPlaysList
+        const deltaPitchHistory = allPlaysList
           .filter((play) => play.matchup.pitcher.id === pitcherId)
           .flatMap((play) =>
             play.playEvents
@@ -308,8 +321,14 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           );
         cachedPitcherStats = {
           pitcherId,
-          enrichmentStats,
-          enrichmentPitchHistory,
+          enrichmentStats: mergePitcherStats(
+            cachedPitcherStats.enrichmentStats,
+            deltaPitchHistory
+          ),
+          enrichmentPitchHistory: [
+            ...cachedPitcherStats.enrichmentPitchHistory,
+            ...deltaPitchHistory,
+          ],
         };
       }
     }
