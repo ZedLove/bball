@@ -22,6 +22,15 @@ vi.mock('../config/env.ts', () => ({
   },
 }));
 
+// VenueClient is a class — use vi.hoisted so the mock fn reference is available
+// inside the vi.mock factory and in test bodies.
+const mockFetchFieldInfo = vi.hoisted(() => vi.fn());
+vi.mock('./venue-client.ts', () => ({
+  VenueClient: class {
+    fetchFieldInfo = mockFetchFieldInfo;
+  },
+}));
+
 import { startScheduler } from './mlb-scheduler.ts';
 import { SOCKET_EVENTS } from '../server/socket-events.ts';
 import { fetchSchedule } from './schedule-client.ts';
@@ -31,7 +40,8 @@ import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import * as summaryParserModule from './summary-parser.ts';
 import type { ScheduleResponse } from './schedule-client.ts';
-import type { GameFeedResponse } from './game-feed-types.ts';
+import type { GameFeedResponse, AllPlay } from './game-feed-types.ts';
+import type { VenueFieldInfo } from './venue-client.ts';
 import {
   createMockIo,
   drainMicrotasks,
@@ -136,6 +146,9 @@ beforeEach(() => {
   // Default: feed/live returns currentPlay: null → atBat: null on every game-update.
   // Tests that need a populated atBat override this per-test.
   mockFetchGameFeedLive.mockResolvedValue(makeGameFeedLiveResponse());
+  // Default: venue fetch returns null (no venue data). Tests that exercise
+  // venue behaviour override this per-test.
+  mockFetchFieldInfo.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -1116,6 +1129,365 @@ describe('live at-bat state', () => {
       SOCKET_EVENTS.GAME_UPDATE,
       expect.objectContaining({ gamePk: GAME_PK, atBat: null })
     );
+    scheduler.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Venue field info (PR review comment #1)
+// ---------------------------------------------------------------------------
+
+const VENUE_ID = 3289; // Citi Field
+
+/** Schedule fixture with a venueId for venue-fetch tests. */
+function makeLiveScheduleWithVenue(
+  venueId: number,
+  outs = 1
+): ScheduleResponse {
+  const schedule = makeLiveSchedule(outs);
+  schedule.dates[0]!.games[0]!.venue = { id: venueId, name: 'Citi Field' };
+  return schedule;
+}
+
+/** A minimal VenueFieldInfo result. */
+function makeVenueFieldInfo(venueId = VENUE_ID): VenueFieldInfo {
+  return {
+    venueId,
+    leftLine: 335,
+    leftCenter: 383,
+    center: 404,
+    rightCenter: 383,
+    rightLine: 330,
+  };
+}
+
+describe('venue field info', () => {
+  it('calls fetchFieldInfo when a new venueId is seen', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(
+      makeLiveScheduleWithVenue(VENUE_ID)
+    );
+    mockFetchFieldInfo.mockResolvedValueOnce(makeVenueFieldInfo());
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    expect(mockFetchFieldInfo).toHaveBeenCalledOnce();
+    expect(mockFetchFieldInfo).toHaveBeenCalledWith(VENUE_ID);
+    scheduler.stop();
+  });
+
+  it('populates venueFieldInfo on game-update when fetch succeeds', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(
+      makeLiveScheduleWithVenue(VENUE_ID)
+    );
+    mockFetchFieldInfo.mockResolvedValueOnce(makeVenueFieldInfo());
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.objectContaining({
+        venueFieldInfo: expect.objectContaining({
+          venueId: VENUE_ID,
+          center: 404,
+        }),
+      })
+    );
+    scheduler.stop();
+  });
+
+  it('retries fetchFieldInfo on the next tick when it returns null', async () => {
+    // Tick 1: fetch returns null (transient failure)
+    mockFetchSchedule.mockResolvedValueOnce(
+      makeLiveScheduleWithVenue(VENUE_ID)
+    );
+    mockFetchFieldInfo.mockResolvedValueOnce(null);
+    // Tick 2: same venueId — must retry
+    mockFetchSchedule.mockResolvedValueOnce(
+      makeLiveScheduleWithVenue(VENUE_ID)
+    );
+    mockFetchFieldInfo.mockResolvedValueOnce(makeVenueFieldInfo());
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2
+
+    expect(mockFetchFieldInfo).toHaveBeenCalledTimes(2);
+    scheduler.stop();
+  });
+
+  it('does not re-fetch after a successful result for the same venueId', async () => {
+    // Tick 1: fetch succeeds
+    mockFetchSchedule.mockResolvedValueOnce(
+      makeLiveScheduleWithVenue(VENUE_ID)
+    );
+    mockFetchFieldInfo.mockResolvedValueOnce(makeVenueFieldInfo());
+    // Tick 2: same venueId — must NOT re-fetch
+    mockFetchSchedule.mockResolvedValueOnce(
+      makeLiveScheduleWithVenue(VENUE_ID, 2)
+    );
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2
+
+    expect(mockFetchFieldInfo).toHaveBeenCalledOnce();
+    scheduler.stop();
+  });
+
+  it('emits venueFieldInfo: null when venueId becomes null', async () => {
+    // Tick 1: venueId present, fetch succeeds
+    mockFetchSchedule.mockResolvedValueOnce(
+      makeLiveScheduleWithVenue(VENUE_ID)
+    );
+    mockFetchFieldInfo.mockResolvedValueOnce(makeVenueFieldInfo());
+    // Tick 2: no venueId → venueFieldInfo cleared
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick2Update = updateCalls[updateCalls.length - 1]![1] as {
+      venueFieldInfo: VenueFieldInfo | null;
+    };
+    expect(tick2Update.venueFieldInfo).toBeNull();
+    scheduler.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pitcher stats accumulation across diffPatch windows (PR review comment #2)
+// ---------------------------------------------------------------------------
+
+const PITCHER_ID = 660271; // Shohei Ohtani (matches makeLiveSchedule defense.pitcher)
+
+/** Feed response with pitch events for the given pitcher. */
+function makeFeedResponseWithPitches(
+  atBatIndex: number,
+  pitches: Array<{ isStrike: boolean; isBall: boolean }>,
+  timestamp = FEED_TIMESTAMP_1
+): GameFeedResponse {
+  const playEvents: AllPlay['playEvents'] = pitches.map((p, i) => ({
+    type: 'pitch',
+    isPitch: true,
+    pitchNumber: i + 1,
+    details: {
+      description: p.isStrike ? 'Called Strike' : 'Ball',
+      type: { code: 'FF', description: 'Four-Seam Fastball' },
+      isStrike: p.isStrike,
+      isBall: p.isBall,
+    },
+    count: { balls: 0, strikes: 0 },
+  }));
+
+  return {
+    metaData: { timeStamp: timestamp },
+    gameData: {
+      teams: {
+        away: { id: LAD_ID, abbreviation: 'LAD' },
+        home: { id: NYM_ID, abbreviation: 'NYM' },
+      },
+      players: {
+        ID596019: { id: 596019, fullName: 'Francisco Lindor' },
+        ID660271: { id: 660271, fullName: 'Shohei Ohtani' },
+      },
+    },
+    liveData: {
+      plays: {
+        allPlays: [
+          {
+            atBatIndex,
+            result: {
+              eventType: 'strikeout',
+              description: 'Francisco Lindor strikes out swinging.',
+              rbi: 0,
+            },
+            about: {
+              atBatIndex,
+              halfInning: 'top',
+              inning: 3,
+              isComplete: true,
+              isScoringPlay: false,
+            },
+            matchup: {
+              batter: { id: 596019, fullName: 'Francisco Lindor' },
+              pitcher: { id: PITCHER_ID, fullName: 'Shohei Ohtani' },
+            },
+            playEvents,
+          },
+        ],
+      },
+    },
+  };
+}
+
+describe('pitcher stats accumulation', () => {
+  it('accumulates pitchesThrown across two diffPatch windows', async () => {
+    // Window 1: 3 pitches (2 strikes, 1 ball)
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponseWithPitches(
+        0,
+        [
+          { isStrike: true, isBall: false },
+          { isStrike: false, isBall: true },
+          { isStrike: true, isBall: false },
+        ],
+        FEED_TIMESTAMP_1
+      )
+    );
+    // Window 2: 2 more pitches (1 strike, 1 ball)
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(3));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponseWithPitches(
+        1,
+        [
+          { isStrike: true, isBall: false },
+          { isStrike: false, isBall: true },
+        ],
+        FEED_TIMESTAMP_2
+      )
+    );
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1: seeds state
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2: window 1 (3 pitches)
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 3: window 2 (2 more pitches)
+
+    // After tick 3, currentPitcher.pitchesThrown must reflect all 5 pitches,
+    // not just the 2 from the last window.
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick3Update = updateCalls[updateCalls.length - 1]![1] as {
+      currentPitcher: {
+        pitchesThrown: number;
+        strikes: number;
+        balls: number;
+      } | null;
+    };
+    expect(tick3Update.currentPitcher).not.toBeNull();
+    expect(tick3Update.currentPitcher!.pitchesThrown).toBe(5);
+    expect(tick3Update.currentPitcher!.strikes).toBe(3);
+    expect(tick3Update.currentPitcher!.balls).toBe(2);
+    scheduler.stop();
+  });
+
+  it('accumulates pitchHistory across two diffPatch windows', async () => {
+    // Window 1: 2 pitches
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponseWithPitches(
+        0,
+        [
+          { isStrike: true, isBall: false },
+          { isStrike: false, isBall: true },
+        ],
+        FEED_TIMESTAMP_1
+      )
+    );
+    // Window 2: 1 more pitch
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(3));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponseWithPitches(
+        1,
+        [{ isStrike: true, isBall: false }],
+        FEED_TIMESTAMP_2
+      )
+    );
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2: 2 pitches
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 3: 1 more pitch
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick3Update = updateCalls[updateCalls.length - 1]![1] as {
+      pitchHistory: unknown[];
+    };
+    // pitchHistory must contain all 3 pitches from both windows
+    expect(tick3Update.pitchHistory).toHaveLength(3);
+    scheduler.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pitcher stats cache cleared when currentPitcher is null (PR review comment #3)
+// ---------------------------------------------------------------------------
+
+describe('pitcher stats cache management', () => {
+  it('emits empty pitchHistory when currentPitcher is null even if previously cached', async () => {
+    // Tick 1: seeds enrichment state (outs mode, pitcher present)
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    // Tick 2: linescore delta fires enrichment; 2 pitches cached
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponseWithPitches(
+        0,
+        [
+          { isStrike: true, isBall: false },
+          { isStrike: false, isBall: true },
+        ],
+        FEED_TIMESTAMP_1
+      )
+    );
+    // Tick 3: between-innings (no currentPitcher) — cache must be cleared.
+    // Linescore changed from tick 2 so enrichment fires; return empty feed.
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2: pitches cached
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 3: between-innings
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick3Update = updateCalls[updateCalls.length - 1]![1] as {
+      trackingMode: string;
+      pitchHistory: unknown[];
+    };
+    expect(tick3Update.trackingMode).toBe('between-innings');
+    expect(tick3Update.pitchHistory).toHaveLength(0);
     scheduler.stop();
   });
 });

@@ -5,3 +5,4 @@ coverage
 .env.local
 package-lock.json
 *.lock
+captures
