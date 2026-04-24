@@ -47,6 +47,13 @@ export default tseslint.config(
           'ts-nocheck': true,
         },
       ],
+      // Prevent inline import() inside type annotations — forces a proper
+      // top-level `import type` instead. Catches patterns like:
+      //   const x: import('./foo.ts').Bar = ...
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', disallowTypeAnnotations: true },
+      ],
 
       // General
       'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
