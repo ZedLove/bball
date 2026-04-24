@@ -26,8 +26,6 @@ export interface ScheduleGame {
     away: ScheduleTeamEntry;
     home: ScheduleTeamEntry;
   };
-  /** Standard between-half-inning break duration in seconds (usually 120). May be absent for older games. */
-  inningBreakLength?: number;
   venue?: {
     id: number;
     name: string;

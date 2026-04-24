@@ -70,7 +70,6 @@ const SAMPLE_UPDATE: GameUpdate = {
     usage: [],
   },
   upcomingPitcher: null,
-  inningBreakLength: null,
   atBat: null,
   pitchHistory: [],
   venueId: null,

@@ -33,7 +33,6 @@ describe('logUpdate', () => {
     runsNeeded: null,
     currentPitcher: null,
     upcomingPitcher: null,
-    inningBreakLength: null,
     atBat: null,
     pitchHistory: [],
     trackedTeamAbbr: 'STL',
@@ -141,7 +140,6 @@ describe('logUpdate', () => {
       const update = makeUpdate({
         trackingMode: 'between-innings',
         inning: { number: 5, half: 'Middle', ordinal: '5th' },
-        inningBreakLength: 120,
       });
       logUpdate(update);
       const calls = logSpy.mock.calls[0];

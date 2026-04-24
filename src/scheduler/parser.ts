@@ -74,12 +74,6 @@ export interface GameUpdate {
    */
   upcomingPitcher: { id: number; fullName: string } | null;
   /**
-   * Between-inning break duration in seconds as reported by the API (usually 120).
-   * Only set when trackingMode === 'between-innings', null otherwise.
-   * The scheduler uses this (plus a configurable buffer) as its sleep interval.
-   */
-  inningBreakLength: number | null;
-  /**
    * Live at-bat snapshot. null during between-innings, final, pre-game,
    * or when the feed/live fetch is unavailable.
    * Populated by the scheduler after the feed/live fetch resolves.
@@ -194,13 +188,11 @@ export function parseGameUpdate(
   let outsRemaining: number | null = null;
   let totalOutsRemaining: number | null = null;
   let runsNeeded: number | null = null;
-  let inningBreakLength: number | null = null;
 
   if (isFinal) {
     trackingMode = 'final';
   } else if (isBetweenInnings) {
     trackingMode = 'between-innings';
-    inningBreakLength = game.inningBreakLength ?? 120;
   } else if (defendingEntry.team.id === targetTeamId) {
     trackingMode = 'outs';
     outsRemaining = 3 - linescore.outs;
@@ -260,7 +252,6 @@ export function parseGameUpdate(
     currentPitcher,
     upcomingPitcher,
     gamePk: game.gamePk,
-    inningBreakLength,
     atBat: null,
     pitchHistory: [],
     trackedTeamAbbr:

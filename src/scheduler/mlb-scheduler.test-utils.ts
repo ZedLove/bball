@@ -60,7 +60,6 @@ export function makeLiveSchedule(outsOverride = 1): ScheduleResponse {
             gamePk: GAME_PK,
             gameDate: GAME_DATE,
             status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-            inningBreakLength: 120,
             teams: {
               away: {
                 team: {
@@ -116,7 +115,6 @@ export function makeFinalSchedule(): ScheduleResponse {
             gamePk: GAME_PK,
             gameDate: GAME_DATE,
             status: { detailedState: 'Final', abstractGameState: 'Final' },
-            inningBreakLength: 120,
             teams: {
               away: {
                 team: {

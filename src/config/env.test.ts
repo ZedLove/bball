@@ -23,7 +23,6 @@ describe('env configuration (static checks)', () => {
       expect(CONFIG.IDLE_POLL_INTERVAL).toBe(60);
       expect(CONFIG.ACTIVE_POLL_INTERVAL).toBe(10);
       expect(CONFIG.BATTING_POLL_INTERVAL).toBe(30);
-      expect(CONFIG.BETWEEN_INNINGS_BUFFER_S).toBe(15);
     });
 
     it('should have valid retry settings', async () => {

@@ -15,7 +15,6 @@ vi.mock('../config/env.ts', () => ({
     IDLE_POLL_INTERVAL: 60,
     ACTIVE_POLL_INTERVAL: 10,
     BATTING_POLL_INTERVAL: 30,
-    BETWEEN_INNINGS_BUFFER_S: 15,
     CORS_ORIGIN: '*',
     PORT: 4000,
     DEV_MODE: false,
@@ -78,7 +77,6 @@ function makeNewGameSchedule(): ScheduleResponse {
             gamePk: 824100, // different gamePk
             gameDate: '2026-04-16T18:00:00Z',
             status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-            inningBreakLength: 120,
             teams: {
               away: {
                 team: {
@@ -790,7 +788,6 @@ function makeBetweenInningsSchedule(): ScheduleResponse {
             gamePk: GAME_PK,
             gameDate: GAME_DATE,
             status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-            inningBreakLength: 120,
             teams: {
               away: {
                 team: {
@@ -843,7 +840,6 @@ function makeBattingSchedule(): ScheduleResponse {
             gamePk: GAME_PK,
             gameDate: GAME_DATE,
             status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-            inningBreakLength: 120,
             teams: {
               away: {
                 team: {
@@ -889,8 +885,9 @@ function makeBattingSchedule(): ScheduleResponse {
 }
 
 describe('poll interval scheduling', () => {
-  it('schedules next tick at between-innings interval when trackingMode is between-innings', async () => {
-    // inningBreakLength:120 + BETWEEN_INNINGS_BUFFER_S:15 = 135s
+  it('schedules next tick at ACTIVE_POLL_INTERVAL when trackingMode is between-innings', async () => {
+    // ACTIVE_POLL_INTERVAL: 10s — between-innings now polls at the active rate
+    // so the server catches up quickly whether or not it started mid-break
     mockFetchSchedule.mockResolvedValue(makeBetweenInningsSchedule());
     const io = createMockIo();
     const scheduler = startScheduler(io);
@@ -898,8 +895,8 @@ describe('poll interval scheduling', () => {
     await drainMicrotasks(); // first tick settles
     expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
 
-    // Advance to just before the 135s threshold — second tick must not have fired
-    vi.advanceTimersByTime(134_999);
+    // Advance to just before the 10s threshold — second tick must not have fired
+    vi.advanceTimersByTime(9_999);
     await drainMicrotasks();
     expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
 
@@ -1439,6 +1436,182 @@ describe('pitcher stats accumulation', () => {
     };
     // pitchHistory must contain all 3 pitches from both windows
     expect(tick3Update.pitchHistory).toHaveLength(3);
+    scheduler.stop();
+  });
+
+  it('merges in-progress currentPlay pitches into pitchesThrown', async () => {
+    // Tick 1: seeds enrichment state
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    // Tick 2: linescore delta → enrichment returns 2 completed pitches.
+    // feed/live returns a currentPlay with 1 in-progress pitch (isComplete: false).
+    // Total emitted should be 3 (2 enrichment + 1 live).
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponseWithPitches(
+        0,
+        [
+          { isStrike: true, isBall: false },
+          { isStrike: false, isBall: true },
+        ],
+        FEED_TIMESTAMP_1
+      )
+    );
+    // tick 1 also fires feed/live (shouldFetchAtBat is true) — queue default first
+    // so the custom in-progress response is consumed on tick 2, not tick 1.
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 1,
+            halfInning: 'top',
+            inning: 3,
+            isComplete: false,
+          },
+          count: { balls: 1, strikes: 1, outs: 0 },
+          matchup: {
+            batter: { id: 596019, fullName: 'Francisco Lindor' },
+            pitcher: { id: PITCHER_ID, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'R' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [
+            {
+              type: 'pitch',
+              isPitch: true,
+              pitchNumber: 1,
+              details: {
+                description: 'Called Strike',
+                type: { code: 'FF', description: 'Four-Seam Fastball' },
+                isStrike: true,
+                isBall: false,
+              },
+              count: { balls: 0, strikes: 1 },
+            },
+          ],
+        },
+      })
+    );
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick2Update = updateCalls[updateCalls.length - 1]![1] as {
+      currentPitcher: { pitchesThrown: number } | null;
+      pitchHistory: unknown[];
+    };
+    expect(tick2Update.currentPitcher?.pitchesThrown).toBe(3);
+    expect(tick2Update.pitchHistory).toHaveLength(3);
+    scheduler.stop();
+  });
+
+  it('does not double-count pitches when currentPlay is complete (isComplete: true)', async () => {
+    // Tick 1: seeds enrichment state
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    // Tick 2: enrichment returns a completed play with 3 pitches.
+    // feed/live returns the SAME completed at-bat as currentPlay (isComplete: true).
+    // pitchesThrown must be 3, not 6.
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponseWithPitches(
+        0,
+        [
+          { isStrike: true, isBall: false },
+          { isStrike: false, isBall: true },
+          { isStrike: true, isBall: false },
+        ],
+        FEED_TIMESTAMP_1
+      )
+    );
+    // tick 1 also fires feed/live — queue default first so the completed
+    // currentPlay response lands on tick 2.
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 0,
+            halfInning: 'top',
+            inning: 3,
+            isComplete: true, // ← completed — must be excluded from currentAtBatPitches
+          },
+          count: { balls: 1, strikes: 2, outs: 1 },
+          matchup: {
+            batter: { id: 596019, fullName: 'Francisco Lindor' },
+            pitcher: { id: PITCHER_ID, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'R' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [
+            {
+              type: 'pitch',
+              isPitch: true,
+              pitchNumber: 1,
+              details: {
+                description: 'Called Strike',
+                type: { code: 'FF', description: 'Four-Seam Fastball' },
+                isStrike: true,
+                isBall: false,
+              },
+              count: { balls: 0, strikes: 1 },
+            },
+            {
+              type: 'pitch',
+              isPitch: true,
+              pitchNumber: 2,
+              details: {
+                description: 'Ball',
+                type: { code: 'FF', description: 'Four-Seam Fastball' },
+                isStrike: false,
+                isBall: true,
+              },
+              count: { balls: 1, strikes: 1 },
+            },
+            {
+              type: 'pitch',
+              isPitch: true,
+              pitchNumber: 3,
+              details: {
+                description: 'Called Strike',
+                type: { code: 'FF', description: 'Four-Seam Fastball' },
+                isStrike: true,
+                isBall: false,
+              },
+              count: { balls: 1, strikes: 2 },
+            },
+          ],
+        },
+      })
+    );
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick2Update = updateCalls[updateCalls.length - 1]![1] as {
+      currentPitcher: { pitchesThrown: number; strikes: number; balls: number } | null;
+      pitchHistory: unknown[];
+    };
+    // Must be 3 from enrichment only — not 6
+    expect(tick2Update.currentPitcher?.pitchesThrown).toBe(3);
+    expect(tick2Update.currentPitcher?.strikes).toBe(2);
+    expect(tick2Update.currentPitcher?.balls).toBe(1);
+    expect(tick2Update.pitchHistory).toHaveLength(3);
     scheduler.stop();
   });
 });

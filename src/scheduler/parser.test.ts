@@ -9,7 +9,6 @@ function makeGame(overrides: Partial<ScheduleGame> = {}): ScheduleGame {
     gamePk: 823077,
     gameDate: '2026-03-31T18:05:00Z',
     status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-    inningBreakLength: 120,
     teams: {
       away: {
         team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
@@ -537,7 +536,6 @@ describe('parseGameUpdate', () => {
   describe('between-innings states', () => {
     it('returns between-innings mode on Middle state (after Top half)', () => {
       const game = makeGame({
-        inningBreakLength: 120,
         linescore: {
           currentInning: 3,
           currentInningOrdinal: '3rd',
@@ -557,7 +555,6 @@ describe('parseGameUpdate', () => {
 
       expect(result).not.toBeNull();
       expect(result!.trackingMode).toBe('between-innings');
-      expect(result!.inningBreakLength).toBe(120);
       expect(result!.outsRemaining).toBeNull();
       expect(result!.totalOutsRemaining).toBeNull();
       expect(result!.runsNeeded).toBeNull();
@@ -569,7 +566,6 @@ describe('parseGameUpdate', () => {
 
     it('returns between-innings mode on End state (after Bottom half)', () => {
       const game = makeGame({
-        inningBreakLength: 120,
         linescore: {
           currentInning: 5,
           currentInningOrdinal: '5th',
@@ -589,36 +585,10 @@ describe('parseGameUpdate', () => {
 
       expect(result).not.toBeNull();
       expect(result!.trackingMode).toBe('between-innings');
-      expect(result!.inningBreakLength).toBe(120);
       expect(result!.inning.half).toBe('End');
       // End: away bats next (Top), home defends next
       expect(result!.battingTeam).toBe('NYM');
       expect(result!.defendingTeam).toBe('STL');
-    });
-
-    it('falls back to 120 when inningBreakLength is absent', () => {
-      const game = makeGame({
-        linescore: {
-          currentInning: 7,
-          currentInningOrdinal: '7th',
-          inningState: 'Middle',
-          scheduledInnings: 9,
-          outs: 3,
-          balls: 0,
-          strikes: 0,
-          teams: {
-            home: { runs: 3, hits: 5, errors: 0 },
-            away: { runs: 2, hits: 4, errors: 0 },
-          },
-        },
-      });
-      delete (game as any).inningBreakLength;
-      const schedule = makeSchedule([game]);
-      const result = parseGameUpdate(schedule, STL_ID);
-
-      expect(result).not.toBeNull();
-      expect(result!.trackingMode).toBe('between-innings');
-      expect(result!.inningBreakLength).toBe(120);
     });
   });
 
@@ -733,7 +703,6 @@ describe('parseGameUpdate', () => {
       // Middle state: the MLB API has already rotated linescore.defense.pitcher
       // to the next half-inning's pitcher. It must not appear as currentPitcher.
       const game = makeGame({
-        inningBreakLength: 120,
         linescore: {
           currentInning: 3,
           currentInningOrdinal: '3rd',
@@ -763,7 +732,6 @@ describe('parseGameUpdate', () => {
 
     it('sets both pitcher fields to null when defense is absent during between-innings', () => {
       const game = makeGame({
-        inningBreakLength: 120,
         linescore: {
           currentInning: 3,
           currentInningOrdinal: '3rd',

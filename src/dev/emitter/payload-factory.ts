@@ -77,7 +77,6 @@ export function buildPayload(
     outsRemaining,
     totalOutsRemaining,
     runsNeeded,
-    inningBreakLength: trackingMode === 'between-innings' ? 120 : null,
     atBat:
       trackingMode === 'between-innings' || trackingMode === 'final'
         ? null

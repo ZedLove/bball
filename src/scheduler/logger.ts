@@ -39,17 +39,12 @@ export function logUpdate(update: GameUpdate): void {
       delayPrefix
     );
   } else if (update.trackingMode === 'between-innings') {
-    const breakStr =
-      update.inningBreakLength !== null
-        ? ` (${update.inningBreakLength}s break)`
-        : '';
     const pitcherStr = update.upcomingPitcher
       ? ` | Next P: ${update.upcomingPitcher.fullName}`
       : '';
     logger.info(
-      'Between innings | %s%s | %s%s%s',
+      'Between innings | %s | %s%s%s',
       inningLine,
-      breakStr,
       scoreLine,
       pitcherStr,
       delayPrefix
