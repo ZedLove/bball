@@ -57,10 +57,6 @@ export function boundsFromVenue(venue: VenueFieldInfo | null): GridBounds {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Coordinate mapping — exported for unit tests
-// ---------------------------------------------------------------------------
-
 /** Maps MLB coordX to a chart column (0–CHART_W-1) using the given bounds. */
 export function toChartCol(
   coordX: number,
@@ -105,7 +101,6 @@ export function fenceRowFromVenue(col: number, venue: VenueFieldInfo): number {
     { col: CHART_W - 1, dist: venue.rightLine },
   ];
 
-  // Find surrounding anchor pair
   let lo = anchors[0];
   let hi = anchors[anchors.length - 1];
   for (let i = 0; i < anchors.length - 1; i++) {
@@ -116,7 +111,6 @@ export function fenceRowFromVenue(col: number, venue: VenueFieldInfo): number {
     }
   }
 
-  // Linear interpolation of distance across the column range
   const t = lo.col === hi.col ? 0 : (col - lo.col) / (hi.col - lo.col);
   const dist = lo.dist + t * (hi.dist - lo.dist);
   return Math.max(0, Math.round((1 - dist / venue.center) * (CHART_H - 1)));
@@ -129,8 +123,7 @@ function defaultFenceRow(col: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Field position labels — overlaid on the chart
-// Labels are placed at known positions on the grid.
+// Field position labels
 // ---------------------------------------------------------------------------
 
 interface FieldLabel {
@@ -155,10 +148,6 @@ const FIELD_LABELS: FieldLabel[] = [
   { col: 14, row: 16, char: 'H' },
   { col: 15, row: 16, char: 'P' },
 ];
-
-// ---------------------------------------------------------------------------
-// buildField — returns the 2D char array with the ball overlaid
-// ---------------------------------------------------------------------------
 
 interface FieldCell {
   char: string;
@@ -193,13 +182,11 @@ export function buildField(
   const cornerRow = 6;
 
   for (let row = cornerRow; row <= plateRow; row++) {
-    // Left foul line
     const leftSlope = (plateRow - cornerRow) / (plateCol - 0);
     const leftCol = Math.round(plateCol - (plateRow - row) / leftSlope);
     if (leftCol >= 0 && leftCol < CHART_W && grid[row][leftCol].char === ' ') {
       grid[row][leftCol] = { char: '/', color: 'foul' };
     }
-    // Right foul line
     const rightSlope = (plateRow - cornerRow) / (plateCol - (CHART_W - 1));
     const rightCol = Math.round(plateCol - (plateRow - row) / rightSlope);
     if (
@@ -229,14 +216,9 @@ export function buildField(
     const row = Math.max(0, Math.min(CHART_H - 1, toChartRow(coordY, bounds)));
     grid[row][col] = { char: '◆', color: 'ball' };
   }
-  // When coordinates are absent, leave the field diagram clean (no marker).
 
   return grid;
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 function cellColor(
   color: FieldCell['color'],

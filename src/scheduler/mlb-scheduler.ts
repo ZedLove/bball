@@ -277,14 +277,6 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         : null;
 
     // ── 5b. Pitcher stats computation ─────────────────────────────────────────
-    // Uses both diffPatchResult (allPlays enrichment) and liveFeedResult
-    // (current at-bat delta) — both already resolved above.
-    //
-    // Strategy: accumulate delta pitches into the running enrichment total each
-    // tick, then merge the live currentPlay pitches on top.
-    //   enrichmentBase = running total built from each diffPatch window
-    //   currentAtBatDelta = pitches in the live currentPlay not yet in allPlays
-
     const pitcherId = update?.currentPitcher?.id ?? null;
 
     // Clear cache on game-end or when there is no active pitcher (between
@@ -295,7 +287,6 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     }
 
     if (pitcherId !== null) {
-      // Reset cache when pitcher changes
       if (
         cachedPitcherStats === null ||
         cachedPitcherStats.pitcherId !== pitcherId
@@ -307,9 +298,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         };
       }
 
-      // Accumulate delta from the diffPatch window into the running game total.
-      // merge+append (not overwrite) ensures stats reflect all completed plays
-      // since the game started, not just the latest diffPatch window.
+      // merge+append (not overwrite) so stats accumulate all completed plays, not just the latest diffPatch window.
       const allPlaysList = diffPatchResult?.liveData.plays.allPlays ?? null;
       if (allPlaysList !== null) {
         const deltaPitchHistory = allPlaysList
@@ -348,7 +337,6 @@ export function startScheduler(io: SocketIOServer): Scheduler {
             .map(mapPitchEvent)
         : [];
 
-    // Merge enrichment base with current at-bat delta
     const mergedStats =
       cachedPitcherStats !== null
         ? mergePitcherStats(
@@ -567,7 +555,6 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         });
       }
 
-      // Tear down enrichment state after the final game is fully processed.
       enrichmentState = null;
       logger.info('Enrichment state torn down after final game', {
         gamePk: gamePkForFinal,

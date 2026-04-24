@@ -3,22 +3,18 @@ import type { PitchEvent } from '../server/socket-events.ts';
 export interface PitchTypeUsage {
   /** Statcast pitch type code, e.g. 'FF', 'SL', 'CH'. */
   typeCode: string;
-  /** Human-readable pitch type name, e.g. 'Four-Seam Fastball'. */
   typeName: string;
-  /** Number of pitches of this type thrown. */
   count: number;
   /** Usage percentage 0–100, rounded to the nearest integer. */
   pct: number;
 }
 
 export interface PitcherGameStats {
-  /** Total pitches thrown. */
   pitchesThrown: number;
-  /** Pitches that were called or swung as strikes (not necessarily strikeouts). */
+  /** Strike calls and swinging strikes (not strikeouts). */
   strikes: number;
-  /** Pitches called as balls. */
   balls: number;
-  /** Per-type usage breakdown, sorted descending by count. */
+  /** Per-type breakdown, sorted descending by count. */
   usage: PitchTypeUsage[];
 }
 
@@ -29,13 +25,7 @@ export const ZERO_PITCHER_STATS: PitcherGameStats = {
   usage: [],
 };
 
-/**
- * Merges an enrichment-base `PitcherGameStats` with pitches from the
- * current in-progress at-bat. Returns a new stats object — does not mutate.
- *
- * When `currentAtBatPitches` is empty, the enrichment stats are returned
- * unchanged.
- */
+/** Merges enrichment-base stats with current at-bat pitches. Returns a new object — does not mutate. */
 export function mergePitcherStats(
   enrichment: PitcherGameStats,
   currentAtBatPitches: PitchEvent[]
