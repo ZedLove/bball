@@ -1,4 +1,3 @@
-import type { AllPlay } from './game-feed-types.ts';
 import type { PitchEvent } from '../server/socket-events.ts';
 
 export interface PitchTypeUsage {
@@ -29,52 +28,6 @@ export const ZERO_PITCHER_STATS: PitcherGameStats = {
   balls: 0,
   usage: [],
 };
-
-/**
- * Iterates `allPlays` and accumulates pitch counts for the given pitcher.
- * Only processes plays where `matchup.pitcher.id === pitcherId` and events
- * where `type === 'pitch'`.
- */
-export function computePitcherStats(
-  allPlays: AllPlay[],
-  pitcherId: number
-): PitcherGameStats {
-  let pitchesThrown = 0;
-  let strikes = 0;
-  let balls = 0;
-  const typeMap = new Map<string, { typeName: string; count: number }>();
-
-  for (const play of allPlays) {
-    if (play.matchup.pitcher.id !== pitcherId) continue;
-    for (const event of play.playEvents) {
-      if (event.type !== 'pitch') continue;
-      pitchesThrown++;
-      if (event.details.isStrike === true) strikes++;
-      if (event.details.isBall === true) balls++;
-      const typeCode = event.details.type?.code ?? 'UN';
-      const typeName = event.details.type?.description ?? 'Unknown';
-      const existing = typeMap.get(typeCode);
-      if (existing !== undefined) {
-        existing.count++;
-      } else {
-        typeMap.set(typeCode, { typeName, count: 1 });
-      }
-    }
-  }
-
-  const usage: PitchTypeUsage[] = [];
-  for (const [typeCode, { typeName, count }] of typeMap) {
-    usage.push({
-      typeCode,
-      typeName,
-      count,
-      pct: pitchesThrown > 0 ? Math.round((count / pitchesThrown) * 100) : 0,
-    });
-  }
-  usage.sort((a, b) => b.count - a.count);
-
-  return { pitchesThrown, strikes, balls, usage };
-}
 
 /**
  * Merges an enrichment-base `PitcherGameStats` with pitches from the
