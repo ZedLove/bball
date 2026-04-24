@@ -20,9 +20,7 @@ const VIEWPORT_Y_PAD = 0.5; // feet, above/below zone bounds
 const DEFAULT_SZ_TOP = 3.5;
 const DEFAULT_SZ_BOTTOM = 1.5;
 
-// ---------------------------------------------------------------------------
 // Pitch symbol helpers
-// ---------------------------------------------------------------------------
 
 const STRIKE_CALLS = new Set(['CS', 'SS', 'SS(B)', 'AS']);
 const BALL_CALLS = new Set(['B', 'IB', 'AB', 'PO', 'BID']);
@@ -45,10 +43,6 @@ function getPitchSymbolColor(callAbbrev: string): string {
   return THEME.fgDim;
 }
 
-// ---------------------------------------------------------------------------
-// mapPitchToGrid — pure function, exported for unit tests
-// ---------------------------------------------------------------------------
-
 export interface GridViewport {
   xMin: number;
   xMax: number;
@@ -70,11 +64,10 @@ export function mapPitchToGrid(
     return null;
   }
 
-  // Map to grid coordinates — pZ is inverted (high pZ = top of zone = row 0)
+  // pZ is inverted: high pZ = top of zone = row 0
   const col = Math.round(((pX - xMin) / (xMax - xMin)) * (gridWidth - 1));
   const row = Math.round(((yMax - pZ) / (yMax - yMin)) * (gridHeight - 1));
 
-  // Clamp to grid bounds
   const clampedCol = Math.max(0, Math.min(gridWidth - 1, col));
   const clampedRow = Math.max(0, Math.min(gridHeight - 1, row));
 
@@ -134,11 +127,7 @@ function drawZoneBorder(
   }
 }
 
-// ---------------------------------------------------------------------------
-// StrikeZone component — pure render, no side effects.
-// Persistence (showing last at-bat's pitches between plate appearances) is
-// the caller's responsibility via app.tsx useRef.
-// ---------------------------------------------------------------------------
+// Pitch persistence between plate appearances is the caller's responsibility (see app.tsx useRef).
 
 interface StrikeZoneProps {
   /** Pitches to render in the zone. Empty array = empty zone with border only. */
@@ -157,7 +146,6 @@ export function StrikeZone({
   szTop = DEFAULT_SZ_TOP,
   szBottom = DEFAULT_SZ_BOTTOM,
 }: StrikeZoneProps) {
-  // Viewport — horizontal: ±1.5ft; vertical: szBottom−pad to szTop+pad
   const viewport: GridViewport = {
     xMin: -VIEWPORT_X_HALF,
     xMax: VIEWPORT_X_HALF,
@@ -165,7 +153,6 @@ export function StrikeZone({
     yMax: szTop + VIEWPORT_Y_PAD,
   };
 
-  // Map zone border to grid coordinates
   const zoneXHalf = 1.417 / 2; // 17 inches = ~0.708ft either side
   const zoneLeft = mapPitchToGrid(
     -zoneXHalf,
@@ -194,7 +181,6 @@ export function StrikeZone({
     );
   }
 
-  // Determine which pitches to plot based on mode
   const pitchesForPlot =
     mode === 'last' && pitchSequence.length > 0
       ? [pitchSequence[pitchSequence.length - 1]]

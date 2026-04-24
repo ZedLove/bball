@@ -3,7 +3,6 @@ import type { AtBatState, PitchEvent } from '../server/socket-events.ts';
 import type { PitcherGameStats } from './pitcher-stats.ts';
 import type { VenueFieldInfo } from './venue-client.ts';
 
-/** Enriched game update emitted via Socket.IO and logged for observability. */
 export interface GameUpdate {
   gameStatus: string;
   /** MLB game identifier — used by clients to correlate `game-update` with `game-events` batches. */
@@ -38,7 +37,7 @@ export interface GameUpdate {
    * 'outs'           – target team is defending; show outsRemaining.
    * 'runs'           – target team is batting in extras while tied/losing; show runsNeeded.
    * 'batting'        – target team is batting in regulation; emitted once on transition.
-   * 'between-innings'– half-inning just ended; emitted once, scheduler sleeps for inningBreakLength.
+   * 'between-innings'– half-inning just ended; emitted once on transition.
    * 'final'          – game has ended; emitted once, scheduler transitions to idle polling.
    */
   trackingMode: 'outs' | 'runs' | 'batting' | 'between-innings' | 'final';

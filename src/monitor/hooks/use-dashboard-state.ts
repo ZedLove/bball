@@ -109,7 +109,6 @@ export function dashboardReducer(
     }
 
     case 'game-summary': {
-      // Determine win/loss for the preferred team.
       let celebration: CelebrationState | null = state.celebration;
       if (state.trackedTeamAbbr !== null) {
         const trackedAbbr = state.trackedTeamAbbr;
