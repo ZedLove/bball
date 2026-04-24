@@ -52,7 +52,6 @@ function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
       usage: [],
     },
     upcomingPitcher: null,
-    inningBreakLength: null,
     atBat: null,
     pitchHistory: [],
     trackedTeamAbbr: 'BOS',
@@ -251,7 +250,6 @@ describe('Header', () => {
       const update = makeGameUpdate({
         trackingMode: 'between-innings',
         upcomingPitcher: { id: 519242, fullName: 'Chris Sale' },
-        inningBreakLength: 120,
       });
       const { lastFrame } = render(<Header lastUpdate={update} />);
       expect(lastFrame()).toContain('BETWEEN INNINGS');
@@ -261,27 +259,15 @@ describe('Header', () => {
       const update = makeGameUpdate({
         trackingMode: 'between-innings',
         upcomingPitcher: { id: 519242, fullName: 'Chris Sale' },
-        inningBreakLength: 120,
       });
       const { lastFrame } = render(<Header lastUpdate={update} />);
       expect(lastFrame()).toContain('Chris Sale');
-    });
-
-    it('shows break length', () => {
-      const update = makeGameUpdate({
-        trackingMode: 'between-innings',
-        upcomingPitcher: { id: 519242, fullName: 'Chris Sale' },
-        inningBreakLength: 120,
-      });
-      const { lastFrame } = render(<Header lastUpdate={update} />);
-      expect(lastFrame()).toContain('120s');
     });
 
     it('does not show score in between-innings mode', () => {
       const update = makeGameUpdate({
         trackingMode: 'between-innings',
         upcomingPitcher: { id: 519242, fullName: 'Chris Sale' },
-        inningBreakLength: 120,
       });
       const { lastFrame } = render(<Header lastUpdate={update} />);
       // Score like "NYY 3 – BOS 5" should not appear
@@ -292,7 +278,6 @@ describe('Header', () => {
       const update = makeGameUpdate({
         trackingMode: 'between-innings',
         upcomingPitcher: null,
-        inningBreakLength: 120,
       });
       const { lastFrame } = render(<Header lastUpdate={update} />);
       expect(lastFrame()).toContain('Unknown');

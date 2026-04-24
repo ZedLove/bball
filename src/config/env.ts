@@ -15,8 +15,6 @@ const EnvSchema = z.object({
   IDLE_POLL_INTERVAL: z.coerce.number().int().positive().default(60),
   ACTIVE_POLL_INTERVAL: z.coerce.number().int().positive().default(10),
   BATTING_POLL_INTERVAL: z.coerce.number().int().positive().default(30),
-  /** Extra seconds added to inningBreakLength before resuming active polling after a half-inning ends. */
-  BETWEEN_INNINGS_BUFFER_S: z.coerce.number().int().nonnegative().default(15),
   MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
   RETRY_BACKOFF_MS: z.coerce.number().int().nonnegative().default(500),
 });
@@ -67,8 +65,6 @@ export const CONFIG = {
   ACTIVE_POLL_INTERVAL: _env.ACTIVE_POLL_INTERVAL,
   /** Seconds between polls while target team is batting in regulation */
   BATTING_POLL_INTERVAL: _env.BATTING_POLL_INTERVAL,
-  /** Extra seconds buffered after the API's inningBreakLength before resuming active polling */
-  BETWEEN_INNINGS_BUFFER_S: _env.BETWEEN_INNINGS_BUFFER_S,
   /** Max retry attempts per tick on network error */
   MAX_RETRIES: _env.MAX_RETRIES,
   /** Base back-off in ms (multiplied by 2^n on each retry) */

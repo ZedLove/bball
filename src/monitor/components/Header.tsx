@@ -26,7 +26,6 @@ export function Header({ lastUpdate }: HeaderProps) {
     atBat,
     currentPitcher,
     upcomingPitcher,
-    inningBreakLength,
     isDelayed,
     delayDescription,
     runsNeeded,
@@ -39,9 +38,6 @@ export function Header({ lastUpdate }: HeaderProps) {
         <Text color={THEME.fgDim}>{'⏸  BETWEEN INNINGS'}</Text>
         <Text color={THEME.fgDim}>{'  │  Up next: '}</Text>
         <Text color={THEME.fg}>{upcomingName}</Text>
-        {inningBreakLength !== null && (
-          <Text color={THEME.fgDim}>{`  │  Break: ${inningBreakLength}s`}</Text>
-        )}
       </Box>
     );
   }

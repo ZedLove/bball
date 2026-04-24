@@ -21,7 +21,6 @@ vi.mock('../config/env.ts', () => ({
     IDLE_POLL_INTERVAL: 60,
     ACTIVE_POLL_INTERVAL: 10,
     BATTING_POLL_INTERVAL: 30,
-    BETWEEN_INNINGS_BUFFER_S: 15,
     CORS_ORIGIN: '*',
     PORT: 4000,
     DEV_MODE: false,

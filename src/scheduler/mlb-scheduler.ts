@@ -1,4 +1,4 @@
-import { Server as SocketIOServer } from 'socket.io';
+import type { Server as SocketIOServer } from 'socket.io';
 import { CONFIG } from '../config/env.ts';
 import { fetchSchedule } from './schedule-client.ts';
 import type { ScheduleResponse, Linescore } from './schedule-client.ts';
@@ -17,7 +17,7 @@ import type {
   NextGameScheduleResponse,
 } from './game-feed-types.ts';
 import { parseCurrentPlay } from './current-play-parser.ts';
-import type { AtBatState } from '../server/socket-events.ts';
+import type { AtBatState, PitchEvent } from '../server/socket-events.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import { parseFeedEvents } from './feed-parser.ts';
@@ -108,7 +108,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
   let cachedPitcherStats: {
     pitcherId: number;
     enrichmentStats: PitcherGameStats;
-    enrichmentPitchHistory: import('../server/socket-events.ts').PitchEvent[];
+    enrichmentPitchHistory: PitchEvent[];
   } | null = null;
 
   const venueClient = new VenueClient();
@@ -333,11 +333,15 @@ export function startScheduler(io: SocketIOServer): Scheduler {
       }
     }
 
-    // Compute current at-bat delta from the live feed
+    // Compute current at-bat delta from the live feed.
+    // Only include pitches from an in-progress (isComplete === false) at-bat.
+    // A completed currentPlay's pitches are already covered by the next
+    // diffPatch window — including them here would double-count them.
     const currentPlay = liveFeedResult?.liveData.plays.currentPlay ?? null;
-    const currentAtBatPitches: import('../server/socket-events.ts').PitchEvent[] =
+    const currentAtBatPitches: PitchEvent[] =
       pitcherId !== null &&
       currentPlay !== null &&
+      currentPlay.about.isComplete === false &&
       currentPlay.matchup.pitcher.id === pitcherId
         ? currentPlay.playEvents
             .filter((ev) => ev.type === 'pitch')
@@ -353,7 +357,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           )
         : null;
 
-    const pitchHistory: import('../server/socket-events.ts').PitchEvent[] =
+    const pitchHistory: PitchEvent[] =
       cachedPitcherStats !== null
         ? [...cachedPitcherStats.enrichmentPitchHistory, ...currentAtBatPitches]
         : [];
@@ -581,9 +585,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
       }
       switch (update.trackingMode) {
         case 'between-innings':
-          return (
-            (update.inningBreakLength ?? 120) + CONFIG.BETWEEN_INNINGS_BUFFER_S
-          );
+          return CONFIG.ACTIVE_POLL_INTERVAL;
         case 'batting':
           return CONFIG.BATTING_POLL_INTERVAL;
         default:

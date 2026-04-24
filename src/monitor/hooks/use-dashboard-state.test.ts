@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { dashboardReducer } from './use-dashboard-state.ts';
-import type { DashboardState } from '../types.ts';
+import type { DashboardState, HitDisplay, CelebrationState } from '../types.ts';
 import { MAX_EVENTS } from '../types.ts';
 import type { GameUpdate } from '../../scheduler/parser.ts';
 import type {
@@ -44,7 +44,6 @@ function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
       usage: [],
     },
     upcomingPitcher: null,
-    inningBreakLength: null,
     atBat: null,
     pitchHistory: [],
     trackedTeamAbbr: 'BOS',
@@ -323,7 +322,7 @@ describe('dashboardReducer', () => {
 
   describe('dismiss-hit action', () => {
     it('clears lastHit', () => {
-      const hit: import('../types.ts').HitDisplay = {
+      const hit: HitDisplay = {
         hitData: {
           launchSpeed: 107.4,
           launchAngle: 28,
@@ -426,7 +425,7 @@ describe('dashboardReducer', () => {
     });
 
     it('preserves existing lastHit when new events have no in-play pitch', () => {
-      const existingHit: import('../types.ts').HitDisplay = {
+      const existingHit: HitDisplay = {
         hitData: {
           launchSpeed: 95,
           launchAngle: 12,
@@ -600,7 +599,7 @@ describe('dashboardReducer', () => {
   });
 
   describe('advance-celebration-frame action', () => {
-    function makeCelebration(): import('../types.ts').CelebrationState {
+    function makeCelebration(): CelebrationState {
       return {
         kind: 'home-run',
         polarity: 'positive',
