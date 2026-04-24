@@ -1604,7 +1604,11 @@ describe('pitcher stats accumulation', () => {
       ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
     );
     const tick2Update = updateCalls[updateCalls.length - 1]![1] as {
-      currentPitcher: { pitchesThrown: number; strikes: number; balls: number } | null;
+      currentPitcher: {
+        pitchesThrown: number;
+        strikes: number;
+        balls: number;
+      } | null;
       pitchHistory: unknown[];
     };
     // Must be 3 from enrichment only — not 6
