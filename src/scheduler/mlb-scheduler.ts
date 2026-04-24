@@ -102,14 +102,14 @@ export function startScheduler(io: SocketIOServer): Scheduler {
   let enrichmentState: EnrichmentState | null = null;
 
   /**
-   * Tracks per-pitcher stats derived from the last enrichment tick (allPlays).
-   * Reset when the pitcher ID changes or the game ends.
+   * Per-pitcher enrichment stats keyed by pitcherId.
+   * Accumulates across innings; cleared only on game change or final.
    */
-  let cachedPitcherStats: {
-    pitcherId: number;
-    enrichmentStats: PitcherGameStats;
-    enrichmentPitchHistory: PitchEvent[];
-  } | null = null;
+  const pitcherStatsCache = new Map<
+    number,
+    { enrichmentStats: PitcherGameStats; enrichmentPitchHistory: PitchEvent[] }
+  >();
+  let lastKnownGamePk: number | null = null;
 
   const venueClient = new VenueClient();
   let currentVenueFieldInfo: VenueFieldInfo | null = null;
@@ -278,29 +278,26 @@ export function startScheduler(io: SocketIOServer): Scheduler {
 
     // ── 5b. Pitcher stats computation ─────────────────────────────────────────
     const pitcherId = update?.currentPitcher?.id ?? null;
+    const currentGamePk = update?.gamePk ?? null;
 
-    // Clear cache on game-end or when there is no active pitcher (between
-    // innings, target team batting). This prevents stale pitch history from
-    // being emitted when currentPitcher is null.
-    if (update?.trackingMode === 'final' || pitcherId === null) {
-      cachedPitcherStats = null;
+    // Clear all per-pitcher entries on game change or final.
+    if (currentGamePk !== lastKnownGamePk || update?.trackingMode === 'final') {
+      pitcherStatsCache.clear();
     }
+    lastKnownGamePk = currentGamePk;
 
     if (pitcherId !== null) {
-      if (
-        cachedPitcherStats === null ||
-        cachedPitcherStats.pitcherId !== pitcherId
-      ) {
-        cachedPitcherStats = {
-          pitcherId,
+      if (!pitcherStatsCache.has(pitcherId)) {
+        pitcherStatsCache.set(pitcherId, {
           enrichmentStats: ZERO_PITCHER_STATS,
           enrichmentPitchHistory: [],
-        };
+        });
       }
 
       // merge+append (not overwrite) so stats accumulate all completed plays, not just the latest diffPatch window.
       const allPlaysList = diffPatchResult?.liveData.plays.allPlays ?? null;
       if (allPlaysList !== null) {
+        const cached = pitcherStatsCache.get(pitcherId)!;
         const deltaPitchHistory = allPlaysList
           .filter((play) => play.matchup.pitcher.id === pitcherId)
           .flatMap((play) =>
@@ -308,17 +305,16 @@ export function startScheduler(io: SocketIOServer): Scheduler {
               .filter((ev) => ev.type === 'pitch')
               .map(mapPitchEvent)
           );
-        cachedPitcherStats = {
-          pitcherId,
+        pitcherStatsCache.set(pitcherId, {
           enrichmentStats: mergePitcherStats(
-            cachedPitcherStats.enrichmentStats,
+            cached.enrichmentStats,
             deltaPitchHistory
           ),
           enrichmentPitchHistory: [
-            ...cachedPitcherStats.enrichmentPitchHistory,
+            ...cached.enrichmentPitchHistory,
             ...deltaPitchHistory,
           ],
-        };
+        });
       }
     }
 
@@ -337,17 +333,17 @@ export function startScheduler(io: SocketIOServer): Scheduler {
             .map(mapPitchEvent)
         : [];
 
+    const pitcherEntry =
+      pitcherId !== null ? (pitcherStatsCache.get(pitcherId) ?? null) : null;
+
     const mergedStats =
-      cachedPitcherStats !== null
-        ? mergePitcherStats(
-            cachedPitcherStats.enrichmentStats,
-            currentAtBatPitches
-          )
+      pitcherEntry !== null
+        ? mergePitcherStats(pitcherEntry.enrichmentStats, currentAtBatPitches)
         : null;
 
     const pitchHistory: PitchEvent[] =
-      cachedPitcherStats !== null
-        ? [...cachedPitcherStats.enrichmentPitchHistory, ...currentAtBatPitches]
+      pitcherEntry !== null
+        ? [...pitcherEntry.enrichmentPitchHistory, ...currentAtBatPitches]
         : [];
 
     const fullUpdate: GameUpdate | null =

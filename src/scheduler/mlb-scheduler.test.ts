@@ -1131,7 +1131,8 @@ describe('live at-bat state', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Venue field info (PR review comment #1)
+// ---------------------------------------------------------------------------
+// Venue field info
 // ---------------------------------------------------------------------------
 
 const VENUE_ID = 3289; // Citi Field
@@ -1269,7 +1270,7 @@ describe('venue field info', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pitcher stats accumulation across diffPatch windows (PR review comment #2)
+// Pitcher stats accumulation
 // ---------------------------------------------------------------------------
 
 const PITCHER_ID = 660271; // Shohei Ohtani (matches makeLiveSchedule defense.pitcher)
@@ -1621,7 +1622,7 @@ describe('pitcher stats accumulation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pitcher stats cache cleared when currentPitcher is null (PR review comment #3)
+// Pitcher stats cache management
 // ---------------------------------------------------------------------------
 
 describe('pitcher stats cache management', () => {
@@ -1640,7 +1641,8 @@ describe('pitcher stats cache management', () => {
         FEED_TIMESTAMP_1
       )
     );
-    // Tick 3: between-innings (no currentPitcher) — cache must be cleared.
+    // Tick 3: between-innings (no currentPitcher) — pitcherId is null so the
+    // map is not looked up; pitchHistory emits as []. Cache is not cleared.
     // Linescore changed from tick 2 so enrichment fires; return empty feed.
     mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
     mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
@@ -1665,6 +1667,59 @@ describe('pitcher stats cache management', () => {
     };
     expect(tick3Update.trackingMode).toBe('between-innings');
     expect(tick3Update.pitchHistory).toHaveLength(0);
+    scheduler.stop();
+  });
+
+  it('preserves pitcher stats across a between-innings break', async () => {
+    // Tick 1: seeds enrichment state
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    // Tick 2: 2 pitches accumulated for PITCHER_ID
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeFeedResponseWithPitches(
+        0,
+        [
+          { isStrike: true, isBall: false },
+          { isStrike: false, isBall: true },
+        ],
+        FEED_TIMESTAMP_1
+      )
+    );
+    // Tick 3: between-innings — pitcherId becomes null, enrichment fires
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    mockFetchGameFeed.mockResolvedValueOnce(
+      makeEmptyFeedResponse(FEED_TIMESTAMP_2)
+    );
+    // Tick 4: PITCHER_ID back on the mound — 2 previous pitches must still be in cache
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2: 2 pitches cached
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 3: between-innings
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 4: pitcher returns
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick4Update = updateCalls[updateCalls.length - 1]![1] as {
+      trackingMode: string;
+      currentPitcher: { pitchesThrown: number } | null;
+      pitchHistory: unknown[];
+    };
+
+    expect(tick4Update.trackingMode).toBe('outs');
+    expect(tick4Update.currentPitcher?.pitchesThrown).toBe(2);
+    expect(tick4Update.pitchHistory).toHaveLength(2);
     scheduler.stop();
   });
 });

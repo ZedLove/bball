@@ -5,7 +5,7 @@ import { THEME } from '../theme.ts';
 import { abbreviateCall } from '../formatters/pitch-formatter.ts';
 
 const STRIKE_CALLS = new Set(['CS', 'SS', 'SS(B)', 'AS']);
-const BALL_CALLS = new Set(['B', 'IB', 'AB', 'PO']);
+const BALL_CALLS = new Set(['B', 'IB', 'AB', 'PO', 'BID']);
 const FOUL_CALLS = new Set(['F', 'FT', 'FB', 'FP', 'MB']);
 const IN_PLAY_CALLS = new Set(['IP', 'IP(O)', 'IP(R)']);
 
