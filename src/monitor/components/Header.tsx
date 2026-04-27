@@ -93,18 +93,16 @@ export function Header({ lastUpdate }: HeaderProps) {
           )}
         </>
       )}
-      {trackingMode === 'runs' && (
+      {runsNeeded !== null && (
         <>
           <Text color={THEME.fgDim}>{'  '}</Text>
           <Text color={THEME.scoring}>{'[EXTRAS]'}</Text>
-          {runsNeeded !== null && (
-            <>
-              <Text color={THEME.fgDim}>{'  Need '}</Text>
-              <Text
-                color={THEME.scoring}
-              >{`${runsNeeded} run${runsNeeded !== 1 ? 's' : ''}`}</Text>
-            </>
-          )}
+          <>
+            <Text color={THEME.fgDim}>{'  Need '}</Text>
+            <Text
+              color={THEME.scoring}
+            >{`${runsNeeded} run${runsNeeded !== 1 ? 's' : ''}`}</Text>
+          </>
         </>
       )}
       {isDelayed && delayDescription !== null && (

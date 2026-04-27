@@ -24,7 +24,7 @@ function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
     delayDescription: null,
     isExtraInnings: false,
     scheduledInnings: 9,
-    trackingMode: 'outs',
+    trackingMode: 'live',
     outsRemaining: 2,
     totalOutsRemaining: 8,
     runsNeeded: null,

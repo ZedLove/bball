@@ -39,7 +39,7 @@ function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
     delayDescription: null,
     isExtraInnings: false,
     scheduledInnings: 9,
-    trackingMode: 'outs',
+    trackingMode: 'live',
     outsRemaining: 2,
     totalOutsRemaining: 8,
     runsNeeded: null,
@@ -69,7 +69,7 @@ describe('Header', () => {
     });
   });
 
-  describe('trackingMode: outs', () => {
+  describe('trackingMode: live', () => {
     it('renders score', () => {
       const { lastFrame } = render(<Header lastUpdate={makeGameUpdate()} />);
       const frame = lastFrame() ?? '';
@@ -202,9 +202,9 @@ describe('Header', () => {
     });
   });
 
-  describe('trackingMode: batting', () => {
-    it('renders score and inning (same as outs)', () => {
-      const update = makeGameUpdate({ trackingMode: 'batting' });
+  describe('trackingMode: live (all active states)', () => {
+    it('renders score and inning', () => {
+      const update = makeGameUpdate({ trackingMode: 'live' });
       const { lastFrame } = render(<Header lastUpdate={update} />);
       const frame = lastFrame() ?? '';
       expect(frame).toContain('NYY');
@@ -212,10 +212,10 @@ describe('Header', () => {
     });
   });
 
-  describe('trackingMode: runs (extras)', () => {
-    it('renders [EXTRAS] badge', () => {
+  describe('trackingMode: live (extras — runsNeeded populated)', () => {
+    it('renders [EXTRAS] badge when runsNeeded is set', () => {
       const update = makeGameUpdate({
-        trackingMode: 'runs',
+        trackingMode: 'live',
         isExtraInnings: true,
         runsNeeded: 2,
       });
@@ -225,7 +225,7 @@ describe('Header', () => {
 
     it('renders runsNeeded plural', () => {
       const update = makeGameUpdate({
-        trackingMode: 'runs',
+        trackingMode: 'live',
         isExtraInnings: true,
         runsNeeded: 2,
       });
@@ -235,13 +235,19 @@ describe('Header', () => {
 
     it('renders runsNeeded singular', () => {
       const update = makeGameUpdate({
-        trackingMode: 'runs',
+        trackingMode: 'live',
         isExtraInnings: true,
         runsNeeded: 1,
       });
       const { lastFrame } = render(<Header lastUpdate={update} />);
       expect(lastFrame()).toContain('Need 1 run');
       expect(lastFrame()).not.toContain('Need 1 runs');
+    });
+
+    it('does not render [EXTRAS] badge when runsNeeded is null', () => {
+      const update = makeGameUpdate({ trackingMode: 'live', runsNeeded: null });
+      const { lastFrame } = render(<Header lastUpdate={update} />);
+      expect(lastFrame()).not.toContain('[EXTRAS]');
     });
   });
 
