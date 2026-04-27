@@ -28,12 +28,23 @@ export function buildPayload(
   const half: GameUpdate['inning']['half'] =
     trackingMode === 'between-innings' ? 'End' : state.inning.half;
 
-  const outsRemaining = trackingMode === 'outs' ? 3 - state.outs : null;
-  const totalOutsRemaining =
-    trackingMode === 'outs' || trackingMode === 'batting'
-      ? computeTotalOutsRemaining(state)
+  // In the simulator the tracked team is always the home team.
+  // During 'live', outsRemaining/totalOutsRemaining are only populated when
+  // home is defending (Top half). During Bottom (home batting) they are null,
+  // matching the production parser's "defending-only" semantics.
+  const isLive = trackingMode === 'live';
+  const homeDefending = state.inning.half === 'Top';
+  const isDefending = isLive && homeDefending;
+
+  const outsRemaining = isDefending ? 3 - state.outs : null;
+  const totalOutsRemaining = isDefending ? computeTotalOutsRemaining(state) : null;
+  const runsNeeded =
+    isLive &&
+    isExtraInnings &&
+    !homeDefending &&
+    state.score.home <= state.score.away
+      ? computeRunsNeeded(state)
       : null;
-  const runsNeeded = trackingMode === 'runs' ? computeRunsNeeded(state) : null;
 
   const base: GameUpdate = {
     gameStatus: state.gameEnded ? 'Final' : 'In Progress',
