@@ -34,7 +34,7 @@ import {
 } from './socket.ts';
 import { logger } from '../config/logger.ts';
 import { SOCKET_EVENTS } from './socket-events.ts';
-import type { GameUpdate } from '../scheduler/parser.ts';
+import type { GameUpdate } from './socket-events.ts';
 import type { Scheduler } from '../scheduler/mlb-scheduler.ts';
 
 // ---------------------------------------------------------------------------

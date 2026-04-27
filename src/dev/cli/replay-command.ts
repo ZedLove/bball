@@ -12,7 +12,7 @@ import type {
   PitchEvent,
 } from '../../server/socket-events.ts';
 import { parseGameUpdate } from '../../scheduler/parser.ts';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import { parseCurrentPlay } from '../../scheduler/current-play-parser.ts';
 import { parseFeedEvents } from '../../scheduler/feed-parser.ts';
 import { buildGameSummary } from '../../scheduler/summary-parser.ts';

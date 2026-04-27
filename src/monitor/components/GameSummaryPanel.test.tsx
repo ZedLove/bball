@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render } from 'ink-testing-library';
 import { GameSummaryPanel } from './GameSummaryPanel.tsx';
 import type { GameSummary, NextGame } from '../../server/socket-events.ts';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 
 // ---------------------------------------------------------------------------
 // Factories

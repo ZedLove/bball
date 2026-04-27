@@ -5,7 +5,7 @@ import type {
   GameEventsPayload,
   GameSummary,
 } from '../../server/socket-events.ts';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import type { DashboardDispatch } from '../types.ts';
 
 const SOCKET_URL = process.env['SOCKET_URL'] ?? 'http://localhost:4000';

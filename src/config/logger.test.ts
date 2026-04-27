@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { logUpdate } from '../scheduler/logger.ts';
 import { logger } from './logger.ts';
-import type { GameUpdate } from '../scheduler/parser.ts';
+import type { GameUpdate } from '../server/socket-events.ts';
 
 describe('logUpdate', () => {
   let logSpy: ReturnType<typeof vi.spyOn>;

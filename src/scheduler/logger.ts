@@ -1,5 +1,5 @@
 import { logger } from '../config/logger.ts';
-import type { GameUpdate } from './parser.ts';
+import type { GameUpdate } from '../server/socket-events.ts';
 
 /**
  * Debug-only log of game updates. Socket.IO emission is the primary delivery

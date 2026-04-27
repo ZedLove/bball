@@ -1,5 +1,5 @@
 import { Box, Text } from 'ink';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import { THEME } from '../theme.ts';
 import {
   formatScore,

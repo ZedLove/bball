@@ -5,7 +5,7 @@ import {
   formatOuts,
   formatCount,
 } from './game-formatter.ts';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 
 function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
   return {
