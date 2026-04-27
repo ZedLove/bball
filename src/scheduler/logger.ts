@@ -10,32 +10,27 @@ export function logUpdate(update: GameUpdate): void {
   const inningLine = `${update.inning.half} ${update.inning.ordinal}`;
   const delayPrefix = update.isDelayed ? ' [DELAYED]' : '';
 
-  if (update.trackingMode === 'outs') {
-    const totalStr =
-      update.totalOutsRemaining !== null
-        ? ` / ${update.totalOutsRemaining} total`
+  if (update.trackingMode === 'live') {
+    const outsStr =
+      update.outsRemaining !== null
+        ? ` | Outs: ${update.outs} (rem: ${update.outsRemaining}${update.totalOutsRemaining !== null ? `/${update.totalOutsRemaining}` : ''})`
         : '';
     const pitcherStr = update.currentPitcher
       ? ` | P: ${update.currentPitcher.fullName}`
       : '';
+    const extrasStr =
+      update.runsNeeded !== null
+        ? ` | Runs needed: ${update.runsNeeded} [EXTRAS]`
+        : update.isExtraInnings
+          ? ' [EXTRAS]'
+          : '';
     logger.info(
-      '%s defending | %s | Outs: %d (remaining: %d%s)%s | %s%s%s',
-      update.defendingTeam,
+      'LIVE | %s | %s%s%s%s%s',
       inningLine,
-      update.outs,
-      update.outsRemaining,
-      totalStr,
+      scoreLine,
+      outsStr,
       pitcherStr,
-      scoreLine,
-      update.isExtraInnings ? ' [EXTRAS]' : '',
-      delayPrefix
-    );
-  } else if (update.trackingMode === 'runs') {
-    logger.info(
-      'Batting (extras) | %s | Runs needed: %d | %s [EXTRAS]%s',
-      inningLine,
-      update.runsNeeded,
-      scoreLine,
+      extrasStr,
       delayPrefix
     );
   } else if (update.trackingMode === 'between-innings') {
@@ -51,13 +46,5 @@ export function logUpdate(update: GameUpdate): void {
     );
   } else if (update.trackingMode === 'final') {
     logger.info('Game Final | %s | %s [FINAL]', inningLine, scoreLine);
-  } else {
-    logger.info(
-      '%s batting | %s | %s%s',
-      update.battingTeam,
-      inningLine,
-      scoreLine,
-      delayPrefix
-    );
   }
 }
