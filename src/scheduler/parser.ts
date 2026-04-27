@@ -34,13 +34,12 @@ export interface GameUpdate {
   /** Number of innings originally scheduled (usually 9) */
   scheduledInnings: number;
   /**
-   * 'outs'           – target team is defending; show outsRemaining.
-   * 'runs'           – target team is batting in extras while tied/losing; show runsNeeded.
-   * 'batting'        – target team is batting in regulation; emitted once on transition.
-   * 'between-innings'– half-inning just ended; emitted once on transition.
-   * 'final'          – game has ended; emitted once, scheduler transitions to idle polling.
+   * 'live'            – game is in active play; emitted every tick.
+   *                     Encompasses all active half-innings (offense and defense).
+   * 'between-innings' – half-inning just ended; emitted once on transition.
+   * 'final'           – game has ended; emitted once, scheduler transitions to idle polling.
    */
-  trackingMode: 'outs' | 'runs' | 'batting' | 'between-innings' | 'final';
+  trackingMode: 'live' | 'between-innings' | 'final';
   /** 3 − current outs when defending, null otherwise */
   outsRemaining: number | null;
   /**
