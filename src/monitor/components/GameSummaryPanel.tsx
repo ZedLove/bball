@@ -1,6 +1,6 @@
 import { Box, Text } from 'ink';
 import type { GameSummary } from '../../server/socket-events.ts';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import { THEME } from '../theme.ts';
 
 interface GameSummaryPanelProps {

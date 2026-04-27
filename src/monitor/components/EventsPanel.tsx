@@ -3,7 +3,7 @@ import type {
   GameEvent,
   PlateAppearanceCompletedEvent,
 } from '../../server/socket-events.ts';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import type { FilterMode } from '../types.ts';
 import { MAX_EVENTS } from '../types.ts';
 import { THEME } from '../theme.ts';

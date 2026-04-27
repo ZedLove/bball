@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { dashboardReducer } from './use-dashboard-state.ts';
 import type { DashboardState, HitDisplay, CelebrationState } from '../types.ts';
 import { MAX_EVENTS } from '../types.ts';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import type {
   GameEvent,
   GameEventsPayload,

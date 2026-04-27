@@ -1,5 +1,5 @@
 import type { Server as SocketIOServer } from 'socket.io';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import type { StateStore } from '../state/store.ts';
 import type {
   HandlerResult,

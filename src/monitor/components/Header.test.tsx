@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'ink-testing-library';
 import { Header } from './Header.tsx';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import type { AtBatState } from '../../server/socket-events.ts';
 
 function makeAtBat(overrides: Partial<AtBatState> = {}): AtBatState {

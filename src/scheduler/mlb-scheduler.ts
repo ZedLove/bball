@@ -4,7 +4,6 @@ import { fetchSchedule } from './schedule-client.ts';
 import type { ScheduleResponse, Linescore } from './schedule-client.ts';
 import { parseGameUpdate } from './parser.ts';
 import { logUpdate } from './logger.ts';
-import type { GameUpdate } from './parser.ts';
 import { logger } from '../config/logger.ts';
 import { fetchGameFeed } from './game-feed-client.ts';
 import { fetchGameFeedLive } from './game-feed-live-client.ts';
@@ -17,7 +16,11 @@ import type {
   NextGameScheduleResponse,
 } from './game-feed-types.ts';
 import { parseCurrentPlay } from './current-play-parser.ts';
-import type { AtBatState, PitchEvent } from '../server/socket-events.ts';
+import type {
+  AtBatState,
+  GameUpdate,
+  PitchEvent,
+} from '../server/socket-events.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import { parseFeedEvents } from './feed-parser.ts';
@@ -92,6 +95,25 @@ export interface Scheduler {
   stop(): void;
   /** Last game update that was emitted, or null if none yet. Used to replay state to newly connected clients. */
   getLastUpdate(): GameUpdate | null;
+}
+
+/**
+ * Returns the poll interval in seconds for the next scheduler tick.
+ * - null update (no game), delayed game, or final → idle polling rate.
+ * - 'between-innings' → idle polling rate (break lasts 2+ minutes; no need
+ *   to hammer the API at the active rate until a new half-inning starts).
+ * - 'live' → active polling rate (every pitch may trigger a new emission).
+ */
+function getNextIntervalSec(update: GameUpdate | null): number {
+  if (
+    update === null ||
+    update.isDelayed ||
+    update.trackingMode === 'final' ||
+    update.trackingMode === 'between-innings'
+  ) {
+    return CONFIG.IDLE_POLL_INTERVAL;
+  }
+  return CONFIG.ACTIVE_POLL_INTERVAL;
 }
 
 export function startScheduler(io: SocketIOServer): Scheduler {
@@ -201,8 +223,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     const shouldFetchAtBat =
       update !== null &&
       update.trackingMode !== 'between-innings' &&
-      update.trackingMode !== 'final' &&
-      update.gamePk !== undefined;
+      update.trackingMode !== 'final';
 
     let shouldEnrich = false;
     let isFinal = false;
@@ -578,17 +599,6 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     }
 
     // ── 9. Schedule next tick ─────────────────────────────────────────────────
-    const getNextIntervalSec = (update: GameUpdate | null): number => {
-      if (
-        update === null ||
-        update.isDelayed ||
-        update.trackingMode === 'final'
-      ) {
-        return CONFIG.IDLE_POLL_INTERVAL;
-      }
-      return CONFIG.ACTIVE_POLL_INTERVAL;
-    };
-
     const intervalSec = getNextIntervalSec(fullUpdate);
     logger.info(`Next tick in ${intervalSec}s`);
     timer = setTimeout(() => {

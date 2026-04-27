@@ -1,4 +1,4 @@
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import type { SimulationState } from '../types.ts';
 
 /**
@@ -37,7 +37,9 @@ export function buildPayload(
   const isDefending = isLive && homeDefending;
 
   const outsRemaining = isDefending ? 3 - state.outs : null;
-  const totalOutsRemaining = isDefending ? computeTotalOutsRemaining(state) : null;
+  const totalOutsRemaining = isDefending
+    ? computeTotalOutsRemaining(state)
+    : null;
   const runsNeeded =
     isLive &&
     isExtraInnings &&
