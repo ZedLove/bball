@@ -51,7 +51,7 @@ describe('parseGameUpdate', () => {
       expect(result).not.toBeNull();
       expect(result!.defendingTeam).toBe('STL');
       expect(result!.outs).toBe(1);
-      expect(result!.trackingMode).toBe('outs');
+      expect(result!.trackingMode).toBe('live');
       expect(result!.outsRemaining).toBe(2);
       // Top 5th, 1 out: outsRemaining=2, futureHalfInnings=(9-5)=4 → 2 + 12 = 14
       expect(result!.totalOutsRemaining).toBe(14);
@@ -71,14 +71,14 @@ describe('parseGameUpdate', () => {
   });
 
   describe('when the target team is batting in regulation', () => {
-    it('returns a GameUpdate with trackingMode batting', () => {
+    it('returns a GameUpdate with trackingMode live', () => {
       // Top of 5th: away (NYM) batting, home (STL) defending
       // Target = NYM (batting in regulation)
       const schedule = makeSchedule([makeGame()]);
       const result = parseGameUpdate(schedule, NYM_ID);
 
       expect(result).not.toBeNull();
-      expect(result!.trackingMode).toBe('batting');
+      expect(result!.trackingMode).toBe('live');
       expect(result!.battingTeam).toBe('NYM');
       expect(result!.defendingTeam).toBe('STL');
       expect(result!.outsRemaining).toBeNull();
@@ -112,7 +112,7 @@ describe('parseGameUpdate', () => {
       expect(result).not.toBeNull();
       expect(result!.defendingTeam).toBe('NYM');
       expect(result!.outs).toBe(2);
-      expect(result!.trackingMode).toBe('outs');
+      expect(result!.trackingMode).toBe('live');
       expect(result!.outsRemaining).toBe(1);
       // Bottom 5th, away winning (2-1): futureHalfInnings=(9-5)=4 → 1 + 12 = 13
       expect(result!.totalOutsRemaining).toBe(13);
@@ -159,7 +159,7 @@ describe('parseGameUpdate', () => {
       const result = parseGameUpdate(schedule, NYM_ID);
 
       expect(result).not.toBeNull();
-      expect(result!.trackingMode).toBe('runs');
+      expect(result!.trackingMode).toBe('live');
       expect(result!.runsNeeded).toBe(1);
       expect(result!.outsRemaining).toBeNull();
       expect(result!.isExtraInnings).toBe(true);
@@ -203,12 +203,12 @@ describe('parseGameUpdate', () => {
       const result = parseGameUpdate(schedule, NYM_ID);
 
       expect(result).not.toBeNull();
-      expect(result!.trackingMode).toBe('runs');
+      expect(result!.trackingMode).toBe('live');
       expect(result!.runsNeeded).toBe(3);
       expect(result!.isExtraInnings).toBe(true);
     });
 
-    it('returns null when target team is batting in extras with a lead', () => {
+    it('emits live mode when target team is batting in extras with a lead', () => {
       const game = makeGame({
         teams: {
           away: {
@@ -241,10 +241,15 @@ describe('parseGameUpdate', () => {
         },
       });
       const schedule = makeSchedule([game]);
-      // NYM batting in extras but winning 5-3 → no tracking needed
+      // NYM batting in extras but winning 5-3 → game not over yet (home still bats)
+      // emit 'live' with runsNeeded: null (no runs needed when leading)
       const result = parseGameUpdate(schedule, NYM_ID);
 
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('live');
+      expect(result!.runsNeeded).toBeNull();
+      expect(result!.outsRemaining).toBeNull();
+      expect(result!.isExtraInnings).toBe(true);
     });
 
     it('tracks outs when defending in extras (totalOutsRemaining is null)', () => {
@@ -284,7 +289,7 @@ describe('parseGameUpdate', () => {
       const result = parseGameUpdate(schedule, STL_ID);
 
       expect(result).not.toBeNull();
-      expect(result!.trackingMode).toBe('outs');
+      expect(result!.trackingMode).toBe('live');
       expect(result!.outsRemaining).toBe(1);
       expect(result!.totalOutsRemaining).toBeNull();
       expect(result!.isExtraInnings).toBe(true);
@@ -394,7 +399,7 @@ describe('parseGameUpdate', () => {
       const result = parseGameUpdate(schedule, STL_ID);
 
       expect(result).not.toBeNull();
-      expect(result!.trackingMode).toBe('batting');
+      expect(result!.trackingMode).toBe('live');
       expect(result!.battingTeam).toBe('STL');
       expect(result!.defendingTeam).toBe('NYM');
       expect(result!.outsRemaining).toBeNull();
@@ -440,7 +445,7 @@ describe('parseGameUpdate', () => {
       const result = parseGameUpdate(schedule, STL_ID);
 
       expect(result).not.toBeNull();
-      expect(result!.trackingMode).toBe('runs');
+      expect(result!.trackingMode).toBe('live');
       expect(result!.runsNeeded).toBe(1);
       expect(result!.isExtraInnings).toBe(true);
       expect(result!.inning.half).toBe('Bottom');
@@ -646,10 +651,10 @@ describe('parseGameUpdate', () => {
       const result = parseGameUpdate(schedule, STL_ID);
 
       expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('live');
       expect(result!.gameStatus).toBe('In Progress - Review');
       expect(result!.isDelayed).toBe(false);
       expect(result!.delayDescription).toBeNull();
-      expect(result!.trackingMode).toBe('outs');
       expect(result!.defendingTeam).toBe('STL');
       expect(result!.outs).toBe(1);
     });
@@ -884,6 +889,221 @@ describe('parseGameUpdate', () => {
       expect(result!.trackingMode).toBe('final');
       expect(result!.isExtraInnings).toBe(true);
       expect(result!.scheduledInnings).toBe(9);
+    });
+  });
+
+  describe('game-end detection (S-1)', () => {
+    // 'Middle' = top half just completed (API state before bottom-half begins).
+    // 'End'    = bottom half just completed (walk-off scenario).
+    // Both are between-innings states. The dominant real-world case observed in
+    // captured games is 'Middle': the API dwells there for multiple polls
+    // before eventually reporting 'Final'.
+
+    function makeBetweenInningGame(
+      inningState: 'Middle' | 'End',
+      currentInning: number,
+      homeScore: number,
+      awayScore: number,
+      scheduledInnings = 9
+    ): ScheduleGame {
+      return makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: awayScore,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
+            score: homeScore,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning,
+          currentInningOrdinal: `${currentInning}th`,
+          inningState,
+          scheduledInnings,
+          outs: 3,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: homeScore, hits: 8, errors: 0 },
+            away: { runs: awayScore, hits: 7, errors: 0 },
+          },
+        },
+      });
+    }
+
+    // ── Middle state (top half just ended, home was already leading) ──────────
+    // This is the dominant real-world case: captured games show the API
+    // reporting 'Middle' + 'In Progress' for multiple ticks before 'Final'.
+
+    it('emits final when top 9th ends with home leading (Middle state — dominant real-world case)', () => {
+      const schedule = makeSchedule([makeBetweenInningGame('Middle', 9, 5, 3)]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('final');
+    });
+
+    it('emits between-innings when top 9th ends with away leading (Middle state — game continues)', () => {
+      const schedule = makeSchedule([makeBetweenInningGame('Middle', 9, 3, 5)]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('between-innings');
+    });
+
+    it('emits between-innings when top 9th ends tied (Middle state — extras needed)', () => {
+      const schedule = makeSchedule([makeBetweenInningGame('Middle', 9, 3, 3)]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('between-innings');
+    });
+
+    it('emits final when top of extras ends with home leading (Middle state)', () => {
+      const schedule = makeSchedule([
+        makeBetweenInningGame('Middle', 10, 4, 3),
+      ]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('final');
+    });
+
+    // ── End state (bottom half just ended — home walk-off) ────────────────────
+
+    it('emits final when bottom 9th ends with home leading (End state — walk-off)', () => {
+      const schedule = makeSchedule([makeBetweenInningGame('End', 9, 5, 3)]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('final');
+    });
+
+    it('emits final when bottom of extras ends with home leading (End state — walk-off)', () => {
+      const schedule = makeSchedule([makeBetweenInningGame('End', 10, 4, 3)]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('final');
+    });
+
+    // ── Active play / early inning guards ────────────────────────────────────
+
+    it('emits live when 9th is in progress with home leading (not yet between-innings)', () => {
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 2,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
+            score: 3,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 9,
+          currentInningOrdinal: '9th',
+          inningState: 'Bottom',
+          scheduledInnings: 9,
+          outs: 1,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 3, hits: 7, errors: 0 },
+            away: { runs: 2, hits: 6, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('live');
+    });
+
+    it('emits between-innings when 8th ends with home leading (not yet 9th)', () => {
+      const schedule = makeSchedule([makeBetweenInningGame('Middle', 8, 5, 3)]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('between-innings');
+    });
+
+    it('does not emit final when game is delayed in between-innings with home leading', () => {
+      // A rain delay mid-break at 9th inning (Middle state, home leading) must NOT
+      // be classified as final — the game is suspended, not over.
+      const game: ScheduleGame = {
+        ...makeBetweenInningGame('Middle', 9, 5, 3),
+        status: { detailedState: 'Delayed: Rain', abstractGameState: 'Live' },
+      };
+      const schedule = makeSchedule([game]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('between-innings');
+      expect(result!.isDelayed).toBe(true);
+    });
+  });
+
+  describe('extras walk-off (S-1 integration)', () => {
+    it('emits live when home team is batting in extras with a lead (walk-off in progress)', () => {
+      // STL (home) batting in Bottom of 10th, leading 4-3.
+      // Game not over yet at API level — S-1 detects game-end when 'End' or 'Middle' state fires.
+      const game = makeGame({
+        teams: {
+          away: {
+            team: { id: NYM_ID, name: 'New York Mets', abbreviation: 'NYM' },
+            score: 3,
+            leagueRecord: { wins: 3, losses: 1 },
+          },
+          home: {
+            team: {
+              id: STL_ID,
+              name: 'St. Louis Cardinals',
+              abbreviation: 'STL',
+            },
+            score: 4,
+            leagueRecord: { wins: 2, losses: 2 },
+          },
+        },
+        linescore: {
+          currentInning: 10,
+          currentInningOrdinal: '10th',
+          inningState: 'Bottom',
+          scheduledInnings: 9,
+          outs: 1,
+          balls: 0,
+          strikes: 0,
+          teams: {
+            home: { runs: 4, hits: 9, errors: 0 },
+            away: { runs: 3, hits: 7, errors: 0 },
+          },
+        },
+      });
+      const schedule = makeSchedule([game]);
+      // STL is home team batting in extras with a lead
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('live');
+      // Leading in extras — no runs needed
+      expect(result!.runsNeeded).toBeNull();
+      expect(result!.isExtraInnings).toBe(true);
     });
   });
 });
