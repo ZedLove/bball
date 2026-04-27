@@ -5,7 +5,7 @@
  *
  * Reports:
  * - Every batter change (new at-bat started, pitcher changed mid-at-bat)
- * - Null atBat drops while in an active mode ('batting' or 'outs')
+ * - Null atBat drops while in an active mode ('live')
  * - Classifies drops as:
  *   - INTERSTITIAL: 1-tick null between consecutive at-bats (known: completed play,
  *     next play not yet started — root cause: parseCurrentPlay returns null when
@@ -53,7 +53,7 @@ interface BatterChange {
   events: number;
 }
 
-const ACTIVE_MODES = new Set(['batting', 'outs', 'runs']);
+const ACTIVE_MODES = new Set(['live']);
 
 async function main(): Promise<void> {
   const filePath = requireArg('scripts/analyze/at-bat-transitions.ts');
