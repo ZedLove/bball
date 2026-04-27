@@ -88,16 +88,13 @@ function resolveSessionDir(date: string, gamePk: number): string {
 }
 
 function getNextIntervalMs(trackingMode: GameUpdate['trackingMode']): number {
-  switch (trackingMode) {
-    case 'outs':
-    case 'runs':
-      return CONFIG.ACTIVE_POLL_INTERVAL * 1000;
-    case 'batting':
-    case 'between-innings':
-      return CONFIG.BATTING_POLL_INTERVAL * 1000;
-    default:
-      return CONFIG.IDLE_POLL_INTERVAL * 1000;
+  if (trackingMode === 'final') {
+    return CONFIG.IDLE_POLL_INTERVAL * 1000;
   }
+  if (trackingMode === 'live' || trackingMode === 'between-innings') {
+    return CONFIG.ACTIVE_POLL_INTERVAL * 1000;
+  }
+  return CONFIG.IDLE_POLL_INTERVAL * 1000;
 }
 
 // ---------------------------------------------------------------------------
