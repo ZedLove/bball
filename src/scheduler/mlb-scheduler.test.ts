@@ -14,7 +14,6 @@ vi.mock('../config/env.ts', () => ({
     RETRY_BACKOFF_MS: 0,
     IDLE_POLL_INTERVAL: 60,
     ACTIVE_POLL_INTERVAL: 10,
-    BATTING_POLL_INTERVAL: 30,
     CORS_ORIGIN: '*',
     PORT: 4000,
     DEV_MODE: false,
@@ -170,7 +169,7 @@ describe('baseline game-update emission', () => {
 
     expect(io.emit).toHaveBeenCalledWith(
       SOCKET_EVENTS.GAME_UPDATE,
-      expect.objectContaining({ gamePk: GAME_PK, trackingMode: 'outs' })
+      expect.objectContaining({ gamePk: GAME_PK, trackingMode: 'live' })
     );
     scheduler.stop();
   });
@@ -768,7 +767,7 @@ describe('getLastUpdate', () => {
     const lastUpdate = scheduler.getLastUpdate();
     expect(lastUpdate).not.toBeNull();
     expect(lastUpdate?.gamePk).toBe(GAME_PK);
-    expect(lastUpdate?.trackingMode).toBe('outs');
+    expect(lastUpdate?.trackingMode).toBe('live');
     scheduler.stop();
   });
 });
@@ -830,69 +829,14 @@ function makeBetweenInningsSchedule(): ScheduleResponse {
 }
 
 /** Schedule fixture where NYM (home, 121) is batting in regular innings. */
-function makeBattingSchedule(): ScheduleResponse {
-  return {
-    dates: [
-      {
-        date: '2026-04-15',
-        games: [
-          {
-            gamePk: GAME_PK,
-            gameDate: GAME_DATE,
-            status: { detailedState: 'In Progress', abstractGameState: 'Live' },
-            teams: {
-              away: {
-                team: {
-                  id: LAD_ID,
-                  name: 'Los Angeles Dodgers',
-                  abbreviation: 'LAD',
-                },
-                score: 0,
-                leagueRecord: { wins: 3, losses: 2 },
-              },
-              home: {
-                team: {
-                  id: NYM_ID,
-                  name: 'New York Mets',
-                  abbreviation: 'NYM',
-                },
-                score: 0,
-                leagueRecord: { wins: 3, losses: 2 },
-              },
-            },
-            linescore: {
-              currentInning: 3,
-              currentInningOrdinal: '3rd',
-              inningState: 'Bottom', // ← NYM (home) batting
-              scheduledInnings: 9,
-              outs: 1,
-              balls: 0,
-              strikes: 0,
-              teams: {
-                home: { runs: 0, hits: 0, errors: 0 },
-                away: { runs: 0, hits: 0, errors: 0 },
-              },
-              defense: {
-                pitcher: { id: 596019, fullName: 'Francisco Lindor' },
-              },
-              offense: { batter: { id: 660271, fullName: 'Shohei Ohtani' } },
-            },
-          },
-        ],
-      },
-    ],
-  };
-}
-
 describe('poll interval scheduling', () => {
-  it('schedules next tick at ACTIVE_POLL_INTERVAL when trackingMode is between-innings', async () => {
-    // ACTIVE_POLL_INTERVAL: 10s — between-innings now polls at the active rate
-    // so the server catches up quickly whether or not it started mid-break
-    mockFetchSchedule.mockResolvedValue(makeBetweenInningsSchedule());
+  it('schedules next tick at ACTIVE_POLL_INTERVAL when trackingMode is live', async () => {
+    // ACTIVE_POLL_INTERVAL: 10s — 'live' mode polls at the active rate every tick
+    mockFetchSchedule.mockResolvedValue(makeLiveSchedule());
     const io = createMockIo();
     const scheduler = startScheduler(io);
 
-    await drainMicrotasks(); // first tick settles
+    await drainMicrotasks();
     expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
 
     // Advance to just before the 10s threshold — second tick must not have fired
@@ -908,23 +852,348 @@ describe('poll interval scheduling', () => {
     scheduler.stop();
   });
 
-  it('schedules next tick at batting interval when trackingMode is batting', async () => {
-    // BATTING_POLL_INTERVAL: 30s
-    mockFetchSchedule.mockResolvedValue(makeBattingSchedule());
+  it('schedules next tick at IDLE_POLL_INTERVAL when trackingMode is between-innings', async () => {
+    // IDLE_POLL_INTERVAL: 60s — breaks last 2+ minutes; no need to poll at
+    // the active rate when no new live tick can possibly be emitted.
+    mockFetchSchedule.mockResolvedValue(makeBetweenInningsSchedule());
     const io = createMockIo();
     const scheduler = startScheduler(io);
 
+    await drainMicrotasks(); // first tick settles
+    expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
+
+    // Advance to just before the 60s threshold — second tick must not have fired
+    vi.advanceTimersByTime(59_999);
     await drainMicrotasks();
     expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
 
-    vi.advanceTimersByTime(29_999);
-    await drainMicrotasks();
-    expect(mockFetchSchedule).toHaveBeenCalledTimes(1);
-
+    // Cross the threshold — second tick fires
     vi.advanceTimersByTime(1);
     await drainMicrotasks();
     expect(mockFetchSchedule).toHaveBeenCalledTimes(2);
 
+    scheduler.stop();
+  });
+
+  it('emits between-innings at most once per transition (single-emit guard)', async () => {
+    // Tick 1: between-innings → emits once
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    // Tick 2: still between-innings (same state) → must NOT emit again
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    // between-innings is a single-emit mode — a second consecutive tick with
+    // the same trackingMode must not produce a second emission.
+    expect(updateCalls).toHaveLength(1);
+    expect(updateCalls[0]![1]).toMatchObject({
+      trackingMode: 'between-innings',
+    });
+    scheduler.stop();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// AtBat state persistence (Bug S-2)
+// ---------------------------------------------------------------------------
+
+describe('atBat state persistence (S-2)', () => {
+  it('emits previous atBat when parseCurrentPlay returns null during live mode', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    // Tick 1: populated atBat
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 5,
+            halfInning: 'top',
+            inning: 3,
+            isComplete: false,
+          },
+          count: { balls: 1, strikes: 1, outs: 1 },
+          matchup: {
+            batter: { id: 100, fullName: 'Batter One' },
+            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'R' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [],
+        },
+      })
+    );
+    // Tick 2: live feed returns null (completed play gap)
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick2Update = updateCalls[updateCalls.length - 1]![1] as {
+      trackingMode: string;
+      atBat: { batter: { id: number } } | null;
+    };
+    expect(tick2Update.trackingMode).toBe('live');
+    // Previous atBat persisted — not null
+    expect(tick2Update.atBat).not.toBeNull();
+    expect(tick2Update.atBat?.batter.id).toBe(100);
+    scheduler.stop();
+  });
+
+  it('emits atBat: null when parseCurrentPlay returns null during between-innings', async () => {
+    // First tick: live with atBat populated
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 5,
+            halfInning: 'top',
+            inning: 3,
+            isComplete: false,
+          },
+          count: { balls: 1, strikes: 1, outs: 1 },
+          matchup: {
+            batter: { id: 100, fullName: 'Batter One' },
+            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'R' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [],
+        },
+      })
+    );
+    // Second tick: between-innings (feed/live not called; atBat is null)
+    // Linescore delta fires between tick 1 (outs=1) and tick 2 (outs=3), so
+    // enrichment is triggered — supply an empty feed response to satisfy the mock.
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2 (between-innings)
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick2Update = updateCalls[updateCalls.length - 1]![1] as {
+      trackingMode: string;
+      atBat: unknown;
+    };
+    expect(tick2Update.trackingMode).toBe('between-innings');
+    expect(tick2Update.atBat).toBeNull();
+    scheduler.stop();
+  });
+
+  it('emits atBat: null during final even when lastAtBat is set', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 5,
+            halfInning: 'top',
+            inning: 9,
+            isComplete: false,
+          },
+          count: { balls: 0, strikes: 2, outs: 2 },
+          matchup: {
+            batter: { id: 200, fullName: 'Batter Two' },
+            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'L' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [],
+        },
+      })
+    );
+    mockFetchSchedule.mockResolvedValueOnce(makeFinalSchedule());
+    mockFetchGameFeed.mockResolvedValueOnce(makeFeedResponse(5));
+    mockFetchBoxscore.mockResolvedValueOnce(makeBoxscoreResponse());
+    mockFetchNextGame.mockResolvedValueOnce(makeNextGameResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2 (final)
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const finalUpdate = updateCalls.find(
+      ([, payload]) =>
+        (payload as { trackingMode: string }).trackingMode === 'final'
+    );
+    expect(finalUpdate).toBeDefined();
+    expect((finalUpdate![1] as { atBat: unknown }).atBat).toBeNull();
+    scheduler.stop();
+  });
+
+  it('updates lastAtBat when parseCurrentPlay returns a new atBat', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 7,
+            halfInning: 'top',
+            inning: 4,
+            isComplete: false,
+          },
+          count: { balls: 2, strikes: 0, outs: 0 },
+          matchup: {
+            batter: { id: 300, fullName: 'New Batter' },
+            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'L' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [],
+        },
+      })
+    );
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.objectContaining({
+        atBat: expect.objectContaining({
+          batter: expect.objectContaining({ id: 300 }),
+        }),
+      })
+    );
+    scheduler.stop();
+  });
+
+  it('clears lastAtBat on transition to between-innings (stale data must not leak)', async () => {
+    // Tick 1: live with atBat
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 3,
+            halfInning: 'top',
+            inning: 2,
+            isComplete: false,
+          },
+          count: { balls: 0, strikes: 0, outs: 0 },
+          matchup: {
+            batter: { id: 400, fullName: 'Old Batter' },
+            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'R' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [],
+        },
+      })
+    );
+    // Tick 2: between-innings
+    // Linescore delta fires (outs=1 → outs=3), so enrichment is triggered —
+    // supply an empty feed response to prevent a mock-not-set-up error.
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
+    // Tick 3: back to live with null atBat (should not reuse tick 1 atBat).
+    // outs=2 on tick 3 vs outs=3 on tick 2 triggers linescore delta; supply an
+    // empty feed response to prevent a mock-not-set-up error.
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
+    mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2 (between-innings — clears lastAtBat)
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 3 (live, no current atBat)
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick3Update = updateCalls[updateCalls.length - 1]![1] as {
+      trackingMode: string;
+      atBat: unknown;
+    };
+    expect(tick3Update.trackingMode).toBe('live');
+    // lastAtBat was cleared on between-innings — must not reuse tick 1's atBat
+    expect(tick3Update.atBat).toBeNull();
+    scheduler.stop();
+  });
+
+  it('clears lastAtBat when gamePk changes (new game)', async () => {
+    // Tick 1: game 823963 with atBat
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 1,
+            halfInning: 'top',
+            inning: 1,
+            isComplete: false,
+          },
+          count: { balls: 0, strikes: 0, outs: 0 },
+          matchup: {
+            batter: { id: 500, fullName: 'Old Game Batter' },
+            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'R' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [],
+        },
+      })
+    );
+    // Tick 2: new game (824100), null atBat — must NOT reuse old game's atBat
+    mockFetchSchedule.mockResolvedValueOnce(makeNewGameSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2 (new game)
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick2Update = updateCalls[updateCalls.length - 1]![1] as {
+      gamePk: number;
+      atBat: unknown;
+    };
+    expect(tick2Update.gamePk).toBe(824100);
+    expect(tick2Update.atBat).toBeNull();
     scheduler.stop();
   });
 });
@@ -1717,7 +1986,7 @@ describe('pitcher stats cache management', () => {
       pitchHistory: unknown[];
     };
 
-    expect(tick4Update.trackingMode).toBe('outs');
+    expect(tick4Update.trackingMode).toBe('live');
     expect(tick4Update.currentPitcher?.pitchesThrown).toBe(2);
     expect(tick4Update.pitchHistory).toHaveLength(2);
     scheduler.stop();

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { logUpdate } from '../scheduler/logger.ts';
 import { logger } from './logger.ts';
-import type { GameUpdate } from '../scheduler/parser.ts';
+import type { GameUpdate } from '../server/socket-events.ts';
 
 describe('logUpdate', () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
@@ -27,7 +27,7 @@ describe('logUpdate', () => {
     delayDescription: null,
     isExtraInnings: false,
     scheduledInnings: 9,
-    trackingMode: 'outs',
+    trackingMode: 'live',
     outsRemaining: 2,
     totalOutsRemaining: 14,
     runsNeeded: null,
@@ -41,41 +41,51 @@ describe('logUpdate', () => {
     ...overrides,
   });
 
-  describe('when trackingMode is "outs"', () => {
-    it('logs defending team, inning, outs, and score', () => {
-      const update = makeUpdate({ trackingMode: 'outs', defendingTeam: 'STL' });
+  describe('when trackingMode is "live"', () => {
+    it('logs LIVE prefix, inning, and score', () => {
+      const update = makeUpdate({ trackingMode: 'live' });
       logUpdate(update);
       expect(logSpy).toHaveBeenCalled();
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
-      expect(allArgs).toContain('defending');
+      const allArgs = logSpy.mock.calls[0]!.map(String).join('');
+      expect(allArgs).toContain('LIVE');
+    });
+
+    it('includes outs remaining when outsRemaining is set', () => {
+      const update = makeUpdate({
+        trackingMode: 'live',
+        outsRemaining: 2,
+        totalOutsRemaining: 14,
+      });
+      logUpdate(update);
+      const allArgs = logSpy.mock.calls[0]!.map(String).join('');
+      expect(allArgs).toContain('Outs:');
     });
 
     it('includes total outs remaining when available', () => {
       const update = makeUpdate({
-        trackingMode: 'outs',
+        trackingMode: 'live',
+        outsRemaining: 2,
         totalOutsRemaining: 14,
       });
       logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
-      expect(allArgs).toContain('total');
+      const allArgs = logSpy.mock.calls[0]!.map(String).join('');
+      expect(allArgs).toContain('14');
     });
 
-    it('excludes total outs remaining when null', () => {
+    it('excludes outs section when outsRemaining is null', () => {
       const update = makeUpdate({
-        trackingMode: 'outs',
+        trackingMode: 'live',
+        outsRemaining: null,
         totalOutsRemaining: null,
       });
       logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
-      expect(allArgs).not.toContain('total');
+      const allArgs = logSpy.mock.calls[0]!.map(String).join('');
+      expect(allArgs).not.toContain('Outs:');
     });
 
     it('includes pitcher name when available', () => {
       const update = makeUpdate({
-        trackingMode: 'outs',
+        trackingMode: 'live',
         currentPitcher: {
           id: 12345,
           fullName: 'Max Scherzer',
@@ -86,51 +96,33 @@ describe('logUpdate', () => {
         },
       });
       logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
+      const allArgs = logSpy.mock.calls[0]!.map(String).join('');
       expect(allArgs).toContain('Max Scherzer');
     });
 
     it('includes [EXTRAS] flag for extra innings', () => {
-      const update = makeUpdate({ trackingMode: 'outs', isExtraInnings: true });
+      const update = makeUpdate({ trackingMode: 'live', isExtraInnings: true });
       logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
+      const allArgs = logSpy.mock.calls[0]!.map(String).join('');
+      expect(allArgs).toContain('EXTRAS');
+    });
+
+    it('includes runs needed and [EXTRAS] when runsNeeded is set', () => {
+      const update = makeUpdate({
+        trackingMode: 'live',
+        runsNeeded: 2,
+        isExtraInnings: true,
+      });
+      logUpdate(update);
+      const allArgs = logSpy.mock.calls[0]!.map(String).join('');
+      expect(allArgs).toContain('Runs needed');
       expect(allArgs).toContain('EXTRAS');
     });
 
     it('includes [DELAYED] flag when delayed', () => {
-      const update = makeUpdate({ trackingMode: 'outs', isDelayed: true });
+      const update = makeUpdate({ trackingMode: 'live', isDelayed: true });
       logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
-      expect(allArgs).toContain('DELAYED');
-    });
-  });
-
-  describe('when trackingMode is "runs"', () => {
-    it('logs batting (extras), inning, runs needed, and score', () => {
-      const update = makeUpdate({
-        trackingMode: 'runs',
-        runsNeeded: 3,
-        isExtraInnings: true,
-      });
-      logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
-      expect(allArgs).toContain('Batting');
-      expect(allArgs).toContain('EXTRAS');
-    });
-
-    it('includes [DELAYED] flag when delayed', () => {
-      const update = makeUpdate({
-        trackingMode: 'runs',
-        isDelayed: true,
-        isExtraInnings: true,
-      });
-      logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
+      const allArgs = logSpy.mock.calls[0]!.map(String).join('');
       expect(allArgs).toContain('DELAYED');
     });
   });
@@ -191,27 +183,6 @@ describe('logUpdate', () => {
       const calls = logSpy.mock.calls[0];
       const allArgs = calls.map(String).join('');
       expect(allArgs).toContain('Final');
-    });
-  });
-
-  describe('when trackingMode is "batting"', () => {
-    it('logs batting team, inning, and score', () => {
-      const update = makeUpdate({
-        trackingMode: 'batting',
-        battingTeam: 'STL',
-      });
-      logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
-      expect(allArgs).toContain('batting');
-    });
-
-    it('includes [DELAYED] flag when delayed', () => {
-      const update = makeUpdate({ trackingMode: 'batting', isDelayed: true });
-      logUpdate(update);
-      const calls = logSpy.mock.calls[0];
-      const allArgs = calls.map(String).join('');
-      expect(allArgs).toContain('DELAYED');
     });
   });
 });

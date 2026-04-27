@@ -1,4 +1,4 @@
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 
 export function formatScore(update: GameUpdate): string {
   const { away, home } = update.teams;

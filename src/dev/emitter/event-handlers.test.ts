@@ -33,7 +33,7 @@ import type {
   AtBatState,
 } from '../../server/socket-events.ts';
 
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -219,7 +219,7 @@ describe('handleScore', () => {
     handleScore(store, io, {});
 
     const update = firstGameUpdate(io);
-    expect(update.trackingMode).toBe('outs');
+    expect(update.trackingMode).toBe('live');
   });
 
   it('emits game-update with trackingMode runs in extra innings', () => {
@@ -227,12 +227,13 @@ describe('handleScore', () => {
     handleScore(store, io, {});
 
     const update = firstGameUpdate(io);
-    expect(update.trackingMode).toBe('runs');
+    expect(update.trackingMode).toBe('live');
   });
 
-  it('reduces totalOutsRemaining when away is defending and losing (excludes final bottom inning)', () => {
-    // Bottom 5th, away (NYM) defending, home leading 2-1 → awayDefendingAndLosing guard applies.
-    // outs = 2 → outsRemaining = 1; futureHalfInnings = (9 - 5 - 1) = 3 → totalOutsRemaining = 1 + 9 = 10.
+  it('outsRemaining is null when home team is batting (Bottom half)', () => {
+    // In the simulator the tracked team is always home. During Bottom half,
+    // home is batting, so outsRemaining and totalOutsRemaining must be null —
+    // these fields are defending-only per the socket contract.
     store.setState({
       inning: { number: 5, half: 'Bottom', ordinal: '5th' },
       outs: 2,
@@ -241,8 +242,23 @@ describe('handleScore', () => {
     handleScore(store, io, {});
 
     const update = firstGameUpdate(io);
-    expect(update.outsRemaining).toBe(1);
-    expect(update.totalOutsRemaining).toBe(10);
+    expect(update.outsRemaining).toBeNull();
+    expect(update.totalOutsRemaining).toBeNull();
+  });
+
+  it('runsNeeded is null when home team is leading in extra innings', () => {
+    // Home batting in Bottom of extras with a lead: game is in a walk-off
+    // situation — the batting team needs 0 additional runs to win the half,
+    // so runsNeeded must be null (not 1).
+    store.setState({
+      inning: { number: 10, half: 'Bottom', ordinal: '10th' },
+      score: { away: 3, home: 5 },
+    });
+    handleScore(store, io, {});
+
+    const update = firstGameUpdate(io);
+    expect(update.isExtraInnings).toBe(true);
+    expect(update.runsNeeded).toBeNull();
   });
 });
 
@@ -695,7 +711,7 @@ describe('buildPayload atBat field vs trackingMode', () => {
     (io.emit as ReturnType<typeof vi.fn>).mockClear();
 
     // Emit in between-innings mode by advancing past batting-begins then batting-ends
-    // We can directly test via handlePitchingChange → emitUpdate('outs') vs a between-innings emit.
+    // We can directly test via handlePitchingChange → emitUpdate('live') vs a between-innings emit.
     // Simplest: import buildPayload directly and test it.
     // Instead, verify indirectly via the store state being respected by payload-factory.
     // We'll check by importing buildPayload.
@@ -711,7 +727,7 @@ describe('buildPayload atBat field vs trackingMode', () => {
 
     const { buildPayload } = await import('./payload-factory.ts');
     const state = store.getState();
-    const update = buildPayload(state, 'outs');
+    const update = buildPayload(state, 'live');
     expect(update.atBat).not.toBeNull();
     expect((update.atBat as AtBatState).batter.fullName).toBe('Test Batter');
   });

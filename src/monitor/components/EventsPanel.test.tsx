@@ -6,7 +6,7 @@ import type {
   PlateAppearanceCompletedEvent,
   PitchingSubstitutionEvent,
 } from '../../server/socket-events.ts';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 
 const BASE_EVENT = {
   gamePk: 123456,
@@ -63,7 +63,7 @@ function makeGameUpdate(overrides: Partial<GameUpdate> = {}): GameUpdate {
     delayDescription: null,
     isExtraInnings: false,
     scheduledInnings: 9,
-    trackingMode: 'outs',
+    trackingMode: 'live',
     outsRemaining: 2,
     totalOutsRemaining: 8,
     runsNeeded: null,

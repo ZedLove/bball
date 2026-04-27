@@ -14,7 +14,6 @@ const EnvSchema = z.object({
   TEAM_ID: z.coerce.number().int().positive().optional(),
   IDLE_POLL_INTERVAL: z.coerce.number().int().positive().default(60),
   ACTIVE_POLL_INTERVAL: z.coerce.number().int().positive().default(10),
-  BATTING_POLL_INTERVAL: z.coerce.number().int().positive().default(30),
   MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
   RETRY_BACKOFF_MS: z.coerce.number().int().nonnegative().default(500),
 });
@@ -63,8 +62,6 @@ export const CONFIG = {
   IDLE_POLL_INTERVAL: _env.IDLE_POLL_INTERVAL,
   /** Seconds between polls during an active game */
   ACTIVE_POLL_INTERVAL: _env.ACTIVE_POLL_INTERVAL,
-  /** Seconds between polls while target team is batting in regulation */
-  BATTING_POLL_INTERVAL: _env.BATTING_POLL_INTERVAL,
   /** Max retry attempts per tick on network error */
   MAX_RETRIES: _env.MAX_RETRIES,
   /** Base back-off in ms (multiplied by 2^n on each retry) */

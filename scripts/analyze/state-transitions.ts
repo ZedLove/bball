@@ -10,7 +10,7 @@
  *
  * Usage: npx tsx scripts/analyze/state-transitions.ts <ticks.ndjson>
  */
-import type { GameUpdate } from '../../src/scheduler/parser.ts';
+import type { GameUpdate } from '../../src/server/socket-events.ts';
 import {
   streamTicks,
   section,

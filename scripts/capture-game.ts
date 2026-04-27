@@ -31,7 +31,7 @@ import { fetchGameFeedLive } from '../src/scheduler/game-feed-live-client.ts';
 import { fetchGameFeed } from '../src/scheduler/game-feed-client.ts';
 import { fetchBoxscore } from '../src/scheduler/boxscore-client.ts';
 import { parseGameUpdate } from '../src/scheduler/parser.ts';
-import type { GameUpdate } from '../src/scheduler/parser.ts';
+import type { GameUpdate } from '../src/server/socket-events.ts';
 import { parseCurrentPlay } from '../src/scheduler/current-play-parser.ts';
 import { parseFeedEvents } from '../src/scheduler/feed-parser.ts';
 import { buildGameSummary } from '../src/scheduler/summary-parser.ts';
@@ -88,16 +88,10 @@ function resolveSessionDir(date: string, gamePk: number): string {
 }
 
 function getNextIntervalMs(trackingMode: GameUpdate['trackingMode']): number {
-  switch (trackingMode) {
-    case 'outs':
-    case 'runs':
-      return CONFIG.ACTIVE_POLL_INTERVAL * 1000;
-    case 'batting':
-    case 'between-innings':
-      return CONFIG.BATTING_POLL_INTERVAL * 1000;
-    default:
-      return CONFIG.IDLE_POLL_INTERVAL * 1000;
+  if (trackingMode === 'live') {
+    return CONFIG.ACTIVE_POLL_INTERVAL * 1000;
   }
+  return CONFIG.IDLE_POLL_INTERVAL * 1000;
 }
 
 // ---------------------------------------------------------------------------

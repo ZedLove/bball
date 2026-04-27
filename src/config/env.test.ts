@@ -22,7 +22,6 @@ describe('env configuration (static checks)', () => {
       const { CONFIG } = await import('./env.ts');
       expect(CONFIG.IDLE_POLL_INTERVAL).toBe(60);
       expect(CONFIG.ACTIVE_POLL_INTERVAL).toBe(10);
-      expect(CONFIG.BATTING_POLL_INTERVAL).toBe(30);
     });
 
     it('should have valid retry settings', async () => {
@@ -41,10 +40,8 @@ describe('env configuration (static checks)', () => {
       const { CONFIG } = await import('./env.ts');
       expect(CONFIG.IDLE_POLL_INTERVAL).toBeGreaterThan(0);
       expect(CONFIG.ACTIVE_POLL_INTERVAL).toBeGreaterThan(0);
-      expect(CONFIG.BATTING_POLL_INTERVAL).toBeGreaterThan(0);
       expect(Number.isInteger(CONFIG.IDLE_POLL_INTERVAL)).toBe(true);
       expect(Number.isInteger(CONFIG.ACTIVE_POLL_INTERVAL)).toBe(true);
-      expect(Number.isInteger(CONFIG.BATTING_POLL_INTERVAL)).toBe(true);
     });
   });
 

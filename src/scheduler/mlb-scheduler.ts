@@ -4,7 +4,6 @@ import { fetchSchedule } from './schedule-client.ts';
 import type { ScheduleResponse, Linescore } from './schedule-client.ts';
 import { parseGameUpdate } from './parser.ts';
 import { logUpdate } from './logger.ts';
-import type { GameUpdate } from './parser.ts';
 import { logger } from '../config/logger.ts';
 import { fetchGameFeed } from './game-feed-client.ts';
 import { fetchGameFeedLive } from './game-feed-live-client.ts';
@@ -17,7 +16,11 @@ import type {
   NextGameScheduleResponse,
 } from './game-feed-types.ts';
 import { parseCurrentPlay } from './current-play-parser.ts';
-import type { AtBatState, PitchEvent } from '../server/socket-events.ts';
+import type {
+  AtBatState,
+  GameUpdate,
+  PitchEvent,
+} from '../server/socket-events.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import { parseFeedEvents } from './feed-parser.ts';
@@ -94,11 +97,31 @@ export interface Scheduler {
   getLastUpdate(): GameUpdate | null;
 }
 
+/**
+ * Returns the poll interval in seconds for the next scheduler tick.
+ * - null update (no game), delayed game, or final → idle polling rate.
+ * - 'between-innings' → idle polling rate (break lasts 2+ minutes; no need
+ *   to hammer the API at the active rate until a new half-inning starts).
+ * - 'live' → active polling rate (every pitch may trigger a new emission).
+ */
+function getNextIntervalSec(update: GameUpdate | null): number {
+  if (
+    update === null ||
+    update.isDelayed ||
+    update.trackingMode === 'final' ||
+    update.trackingMode === 'between-innings'
+  ) {
+    return CONFIG.IDLE_POLL_INTERVAL;
+  }
+  return CONFIG.ACTIVE_POLL_INTERVAL;
+}
+
 export function startScheduler(io: SocketIOServer): Scheduler {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
   let lastTrackingMode: GameUpdate['trackingMode'] | null = null;
   let lastEmittedUpdate: GameUpdate | null = null;
+  let lastAtBat: AtBatState | null = null;
   let enrichmentState: EnrichmentState | null = null;
 
   /**
@@ -200,8 +223,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     const shouldFetchAtBat =
       update !== null &&
       update.trackingMode !== 'between-innings' &&
-      update.trackingMode !== 'final' &&
-      update.gamePk !== undefined;
+      update.trackingMode !== 'final';
 
     let shouldEnrich = false;
     let isFinal = false;
@@ -276,6 +298,20 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         ? parseCurrentPlay(liveFeedResult, currentLinescore)
         : null;
 
+    // AtBat persistence (Bug S-2): keep the last known atBat alive during the
+    // brief window between plays when parseCurrentPlay returns null (isComplete
+    // === true but the next batter hasn't appeared yet). Clear on transitions.
+    //
+    // Clear BEFORE setting so that on a game change, the old atBat is purged
+    // before the new game's atBat (if any) is stored. lastKnownGamePk still
+    // holds the previous tick's gamePk at this point in the loop.
+    if ((update?.gamePk ?? null) !== lastKnownGamePk) {
+      lastAtBat = null;
+    }
+    if (atBat !== null) {
+      lastAtBat = atBat;
+    }
+
     // ── 5b. Pitcher stats computation ─────────────────────────────────────────
     const pitcherId = update?.currentPitcher?.id ?? null;
     const currentGamePk = update?.gamePk ?? null;
@@ -346,11 +382,28 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         ? [...pitcherEntry.enrichmentPitchHistory, ...currentAtBatPitches]
         : [];
 
+    // ── 6. Resolve atBat, assemble full update, and emit ──────────────────────
+    // Emitted before enrichment events so clients receive current game state
+    // before the enriched events that explain it — a consistent state-first
+    // ordering.
+    //
+    // Transition-only modes ('between-innings', 'final') emit once on entry;
+    // 'live' emits every tick. atBat is persisted during 'live' to bridge the
+    // completed-play gap (S-2), and cleared on transitions so stale data never
+    // leaks across half-innings.
+    const isTransition =
+      update?.trackingMode === 'between-innings' ||
+      update?.trackingMode === 'final';
+    const atBatToEmit = atBat ?? (isTransition ? null : lastAtBat);
+    if (isTransition) {
+      lastAtBat = null;
+    }
+
     const fullUpdate: GameUpdate | null =
       update !== null
         ? {
             ...update,
-            atBat,
+            atBat: atBatToEmit,
             pitchHistory,
             currentPitcher:
               update.currentPitcher !== null && mergedStats !== null
@@ -360,21 +413,9 @@ export function startScheduler(io: SocketIOServer): Scheduler {
           }
         : null;
 
-    // ── 6. Emit baseline game-update ──────────────────────────────────────────
-    // Emitted before enrichment events so clients receive current game state
-    // before the enriched events that explain it — a consistent state-first
-    // ordering.
-    //
-    // Transition-only modes: emit once when entering, then stay quiet until the
-    // mode changes.  'outs' and 'runs' emit every tick because their values
-    // change continuously.
-    const isTransitionMode = (mode: GameUpdate['trackingMode']) =>
-      mode === 'batting' || mode === 'between-innings' || mode === 'final';
-
     const shouldEmit =
       fullUpdate !== null &&
-      (!isTransitionMode(fullUpdate.trackingMode) ||
-        lastTrackingMode !== fullUpdate.trackingMode);
+      (!isTransition || lastTrackingMode !== fullUpdate.trackingMode);
 
     if (shouldEmit && fullUpdate !== null) {
       logUpdate(fullUpdate);
@@ -558,24 +599,6 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     }
 
     // ── 9. Schedule next tick ─────────────────────────────────────────────────
-    const getNextIntervalSec = (update: GameUpdate | null): number => {
-      if (
-        update === null ||
-        update.isDelayed ||
-        update.trackingMode === 'final'
-      ) {
-        return CONFIG.IDLE_POLL_INTERVAL;
-      }
-      switch (update.trackingMode) {
-        case 'between-innings':
-          return CONFIG.ACTIVE_POLL_INTERVAL;
-        case 'batting':
-          return CONFIG.BATTING_POLL_INTERVAL;
-        default:
-          return CONFIG.ACTIVE_POLL_INTERVAL;
-      }
-    };
-
     const intervalSec = getNextIntervalSec(fullUpdate);
     logger.info(`Next tick in ${intervalSec}s`);
     timer = setTimeout(() => {

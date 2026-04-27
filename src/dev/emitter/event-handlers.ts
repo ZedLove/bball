@@ -1,5 +1,5 @@
 import type { Server as SocketIOServer } from 'socket.io';
-import type { GameUpdate } from '../../scheduler/parser.ts';
+import type { GameUpdate } from '../../server/socket-events.ts';
 import type { StateStore } from '../state/store.ts';
 import type {
   HandlerResult,
@@ -137,7 +137,7 @@ export function handleGameStart(
 
   store.reset();
   store.setState({ gameStarted: true });
-  emitUpdate(io, store, 'outs');
+  emitUpdate(io, store, 'live');
 
   const s = store.getState();
   return ok(
@@ -178,7 +178,7 @@ export function handleOut(
   const newOuts = state.outs + 1;
   store.setState({ outs: newOuts });
 
-  emitUpdate(io, store, 'outs');
+  emitUpdate(io, store, 'live');
 
   const sideNote =
     newOuts === 3
@@ -203,7 +203,7 @@ export function handlePitchingChange(
     fullName: options.pitcherName ?? 'Unknown Pitcher',
   };
   store.setState({ currentPitcher: pitcher });
-  emitUpdate(io, store, 'outs');
+  emitUpdate(io, store, 'live');
 
   const subEvent: PitchingSubstitutionEvent = {
     gamePk: state.gamePk,
@@ -242,9 +242,7 @@ export function handleBattingBegins(
   store.advanceHalf();
   const s = store.getState();
 
-  // In extra innings, emit 'runs' mode so the frontend can test that transition.
-  const isExtras = s.inning.number > s.scheduledInnings;
-  emitUpdate(io, store, isExtras ? 'runs' : 'batting');
+  emitUpdate(io, store, 'live');
 
   const battingTeam =
     s.inning.half === 'Top'
@@ -294,7 +292,7 @@ export function handleDelay(
 
   const desc = options.reason ? `Delayed: ${options.reason}` : 'Game Delayed';
   store.setState({ isDelayed: true, delayDescription: desc });
-  emitUpdate(io, store, 'outs');
+  emitUpdate(io, store, 'live');
 
   return ok(
     `✓ Game delayed: ${desc} | ${state.inning.ordinal} ${state.inning.half}`
@@ -310,7 +308,7 @@ export function handleClearDelay(
   if (error) return fail(error);
 
   store.setState({ isDelayed: false, delayDescription: null });
-  emitUpdate(io, store, 'outs');
+  emitUpdate(io, store, 'live');
 
   return ok(
     `✓ Delay cleared | Game resumed | ${state.inning.ordinal} ${state.inning.half}`
@@ -478,8 +476,7 @@ export function handleScore(
     home: state.score.home + (isBattingAway ? 0 : runs),
   };
   store.setState({ score: newScore });
-  const isExtras = state.inning.number > state.scheduledInnings;
-  emitUpdate(io, store, isExtras ? 'runs' : 'outs');
+  emitUpdate(io, store, 'live');
 
   const paEvent: PlateAppearanceCompletedEvent = {
     gamePk: state.gamePk,
@@ -688,7 +685,7 @@ export function handleNewBatter(
     },
   });
 
-  emitUpdate(io, store, 'outs');
+  emitUpdate(io, store, 'live');
   return ok(
     `✓ New batter: ${batter.fullName} (#${batter.id}) vs ${pitcher.fullName}` +
       ` | ${state.inning.ordinal} ${state.inning.half} | Count 0-0`
@@ -754,7 +751,7 @@ export function handlePitch(
     },
   });
 
-  emitUpdate(io, store, 'outs');
+  emitUpdate(io, store, 'live');
   return ok(
     `✓ Pitch ${pitchNumber}: ${newPitch.pitchType} | ${call}` +
       ` | Count ${newBalls}-${newStrikes} | ${speedMph} mph`
