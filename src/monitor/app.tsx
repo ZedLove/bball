@@ -15,6 +15,7 @@ import { AtBatPanel } from './components/AtBatPanel.tsx';
 import { StrikeZone } from './components/StrikeZone.tsx';
 import { BaseDiamond } from './components/BaseDiamond.tsx';
 import { LineupPanel } from './components/LineupPanel.tsx';
+import { InningBreakPanel } from './components/InningBreakPanel.tsx';
 
 export function App() {
   const { exit } = useApp();
@@ -112,7 +113,7 @@ export function App() {
   });
 
   // Render priority (events panel slot):
-  //   GameSummaryPanel > CelebrationPanel > HitResultPanel > EventsPanel
+  //   GameSummaryPanel > CelebrationPanel > InningBreakPanel > EventsPanel
   function renderMainPanel() {
     if (state.summary !== null) {
       return (
@@ -125,6 +126,12 @@ export function App() {
     }
     if (state.celebration !== null) {
       return <CelebrationPanel celebration={state.celebration} />;
+    }
+    if (
+      state.lastBreakSummary !== null &&
+      state.lastUpdate?.trackingMode === 'between-innings'
+    ) {
+      return <InningBreakPanel summary={state.lastBreakSummary} />;
     }
     return (
       <EventsPanel

@@ -26,6 +26,7 @@ const INITIAL_STATE: DashboardState = {
   filter: 'all',
   pitchDisplay: 'at-bat',
   connectedAt: null,
+  lastBreakSummary: null,
 };
 
 /**
@@ -92,6 +93,11 @@ export function dashboardReducer(
         // Latch the tracked team abbreviation from the first update.
         trackedTeamAbbr:
           state.trackedTeamAbbr ?? action.payload.trackedTeamAbbr,
+        // Clear the break summary when leaving between-innings.
+        lastBreakSummary:
+          action.payload.trackingMode === 'between-innings'
+            ? state.lastBreakSummary
+            : null,
       };
 
     case 'game-events': {
@@ -157,6 +163,9 @@ export function dashboardReducer(
 
     case 'dismiss-hit':
       return { ...state, lastHit: null };
+
+    case 'inning-break-summary':
+      return { ...state, lastBreakSummary: action.payload };
 
     default:
       return state;

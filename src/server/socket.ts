@@ -128,6 +128,14 @@ export function registerConnectionHandlers(
     const lastUpdate = scheduler.getLastUpdate();
     if (lastUpdate) {
       socket.emit(SOCKET_EVENTS.GAME_UPDATE, lastUpdate);
+
+      // Replay the last inning break summary when the client connects during a break.
+      if (lastUpdate.trackingMode === 'between-innings') {
+        const lastBreakSummary = scheduler.getLastBreakSummary();
+        if (lastBreakSummary !== null) {
+          socket.emit(SOCKET_EVENTS.INNING_BREAK_SUMMARY, lastBreakSummary);
+        }
+      }
     }
 
     socket.on('disconnect', () => {

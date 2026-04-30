@@ -114,6 +114,7 @@ function makeState(overrides: Partial<DashboardState> = {}): DashboardState {
     filter: 'all',
     pitchDisplay: 'at-bat',
     connectedAt: null,
+    lastBreakSummary: null,
     ...overrides,
   };
 }

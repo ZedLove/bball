@@ -5,6 +5,7 @@ import type {
   GameEvent,
   GameEventsPayload,
   GameSummary,
+  InningBreakSummary,
 } from '../server/socket-events.ts';
 
 export type FilterMode = 'all' | 'scoring';
@@ -74,12 +75,15 @@ export interface DashboardState {
   filter: FilterMode;
   pitchDisplay: PitchDisplayMode;
   connectedAt: Date | null;
+  /** Last received inning-break-summary; cleared when leaving between-innings. */
+  lastBreakSummary: InningBreakSummary | null;
 }
 
 export type DashboardAction =
   | { type: 'game-update'; payload: GameUpdate }
   | { type: 'game-events'; payload: GameEventsPayload }
   | { type: 'game-summary'; payload: GameSummary }
+  | { type: 'inning-break-summary'; payload: InningBreakSummary }
   | { type: 'connected' }
   | { type: 'disconnected' }
   | { type: 'set-filter'; filter: FilterMode }

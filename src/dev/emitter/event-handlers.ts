@@ -15,7 +15,7 @@ import type {
 } from '../types.ts';
 import { toOrdinal } from '../types.ts';
 import { validateTransition } from '../state/validator.ts';
-import { buildPayload } from './payload-factory.ts';
+import { buildPayload, buildMockBreakSummary } from './payload-factory.ts';
 import { SOCKET_EVENTS } from '../../server/socket-events.ts';
 import type {
   GameEventsPayload,
@@ -239,6 +239,7 @@ export function handleBattingBegins(
   const error = validateTransition('batting-begins', state);
   if (error) return fail(error);
 
+  store.setLastEmittedBreakSummary(null);
   store.advanceHalf();
   const s = store.getState();
 
@@ -276,6 +277,11 @@ export function handleBetweenInnings(
   if (error) return fail(error);
 
   emitUpdate(io, store, 'between-innings');
+
+  const breakSummary = buildMockBreakSummary(state);
+  io.emit(SOCKET_EVENTS.INNING_BREAK_SUMMARY, breakSummary);
+  store.setLastEmittedBreakSummary(breakSummary);
+
   return ok(
     `✓ Between-innings emitted | ${state.inning.ordinal} ${state.inning.half}`
   );

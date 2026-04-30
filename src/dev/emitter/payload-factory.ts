@@ -1,4 +1,7 @@
-import type { GameUpdate } from '../../server/socket-events.ts';
+import type {
+  GameUpdate,
+  InningBreakSummary,
+} from '../../server/socket-events.ts';
 import type { SimulationState } from '../types.ts';
 
 /**
@@ -122,4 +125,112 @@ function computeRunsNeeded(state: SimulationState): number {
   const defendingScore = state.score[defendingKey];
   if (battingScore >= defendingScore) return 1;
   return defendingScore - battingScore + 1;
+}
+
+/**
+ * Build a static mock InningBreakSummary from the current simulation state.
+ *
+ * Player names and stats are fabricated but plausible — they are fixed constants
+ * so the monitor and other consumers can exercise the full rendering path without
+ * a real API response.
+ */
+export function buildMockBreakSummary(
+  state: SimulationState
+): InningBreakSummary {
+  // Mirror the half-rotation that buildPayload applies for between-innings.
+  const inningLabel = `${state.inning.half === 'Top' ? 'End' : 'Middle'} ${state.inning.ordinal}`;
+
+  // The team about to bat in the upcoming half-inning.
+  const upcomingBattingTeam =
+    state.inning.half === 'Top'
+      ? state.teams.home.abbreviation
+      : state.teams.away.abbreviation;
+
+  const totalRuns = state.score.home + state.score.away;
+  const scoringPlays: InningBreakSummary['scoringPlays'] =
+    totalRuns > 0
+      ? [
+          {
+            description: 'Carlos Mendez singles on a sharp line drive to left',
+            inning: state.inning.number,
+            halfInning: 'top',
+            rbi: 1,
+            battingTeam: state.teams.away.abbreviation,
+          },
+          {
+            description: 'Derek Holloway hits a sacrifice fly to center',
+            inning: state.inning.number,
+            halfInning: 'bottom',
+            rbi: 1,
+            battingTeam: state.teams.home.abbreviation,
+          },
+        ]
+      : [];
+
+  const upcomingBatters: InningBreakSummary['upcomingBatters'] = [
+    {
+      id: 100001,
+      fullName: 'Carlos Mendez',
+      lineupPosition: 1,
+      today: { hits: 1, atBats: 3, homeRuns: 0 },
+      season: {
+        avg: '.284',
+        ops: '.802',
+        homeRuns: 8,
+        kPct: 0.19,
+        bbPct: 0.09,
+      },
+    },
+    {
+      id: 100002,
+      fullName: 'Derek Holloway',
+      lineupPosition: 2,
+      today: { hits: 0, atBats: 2, homeRuns: 0 },
+      season: {
+        avg: '.261',
+        ops: '.721',
+        homeRuns: 3,
+        kPct: 0.22,
+        bbPct: 0.08,
+      },
+    },
+    {
+      id: 100003,
+      fullName: 'Marcus Webb',
+      lineupPosition: 3,
+      today: { hits: 2, atBats: 3, homeRuns: 1 },
+      season: {
+        avg: '.311',
+        ops: '.934',
+        homeRuns: 12,
+        kPct: 0.17,
+        bbPct: 0.12,
+      },
+    },
+  ];
+
+  const pitcher: InningBreakSummary['pitcher'] = state.currentPitcher
+    ? {
+        role: 'starter',
+        id: state.currentPitcher.id,
+        fullName: state.currentPitcher.fullName,
+        gameStats: {
+          inningsPitched: '4.2',
+          earnedRuns: 1,
+          strikeOuts: 6,
+          baseOnBalls: 1,
+          hits: 4,
+          pitchesThrown: 72,
+        },
+      }
+    : null;
+
+  return {
+    gamePk: state.gamePk,
+    inningLabel,
+    scoringPlays,
+    upcomingBatters,
+    upcomingBattingTeam,
+    pitcher,
+  };
 }
