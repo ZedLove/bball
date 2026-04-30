@@ -316,6 +316,7 @@ export interface LiveCurrentPlay {
 export interface LiveBoxscoreBattingStats {
   atBats: number;
   hits: number;
+  homeRuns: number;
 }
 
 /** Season-to-date batting stats for a player (from boxscore seasonStats.batting). */
@@ -328,6 +329,32 @@ export interface LiveBoxscoreSeasonStats {
    * Empty string when unavailable.
    */
   ops: string;
+  /** Season batting average as a decimal string (e.g. ".287"). */
+  avg: string;
+  homeRuns: number;
+  strikeOuts: number;
+  baseOnBalls: number;
+  plateAppearances: number;
+}
+
+/** Today's pitching stats for a player (from boxscore stats.pitching). */
+export interface LiveBoxscorePitchingStats {
+  gamesPlayed: number;
+  gamesStarted: number;
+  inningsPitched: string;
+  earnedRuns: number;
+  strikeOuts: number;
+  baseOnBalls: number;
+  hits: number;
+  pitchesThrown: number;
+}
+
+/** Season-to-date pitching stats for a player (from boxscore seasonStats.pitching). */
+export interface LiveBoxscoreSeasonPitchingStats {
+  era: string;
+  inningsPitched: string;
+  strikeoutsPer9Inn: string;
+  walksPer9Inn: string;
 }
 
 /** One player entry inside liveData.boxscore.teams.{side}.players. */
@@ -340,9 +367,16 @@ export interface LiveBoxscorePlayer {
   battingOrder: number;
   stats: {
     batting: LiveBoxscoreBattingStats;
+    /**
+     * Present for pitchers; an empty object `{}` for position players.
+     * Access only when you've identified the player as a pitcher via gamesStarted.
+     */
+    pitching: LiveBoxscorePitchingStats;
   };
   seasonStats: {
     batting: LiveBoxscoreSeasonStats;
+    /** Season pitching stats. Empty/zero-valued for position players. */
+    pitching: LiveBoxscoreSeasonPitchingStats;
   };
 }
 

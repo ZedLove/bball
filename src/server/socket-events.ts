@@ -12,6 +12,7 @@ export const SOCKET_EVENTS = {
   GAME_UPDATE: 'game-update',
   GAME_EVENTS: 'game-events',
   GAME_SUMMARY: 'game-summary',
+  INNING_BREAK_SUMMARY: 'inning-break-summary',
 } as const;
 
 export type SocketEventName =
@@ -500,4 +501,110 @@ export interface GameUpdate {
    * "use fallback constants".
    */
   venueFieldInfo: VenueFieldInfo | null;
+}
+
+// ---------------------------------------------------------------------------
+// Inning Break Summary — emitted once per between-innings transition
+// ---------------------------------------------------------------------------
+
+/** A scoring play that occurred earlier in the game. */
+export interface InningBreakScoringPlay {
+  /** Inning number (1-based). */
+  inning: number;
+  /** Which half-inning the scoring play occurred in. */
+  halfInning: 'top' | 'bottom';
+  /** Human-readable description, e.g. "Torres homers (12) on a fly ball to left field." */
+  description: string;
+  /** Runs scored on this play. */
+  rbi: number;
+  /** Abbreviation of the team that was batting when the run(s) scored. */
+  battingTeam: string;
+}
+
+/** One of the next 3 batters due up for the team about to bat. */
+export interface InningBreakBatter {
+  id: number;
+  fullName: string;
+  /** Batting order slot (1–9). */
+  lineupPosition: number;
+  /** Today's game stats. */
+  today: {
+    hits: number;
+    atBats: number;
+    homeRuns: number;
+  };
+  /** Season rate stats. */
+  season: {
+    /** Batting average as a decimal string, e.g. ".287". */
+    avg: string;
+    /** On-base plus slugging as a decimal string, e.g. ".815". */
+    ops: string;
+    homeRuns: number;
+    /** Strikeout rate: strikeOuts / plateAppearances (0–1 float, 2 decimal places). */
+    kPct: number;
+    /** Walk rate: baseOnBalls / plateAppearances (0–1 float, 2 decimal places). */
+    bbPct: number;
+  };
+}
+
+/** Pitcher context when the starting pitcher is still in the game. */
+export interface InningBreakStarterPitcher {
+  id: number;
+  fullName: string;
+  role: 'starter';
+  /** Today's in-game pitching line. */
+  gameStats: {
+    inningsPitched: string;
+    earnedRuns: number;
+    strikeOuts: number;
+    baseOnBalls: number;
+    hits: number;
+    pitchesThrown: number;
+  };
+}
+
+/** Pitcher context when a reliever is pitching. */
+export interface InningBreakRelieverPitcher {
+  id: number;
+  fullName: string;
+  role: 'reliever';
+  /** Season stats — more meaningful for relievers with a limited in-game sample. */
+  seasonStats: {
+    /** ERA as a decimal string, e.g. "2.17". */
+    era: string;
+    /** Season innings pitched, e.g. "12.1". */
+    inningsPitched: string;
+    /** Strikeouts per 9 innings, e.g. "9.00". */
+    strikeoutsPer9: string;
+    /** Walks per 9 innings, e.g. "3.10". */
+    walksPer9: string;
+  };
+}
+
+/**
+ * Pitcher context for the upcoming half-inning.
+ * Discriminated by `role` — use `role === 'starter'` or `role === 'reliever'`
+ * to narrow to the concrete type.
+ */
+export type InningBreakPitcher =
+  | InningBreakStarterPitcher
+  | InningBreakRelieverPitcher;
+
+/**
+ * Payload for the `inning-break-summary` Socket.IO event.
+ * Emitted once per half-inning transition, replayed to connecting clients
+ * while `trackingMode === 'between-innings'`.
+ */
+export interface InningBreakSummary {
+  gamePk: number;
+  /** Human-readable label, e.g. "Middle 3rd" or "End 5th". */
+  inningLabel: string;
+  /** Last ≤5 scoring plays in the game, most recent first. Empty before first run. */
+  scoringPlays: InningBreakScoringPlay[];
+  /** Next 3 batters for the team about to bat. */
+  upcomingBatters: InningBreakBatter[];
+  /** Abbreviation of the team about to bat, e.g. "NYY". */
+  upcomingBattingTeam: string;
+  /** Pitcher context for the upcoming half-inning. null if pitcher cannot be identified. */
+  pitcher: InningBreakPitcher | null;
 }
