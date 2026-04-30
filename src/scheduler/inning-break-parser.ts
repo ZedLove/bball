@@ -254,6 +254,11 @@ function buildPitcherContext(
   }
 
   const seasonPitching = seasonStats.pitching;
+  const bf = seasonPitching.battersFaced;
+  const kPct =
+    bf > 0 ? Math.round((seasonPitching.strikeOuts / bf) * 100) / 100 : 0;
+  const bbPct =
+    bf > 0 ? Math.round((seasonPitching.baseOnBalls / bf) * 100) / 100 : 0;
   return {
     id: person.id,
     fullName: person.fullName,
@@ -261,8 +266,8 @@ function buildPitcherContext(
     seasonStats: {
       era: seasonPitching.era,
       inningsPitched: seasonPitching.inningsPitched,
-      strikeoutsPer9: seasonPitching.strikeoutsPer9Inn,
-      walksPer9: seasonPitching.walksPer9Inn,
+      kPct,
+      bbPct,
     },
   };
 }

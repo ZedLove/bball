@@ -574,10 +574,10 @@ export interface InningBreakRelieverPitcher {
     era: string;
     /** Season innings pitched, e.g. "12.1". */
     inningsPitched: string;
-    /** Strikeouts per 9 innings, e.g. "9.00". */
-    strikeoutsPer9: string;
-    /** Walks per 9 innings, e.g. "3.10". */
-    walksPer9: string;
+    /** Strikeout percentage (strikeOuts / battersFaced), e.g. 0.28 for 28%. */
+    kPct: number;
+    /** Walk percentage (baseOnBalls / battersFaced), e.g. 0.08 for 8%. */
+    bbPct: number;
   };
 }
 

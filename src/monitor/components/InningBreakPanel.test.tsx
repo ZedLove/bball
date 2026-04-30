@@ -159,7 +159,7 @@ describe('InningBreakPanel', () => {
     expect(frame).not.toContain('ERA');
   });
 
-  it('renders reliever pitcher with ERA and K/9 line', () => {
+  it('renders reliever pitcher with ERA and K% line', () => {
     const { lastFrame } = render(
       <InningBreakPanel
         summary={makeSummary({
@@ -170,8 +170,8 @@ describe('InningBreakPanel', () => {
             seasonStats: {
               era: '3.42',
               inningsPitched: '22.1',
-              strikeoutsPer9: '9.8',
-              walksPer9Inn: '2.4',
+              kPct: 0.28,
+              bbPct: 0.08,
             },
           },
         })}
@@ -180,7 +180,7 @@ describe('InningBreakPanel', () => {
     const frame = lastFrame();
     expect(frame).toContain('Setup Sam (RP)');
     expect(frame).toContain('3.42 ERA');
-    expect(frame).toContain('9.8 K/9');
+    expect(frame).toContain('28.0% K');
     // Should NOT show IP/ER/K game-stat line
     expect(frame).not.toContain(' IP ');
   });

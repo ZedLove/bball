@@ -63,8 +63,9 @@ function makeSeasonPitchingStats(
   return {
     era: '3.45',
     inningsPitched: '18.0',
-    strikeoutsPer9Inn: '9.00',
-    walksPer9Inn: '2.50',
+    strikeOuts: 36,
+    baseOnBalls: 9,
+    battersFaced: 144,
     ...overrides,
   };
 }
@@ -695,8 +696,37 @@ describe('buildInningBreakSummary', () => {
       if (reliever.role === 'reliever') {
         expect(reliever.seasonStats.era).toBe('2.17');
         expect(reliever.seasonStats.inningsPitched).toBe('12.1');
-        expect(reliever.seasonStats.strikeoutsPer9).toBe('9.00');
-        expect(reliever.seasonStats.walksPer9).toBe('2.50');
+        // kPct = 36 / 144 = 0.25
+        expect(reliever.seasonStats.kPct).toBe(0.25);
+        // bbPct = 9 / 144 = 0.0625 → Math.round(0.0625 * 100) / 100 = 0.06
+        expect(reliever.seasonStats.bbPct).toBe(0.06);
+      }
+    });
+
+    it('sets kPct and bbPct to 0 when battersFaced is 0', () => {
+      const PITCHER_ID = 9004;
+      const awayPlayers = {
+        ...makeNinePlayers(),
+        [`ID${PITCHER_ID}`]: makePitcherPlayer(PITCHER_ID, 'New Reliever', 0),
+      };
+      // Override seasonStats to battersFaced: 0
+      awayPlayers[`ID${PITCHER_ID}`]!.seasonStats.pitching =
+        makeSeasonPitchingStats({
+          era: '0.00',
+          inningsPitched: '0.0',
+          strikeOuts: 0,
+          baseOnBalls: 0,
+          battersFaced: 0,
+        });
+      const feed = makeFeed({ awayPlayers });
+      const result = call(feed, {
+        upcomingBattingSide: 'home',
+        pitcherId: PITCHER_ID,
+      });
+      const reliever = result!.pitcher!;
+      if (reliever.role === 'reliever') {
+        expect(reliever.seasonStats.kPct).toBe(0);
+        expect(reliever.seasonStats.bbPct).toBe(0);
       }
     });
 

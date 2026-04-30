@@ -2104,8 +2104,9 @@ function makeBreakFeedResponse() {
           pitching: {
             era: '0.00',
             inningsPitched: '0.0',
-            strikeoutsPer9Inn: '0.0',
-            walksPer9Inn: '0.0',
+            strikeOuts: 0,
+            baseOnBalls: 0,
+            battersFaced: 0,
           },
         },
       },
@@ -2149,8 +2150,9 @@ function makeBreakFeedResponse() {
       pitching: {
         era: '2.50',
         inningsPitched: '30.0',
-        strikeoutsPer9Inn: '10.5',
-        walksPer9Inn: '2.1',
+        strikeOuts: 63,
+        baseOnBalls: 18,
+        battersFaced: 120,
       },
     },
   };

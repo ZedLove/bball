@@ -353,8 +353,9 @@ export interface LiveBoxscorePitchingStats {
 export interface LiveBoxscoreSeasonPitchingStats {
   era: string;
   inningsPitched: string;
-  strikeoutsPer9Inn: string;
-  walksPer9Inn: string;
+  strikeOuts: number;
+  baseOnBalls: number;
+  battersFaced: number;
 }
 
 /** One player entry inside liveData.boxscore.teams.{side}.players. */

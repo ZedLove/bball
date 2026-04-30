@@ -68,7 +68,7 @@ export function InningBreakPanel({ summary }: InningBreakPanelProps) {
             </Text>
           ) : (
             <Text color={THEME.fg}>
-              {`${pitcher.fullName} (RP)  ${pitcher.seasonStats.era} ERA  ${pitcher.seasonStats.strikeoutsPer9} K/9`}
+              {`${pitcher.fullName} (RP)  ${pitcher.seasonStats.era} ERA  ${(pitcher.seasonStats.kPct * 100).toFixed(1)}% K`}
             </Text>
           )}
         </Box>
