@@ -30,9 +30,7 @@ import type { EnrichmentState } from './enrichment-state.ts';
 import { hasLinescoreDelta } from './change-detector.ts';
 import { SOCKET_EVENTS } from '../server/socket-events.ts';
 import type { GameEventsPayload } from '../server/socket-events.ts';
-import { mapPitchEvent } from './pitch-mapper.ts';
-import { mergePitcherStats, ZERO_PITCHER_STATS } from './pitcher-stats.ts';
-import type { PitcherGameStats } from './pitcher-stats.ts';
+import { computePitcherStats } from './pitcher-stats.ts';
 import { VenueClient } from './venue-client.ts';
 import type { VenueFieldInfo } from './venue-client.ts';
 
@@ -122,17 +120,8 @@ export function startScheduler(io: SocketIOServer): Scheduler {
   let lastTrackingMode: GameUpdate['trackingMode'] | null = null;
   let lastEmittedUpdate: GameUpdate | null = null;
   let lastAtBat: AtBatState | null = null;
-  let enrichmentState: EnrichmentState | null = null;
-
-  /**
-   * Per-pitcher enrichment stats keyed by pitcherId.
-   * Accumulates across innings; cleared only on game change or final.
-   */
-  const pitcherStatsCache = new Map<
-    number,
-    { enrichmentStats: PitcherGameStats; enrichmentPitchHistory: PitchEvent[] }
-  >();
   let lastKnownGamePk: number | null = null;
+  let enrichmentState: EnrichmentState | null = null;
 
   const venueClient = new VenueClient();
   let currentVenueFieldInfo: VenueFieldInfo | null = null;
@@ -311,76 +300,23 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     if (atBat !== null) {
       lastAtBat = atBat;
     }
+    lastKnownGamePk = update?.gamePk ?? null;
 
     // ── 5b. Pitcher stats computation ─────────────────────────────────────────
+    // Recomputed from scratch each tick using the cumulative allPlays array
+    // from feed/live. No cache needed — stateless and self-healing on restart.
     const pitcherId = update?.currentPitcher?.id ?? null;
-    const currentGamePk = update?.gamePk ?? null;
-
-    // Clear all per-pitcher entries on game change or final.
-    if (currentGamePk !== lastKnownGamePk || update?.trackingMode === 'final') {
-      pitcherStatsCache.clear();
-    }
-    lastKnownGamePk = currentGamePk;
-
-    if (pitcherId !== null) {
-      if (!pitcherStatsCache.has(pitcherId)) {
-        pitcherStatsCache.set(pitcherId, {
-          enrichmentStats: ZERO_PITCHER_STATS,
-          enrichmentPitchHistory: [],
-        });
-      }
-
-      // merge+append (not overwrite) so stats accumulate all completed plays, not just the latest diffPatch window.
-      const allPlaysList = diffPatchResult?.liveData.plays.allPlays ?? null;
-      if (allPlaysList !== null) {
-        const cached = pitcherStatsCache.get(pitcherId)!;
-        const deltaPitchHistory = allPlaysList
-          .filter((play) => play.matchup.pitcher.id === pitcherId)
-          .flatMap((play) =>
-            play.playEvents
-              .filter((ev) => ev.type === 'pitch')
-              .map(mapPitchEvent)
-          );
-        pitcherStatsCache.set(pitcherId, {
-          enrichmentStats: mergePitcherStats(
-            cached.enrichmentStats,
-            deltaPitchHistory
-          ),
-          enrichmentPitchHistory: [
-            ...cached.enrichmentPitchHistory,
-            ...deltaPitchHistory,
-          ],
-        });
-      }
-    }
-
-    // Compute current at-bat delta from the live feed.
-    // Only include pitches from an in-progress (isComplete === false) at-bat.
-    // A completed currentPlay's pitches are already covered by the next
-    // diffPatch window — including them here would double-count them.
-    const currentPlay = liveFeedResult?.liveData.plays.currentPlay ?? null;
-    const currentAtBatPitches: PitchEvent[] =
+    const livePlays = liveFeedResult?.liveData.plays;
+    const { stats: mergedStats, pitchHistory } =
       pitcherId !== null &&
-      currentPlay !== null &&
-      currentPlay.about.isComplete === false &&
-      currentPlay.matchup.pitcher.id === pitcherId
-        ? currentPlay.playEvents
-            .filter((ev) => ev.type === 'pitch')
-            .map(mapPitchEvent)
-        : [];
-
-    const pitcherEntry =
-      pitcherId !== null ? (pitcherStatsCache.get(pitcherId) ?? null) : null;
-
-    const mergedStats =
-      pitcherEntry !== null
-        ? mergePitcherStats(pitcherEntry.enrichmentStats, currentAtBatPitches)
-        : null;
-
-    const pitchHistory: PitchEvent[] =
-      pitcherEntry !== null
-        ? [...pitcherEntry.enrichmentPitchHistory, ...currentAtBatPitches]
-        : [];
+      livePlays?.allPlays !== null &&
+      livePlays?.allPlays !== undefined
+        ? computePitcherStats(
+            pitcherId,
+            livePlays.allPlays,
+            livePlays.currentPlay ?? null
+          )
+        : { stats: null, pitchHistory: [] };
 
     // ── 6. Resolve atBat, assemble full update, and emit ──────────────────────
     // Emitted before enrichment events so clients receive current game state
