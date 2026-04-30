@@ -72,15 +72,16 @@ The service runs a polling loop that calls the MLB Stats API, assembles a rich g
 2. **`feed/live`** (`/api/v1.1/game/{gamePk}/feed/live`) — the in-progress plate appearance (`currentPlay`), live count, pitch sequence with full Statcast tracking, and cumulative `allPlays` for pitcher stats. Runs every `'live'` tick in parallel with the schedule poll.
 3. **`diffPatch`** (`/api/v1.1/game/{gamePk}/feed/live/diffPatch`) — completed play deltas used to emit enriched `game-events` (at-bat outcomes, substitutions). Runs conditionally when the linescore indicates a state change.
 
-Each tick emits up to three Socket.IO events (see below). When a client connects mid-game the server immediately replays the last `game-update` and `game-summary` (if final) so clients always start from a consistent state.
+Each tick emits up to four Socket.IO events (see below). When a client connects mid-game the server immediately replays the last `game-update`, `inning-break-summary` (if between innings), and `game-summary` (if final) so clients always start from a consistent state.
 
 ### Socket.IO Events
 
-| Event          | Direction       | Description                                                                                                                                                                                                          |
-| -------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `game-update`  | Server → Client | Full game snapshot emitted every `'live'` tick. Includes score, inning, runners, live at-bat state, pitch sequence, full Statcast tracking, pitcher stats, venue field info, and team context. `null` between games. |
-| `game-events`  | Server → Client | Batch of completed-play events emitted when enrichment detects new plays. Covers at-bat outcomes (`plate-appearance-completed`), pitching substitutions, and other in-game events.                                   |
-| `game-summary` | Server → Client | Emitted once when the game ends. Includes final score, winning/losing pitcher decisions, save, and next scheduled game.                                                                                              |
+| Event                  | Direction       | Description                                                                                                                                                                                                          |
+| ---------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `game-update`          | Server → Client | Full game snapshot emitted every `'live'` tick. Includes score, inning, runners, live at-bat state, pitch sequence, full Statcast tracking, pitcher stats, venue field info, and team context. `null` between games. |
+| `game-events`          | Server → Client | Batch of completed-play events emitted when enrichment detects new plays. Covers at-bat outcomes (`plate-appearance-completed`), pitching substitutions, and other in-game events.                                   |
+| `game-summary`         | Server → Client | Emitted once when the game ends. Includes final score, winning/losing pitcher decisions, save, and next scheduled game.                                                                                              |
+| `inning-break-summary` | Server → Client | Emitted once on each half-inning transition (`between-innings`). Includes recent scoring plays, upcoming batters with today and season stats, and pitcher context for the upcoming half.                             |
 
 #### `game-update` tracking modes
 
