@@ -19,7 +19,6 @@ import { parseCurrentPlay } from './current-play-parser.ts';
 import type {
   AtBatState,
   GameUpdate,
-  PitchEvent,
 } from '../server/socket-events.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
@@ -309,11 +308,11 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     const livePlays = liveFeedResult?.liveData.plays;
     const { stats: mergedStats, pitchHistory } =
       pitcherId !== null &&
-      livePlays?.allPlays !== null &&
-      livePlays?.allPlays !== undefined
+      livePlays !== null &&
+      livePlays !== undefined
         ? computePitcherStats(
             pitcherId,
-            livePlays.allPlays,
+            livePlays.allPlays ?? [],
             livePlays.currentPlay ?? null
           )
         : { stats: null, pitchHistory: [] };

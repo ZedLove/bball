@@ -128,7 +128,7 @@ npx tsx scripts/analyze/pitcher-stats.ts captures/<session>/ticks.ndjson
 src/
   config/
     env.ts                    # Zod-validated environment config + team resolution
-    logger.ts                 # Pino logger
+    logger.ts                 # Winston logger
     teams.ts                  # Team abbreviation → ID map
   routes/
     health.ts                 # Health check endpoint

@@ -1849,8 +1849,6 @@ describe('pitcher stats accumulation', () => {
     );
     // Tick 1 also fires feed/live — queue a default so tick 2's allPlays+currentPlay
     // lands on tick 2, not tick 1.
-    // Tick 1 also fires feed/live — queue a default so tick 2's allPlays+currentPlay
-    // lands on tick 2, not tick 1.
     mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
     mockFetchGameFeedLive.mockResolvedValueOnce(
       makeGameFeedLiveResponse({
