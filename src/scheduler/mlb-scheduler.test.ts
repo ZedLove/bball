@@ -1150,6 +1150,55 @@ describe('atBat state persistence (S-2)', () => {
     scheduler.stop();
   });
 
+  it('emits atBat: null when feed/live fetch fails (stale atBat must not be served)', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    // Tick 1: live feed succeeds with a populated atBat
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        currentPlay: {
+          about: {
+            atBatIndex: 5,
+            halfInning: 'top',
+            inning: 3,
+            isComplete: false,
+          },
+          count: { balls: 1, strikes: 1, outs: 1 },
+          matchup: {
+            batter: { id: 100, fullName: 'Batter One' },
+            pitcher: { id: 660271, fullName: 'Shohei Ohtani' },
+            batSide: { code: 'R' },
+            pitchHand: { code: 'R' },
+          },
+          playEvents: [],
+        },
+      })
+    );
+    // Tick 2: same linescore (no delta → shouldEnrich=false, avoiding an
+    // unmocked fetchGameFeed call). Live feed throws — stale atBat must NOT be served.
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
+    mockFetchGameFeedLive.mockRejectedValueOnce(new Error('network error'));
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2
+
+    const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
+    );
+    const tick2Update = updateCalls[updateCalls.length - 1]![1] as {
+      trackingMode: string;
+      atBat: unknown;
+    };
+    expect(tick2Update.trackingMode).toBe('live');
+    // Fetch failure must not serve stale atBat
+    expect(tick2Update.atBat).toBeNull();
+    scheduler.stop();
+  });
+
   it('clears lastAtBat when gamePk changes (new game)', async () => {
     // Tick 1: game 823963 with atBat
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());

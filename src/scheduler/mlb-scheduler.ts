@@ -394,7 +394,13 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     const isTransition =
       update?.trackingMode === 'between-innings' ||
       update?.trackingMode === 'final';
-    const atBatToEmit = atBat ?? (isTransition ? null : lastAtBat);
+    // Use lastAtBat only in the S-2 interstitial case: live feed succeeded but
+    // parseCurrentPlay returned null (completed play, next batter not yet loaded).
+    // On fetch failure (shouldFetchAtBat && liveFeedResult === null), emit null
+    // rather than serving a stale atBat that contradicts the fetch-failure log.
+    const liveFeedFailed = shouldFetchAtBat && liveFeedResult === null;
+    const atBatToEmit =
+      isTransition || liveFeedFailed ? null : (atBat ?? lastAtBat);
     if (isTransition) {
       lastAtBat = null;
     }
