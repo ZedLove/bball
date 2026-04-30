@@ -1,4 +1,8 @@
-import type { ScheduleResponse } from './schedule-client.ts';
+import type {
+  ScheduleResponse,
+  ScheduleGame,
+  Linescore,
+} from './schedule-client.ts';
 import type { GameUpdate } from '../server/socket-events.ts';
 
 /** detailedState values the API uses when the game is paused mid-game */
@@ -6,6 +10,34 @@ function isDelayedState(detailedState: string): boolean {
   return (
     detailedState.toLowerCase().includes('delay') ||
     detailedState === 'Suspended'
+  );
+}
+
+/**
+ * Priority rank for game status — lower number = higher priority.
+ * Used to prefer the active game in a doubleheader over a completed one.
+ */
+function gameStatusPriority(detailedState: string): number {
+  if (detailedState.startsWith('In Progress')) return 0;
+  if (isDelayedState(detailedState)) return 1;
+  if (detailedState === 'Final') return 2;
+  return 3; // Pre-Game, Scheduled, Postponed, etc.
+}
+
+/**
+ * Type guard: game is in a trackable state (in-progress, delayed, or final)
+ * AND the linescore is present. Narrows linescore to non-optional so downstream
+ * code can use it without a null check.
+ */
+function isTrackableGame(
+  g: ScheduleGame
+): g is ScheduleGame & { linescore: Linescore } {
+  const state = g.status?.detailedState ?? '';
+  return (
+    (state.startsWith('In Progress') ||
+      isDelayedState(state) ||
+      state === 'Final') &&
+    g.linescore !== undefined
   );
 }
 
@@ -34,24 +66,37 @@ export function parseGameUpdate(
   const today = schedule.dates?.[0];
   if (!today) return null;
 
-  const game = today.games.find(
+  const teamGames = today.games.filter(
     (g) =>
       g.teams?.away?.team?.id === targetTeamId ||
       g.teams?.home?.team?.id === targetTeamId
   );
+  if (teamGames.length === 0) return null;
+
+  // In a doubleheader, prefer the active game over a completed one.
+  // Sort by status priority: In Progress > Delayed > Final > Pre-Game/other.
+  // Tie-break by gamePk descending so Game 2 is preferred when both games share
+  // the same status (e.g. both Final after a day-night doubleheader).
+  // Only consider games that are in a trackable state AND have a linescore —
+  // a high-priority game (e.g. Delayed Start) with no linescore yet should not
+  // block tracking of a lower-priority game that does have one.
+  const game = teamGames
+    .sort((a, b) => {
+      const priorityDiff =
+        gameStatusPriority(a.status?.detailedState ?? '') -
+        gameStatusPriority(b.status?.detailedState ?? '');
+      if (priorityDiff !== 0) return priorityDiff;
+      return b.gamePk - a.gamePk; // prefer later game (higher gamePk) on tie
+    })
+    .find(isTrackableGame);
+
   if (!game) return null;
 
   const detailedState = game.status?.detailedState ?? '';
-  const isInProgress = detailedState.startsWith('In Progress');
   const isFinal = detailedState === 'Final';
   const isDelayed = isDelayedState(detailedState);
 
-  // Only process live, delayed, and final games; ignore Pre-Game, Scheduled, etc.
-  // "In Progress" catches both standard play and replay reviews (e.g., "In Progress - Review")
-  if (!isInProgress && !isDelayed && !isFinal) return null;
-
   const linescore = game.linescore;
-  if (!linescore) return null;
 
   const state = linescore.inningState;
   const isBetweenInnings = state === 'Middle' || state === 'End';

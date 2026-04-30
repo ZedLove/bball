@@ -536,6 +536,131 @@ describe('parseGameUpdate', () => {
       // Top 5th, 1 out, home defending: 2 + (9-5)*3 = 14
       expect(result!.totalOutsRemaining).toBe(14);
     });
+
+    describe('doubleheader game selection', () => {
+      it('prefers In Progress game over Final game', () => {
+        const game1 = makeGame({
+          gamePk: 823077,
+          status: { detailedState: 'Final', abstractGameState: 'Final' },
+        });
+        const game2 = makeGame({
+          gamePk: 823078,
+          status: { detailedState: 'In Progress', abstractGameState: 'Live' },
+        });
+        const schedule = makeSchedule([game1, game2]);
+
+        const result = parseGameUpdate(schedule, STL_ID);
+        expect(result).not.toBeNull();
+        expect(result!.gamePk).toBe(823078);
+        expect(result!.trackingMode).toBe('live');
+      });
+
+      it('prefers In Progress game even when it appears first', () => {
+        const game1 = makeGame({
+          gamePk: 823077,
+          status: { detailedState: 'In Progress', abstractGameState: 'Live' },
+        });
+        const game2 = makeGame({
+          gamePk: 823078,
+          status: { detailedState: 'Final', abstractGameState: 'Final' },
+        });
+        const schedule = makeSchedule([game1, game2]);
+
+        const result = parseGameUpdate(schedule, STL_ID);
+        expect(result).not.toBeNull();
+        expect(result!.gamePk).toBe(823077);
+        expect(result!.trackingMode).toBe('live');
+      });
+
+      it('prefers Delayed game over Final game', () => {
+        const game1 = makeGame({
+          gamePk: 823077,
+          status: { detailedState: 'Final', abstractGameState: 'Final' },
+        });
+        const game2 = makeGame({
+          gamePk: 823078,
+          status: {
+            detailedState: 'Delayed: Rain',
+            abstractGameState: 'Preview',
+          },
+        });
+        const schedule = makeSchedule([game1, game2]);
+
+        const result = parseGameUpdate(schedule, STL_ID);
+        expect(result).not.toBeNull();
+        expect(result!.gamePk).toBe(823078);
+        expect(result!.isDelayed).toBe(true);
+      });
+
+      it('returns null when both games are Pre-Game (no trackable games)', () => {
+        const game1 = makeGame({
+          gamePk: 823077,
+          status: { detailedState: 'Pre-Game', abstractGameState: 'Preview' },
+        });
+        const game2 = makeGame({
+          gamePk: 823078,
+          status: { detailedState: 'Scheduled', abstractGameState: 'Preview' },
+        });
+        const schedule = makeSchedule([game1, game2]);
+
+        expect(parseGameUpdate(schedule, STL_ID)).toBeNull();
+      });
+
+      it('falls back to Final game when second game is Pre-Game', () => {
+        const game1 = makeGame({
+          gamePk: 823077,
+          status: { detailedState: 'Final', abstractGameState: 'Final' },
+        });
+        const game2 = makeGame({
+          gamePk: 823078,
+          status: { detailedState: 'Pre-Game', abstractGameState: 'Preview' },
+        });
+        const schedule = makeSchedule([game1, game2]);
+
+        const result = parseGameUpdate(schedule, STL_ID);
+        expect(result).not.toBeNull();
+        expect(result!.gamePk).toBe(823077);
+        expect(result!.trackingMode).toBe('final');
+      });
+
+      it('prefers higher gamePk when both games have equal status priority', () => {
+        const game1 = makeGame({
+          gamePk: 823077,
+          status: { detailedState: 'Final', abstractGameState: 'Final' },
+        });
+        const game2 = makeGame({
+          gamePk: 823078,
+          status: { detailedState: 'Final', abstractGameState: 'Final' },
+        });
+        const schedule = makeSchedule([game1, game2]);
+
+        const result = parseGameUpdate(schedule, STL_ID);
+        expect(result).not.toBeNull();
+        expect(result!.gamePk).toBe(823078);
+        expect(result!.trackingMode).toBe('final');
+      });
+
+      it('skips Delayed game with no linescore and falls back to Final game with linescore', () => {
+        const game1 = makeGame({
+          gamePk: 823077,
+          status: { detailedState: 'Final', abstractGameState: 'Final' },
+        });
+        const game2 = makeGame({
+          gamePk: 823078,
+          status: {
+            detailedState: 'Delayed: Rain',
+            abstractGameState: 'Preview',
+          },
+          linescore: undefined,
+        });
+        const schedule = makeSchedule([game1, game2]);
+
+        const result = parseGameUpdate(schedule, STL_ID);
+        expect(result).not.toBeNull();
+        expect(result!.gamePk).toBe(823077);
+        expect(result!.trackingMode).toBe('final');
+      });
+    });
   });
 
   describe('between-innings states', () => {
