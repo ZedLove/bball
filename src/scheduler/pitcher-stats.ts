@@ -11,7 +11,11 @@ export interface PitchTypeUsage {
 
 export interface PitcherGameStats {
   pitchesThrown: number;
-  /** Strike calls and swinging strikes (not strikeouts). */
+  /**
+   * Strike-side pitches: called strikes, swinging strikes, fouls, and balls put
+   * in play. Matches the broadcast "Pitches-Strikes" convention where
+   * `strikes + balls = pitchesThrown` always holds.
+   */
   strikes: number;
   balls: number;
   /** Per-type breakdown, sorted descending by count. */
@@ -34,7 +38,8 @@ export function mergePitcherStats(
 
   const pitchesThrown = enrichment.pitchesThrown + currentAtBatPitches.length;
   const strikes =
-    enrichment.strikes + currentAtBatPitches.filter((p) => p.isStrike).length;
+    enrichment.strikes +
+    currentAtBatPitches.filter((p) => p.isStrike || p.isInPlay).length;
   const balls =
     enrichment.balls + currentAtBatPitches.filter((p) => p.isBall).length;
 

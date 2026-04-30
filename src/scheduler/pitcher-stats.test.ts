@@ -115,4 +115,31 @@ describe('mergePitcherStats', () => {
     const merged = mergePitcherStats(enrichment, current);
     expect(merged.usage[0].typeCode).toBe('UN');
   });
+
+  it('counts isInPlay pitches as strikes (broadcast convention)', () => {
+    const enrichment = ZERO_PITCHER_STATS;
+    const current = [
+      makePitchEvent({ isStrike: false, isBall: false, isInPlay: true, call: 'In play, out(s)' }),
+    ];
+    const merged = mergePitcherStats(enrichment, current);
+    expect(merged.pitchesThrown).toBe(1);
+    expect(merged.strikes).toBe(1);
+    expect(merged.balls).toBe(0);
+  });
+
+  it('satisfies strikes + balls = pitchesThrown when in-play pitches are present', () => {
+    const enrichment = {
+      pitchesThrown: 6,
+      strikes: 4,
+      balls: 2,
+      usage: [{ typeCode: 'FF', typeName: 'Four-Seam Fastball', count: 6, pct: 100 }],
+    };
+    const current = [
+      makePitchEvent({ isStrike: true, isBall: false, isInPlay: false }),
+      makePitchEvent({ isStrike: false, isBall: true, isInPlay: false }),
+      makePitchEvent({ isStrike: false, isBall: false, isInPlay: true, call: 'In play, no out' }),
+    ];
+    const merged = mergePitcherStats(enrichment, current);
+    expect(merged.strikes + merged.balls).toBe(merged.pitchesThrown);
+  });
 });
