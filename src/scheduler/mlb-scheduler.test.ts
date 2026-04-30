@@ -1593,93 +1593,90 @@ describe('venue field info', () => {
 
 const PITCHER_ID = 660271; // Shohei Ohtani (matches makeLiveSchedule defense.pitcher)
 
-/** Feed response with pitch events for the given pitcher. */
-function makeFeedResponseWithPitches(
+/** Builds an AllPlay for PITCHER_ID with the given pitch sequence. */
+function makeAllPlayWithPitches(
   atBatIndex: number,
-  pitches: Array<{ isStrike: boolean; isBall: boolean }>,
-  timestamp = FEED_TIMESTAMP_1
-): GameFeedResponse {
-  const playEvents: AllPlay['playEvents'] = pitches.map((p, i) => ({
-    type: 'pitch',
-    isPitch: true,
-    pitchNumber: i + 1,
-    details: {
-      description: p.isStrike ? 'Called Strike' : 'Ball',
-      type: { code: 'FF', description: 'Four-Seam Fastball' },
-      isStrike: p.isStrike,
-      isBall: p.isBall,
-    },
-    count: { balls: 0, strikes: 0 },
-  }));
-
+  pitches: Array<{ isStrike: boolean; isBall: boolean; isInPlay?: boolean }>
+): AllPlay {
   return {
-    metaData: { timeStamp: timestamp },
-    gameData: {
-      teams: {
-        away: { id: LAD_ID, abbreviation: 'LAD' },
-        home: { id: NYM_ID, abbreviation: 'NYM' },
-      },
-      players: {
-        ID596019: { id: 596019, fullName: 'Francisco Lindor' },
-        ID660271: { id: 660271, fullName: 'Shohei Ohtani' },
-      },
+    atBatIndex,
+    result: {
+      eventType: 'strikeout',
+      description: 'Francisco Lindor strikes out swinging.',
+      rbi: 0,
     },
-    liveData: {
-      plays: {
-        allPlays: [
-          {
-            atBatIndex,
-            result: {
-              eventType: 'strikeout',
-              description: 'Francisco Lindor strikes out swinging.',
-              rbi: 0,
-            },
-            about: {
-              atBatIndex,
-              halfInning: 'top',
-              inning: 3,
-              isComplete: true,
-              isScoringPlay: false,
-            },
-            matchup: {
-              batter: { id: 596019, fullName: 'Francisco Lindor' },
-              pitcher: { id: PITCHER_ID, fullName: 'Shohei Ohtani' },
-            },
-            playEvents,
-          },
-        ],
-      },
+    about: {
+      atBatIndex,
+      halfInning: 'top',
+      inning: 3,
+      isComplete: true,
+      isScoringPlay: false,
     },
+    matchup: {
+      batter: { id: 596019, fullName: 'Francisco Lindor' },
+      pitcher: { id: PITCHER_ID, fullName: 'Shohei Ohtani' },
+    },
+    playEvents: pitches.map((p, i) => ({
+      type: 'pitch',
+      isPitch: true,
+      pitchNumber: i + 1,
+      details: {
+        description: p.isStrike
+          ? 'Called Strike'
+          : p.isInPlay
+            ? 'In play, out(s)'
+            : 'Ball',
+        type: { code: 'FF', description: 'Four-Seam Fastball' },
+        isStrike: p.isStrike,
+        isBall: p.isBall,
+        isInPlay: p.isInPlay ?? false,
+      },
+      count: { balls: 0, strikes: 0 },
+    })),
   };
 }
 
 describe('pitcher stats accumulation', () => {
-  it('accumulates pitchesThrown across two diffPatch windows', async () => {
-    // Window 1: 3 pitches (2 strikes, 1 ball)
+  it('reflects cumulative pitchesThrown from allPlays each tick', async () => {
+    // Tick 1: seeds enrichment state, feed/live has no allPlays yet
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    // Tick 2: allPlays grows to 3 pitches (2 strikes, 1 ball)
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
     mockFetchGameFeed.mockResolvedValueOnce(
-      makeFeedResponseWithPitches(
-        0,
-        [
-          { isStrike: true, isBall: false },
-          { isStrike: false, isBall: true },
-          { isStrike: true, isBall: false },
-        ],
-        FEED_TIMESTAMP_1
-      )
+      makeEmptyFeedResponse(FEED_TIMESTAMP_1)
     );
-    // Window 2: 2 more pitches (1 strike, 1 ball)
+    // Tick 1 also fires feed/live — queue a default so tick 2's allPlays lands on tick 2.
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        allPlays: [
+          makeAllPlayWithPitches(0, [
+            { isStrike: true, isBall: false },
+            { isStrike: false, isBall: true },
+            { isStrike: true, isBall: false },
+          ]),
+        ],
+      })
+    );
+    // Tick 3: allPlays cumulates to 5 pitches total (2 more: 1 strike, 1 ball)
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(3));
     mockFetchGameFeed.mockResolvedValueOnce(
-      makeFeedResponseWithPitches(
-        1,
-        [
-          { isStrike: true, isBall: false },
-          { isStrike: false, isBall: true },
+      makeEmptyFeedResponse(FEED_TIMESTAMP_2)
+    );
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        allPlays: [
+          makeAllPlayWithPitches(0, [
+            { isStrike: true, isBall: false },
+            { isStrike: false, isBall: true },
+            { isStrike: true, isBall: false },
+          ]),
+          makeAllPlayWithPitches(1, [
+            { isStrike: true, isBall: false },
+            { isStrike: false, isBall: true },
+          ]),
         ],
-        FEED_TIMESTAMP_2
-      )
+      })
     );
 
     const io = createMockIo();
@@ -1688,13 +1685,12 @@ describe('pitcher stats accumulation', () => {
     await drainMicrotasks(); // tick 1: seeds state
 
     vi.runOnlyPendingTimers();
-    await drainMicrotasks(); // tick 2: window 1 (3 pitches)
+    await drainMicrotasks(); // tick 2: 3 pitches in allPlays
 
     vi.runOnlyPendingTimers();
-    await drainMicrotasks(); // tick 3: window 2 (2 more pitches)
+    await drainMicrotasks(); // tick 3: 5 cumulative pitches in allPlays
 
-    // After tick 3, currentPitcher.pitchesThrown must reflect all 5 pitches,
-    // not just the 2 from the last window.
+    // After tick 3, currentPitcher.pitchesThrown must reflect all 5 pitches.
     const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
       ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
     );
@@ -1712,28 +1708,41 @@ describe('pitcher stats accumulation', () => {
     scheduler.stop();
   });
 
-  it('accumulates pitchHistory across two diffPatch windows', async () => {
-    // Window 1: 2 pitches
+  it('reflects cumulative pitchHistory from allPlays each tick', async () => {
+    // Tick 1: seeds state
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    // Tick 2: 2 pitches in allPlays
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
     mockFetchGameFeed.mockResolvedValueOnce(
-      makeFeedResponseWithPitches(
-        0,
-        [
-          { isStrike: true, isBall: false },
-          { isStrike: false, isBall: true },
-        ],
-        FEED_TIMESTAMP_1
-      )
+      makeEmptyFeedResponse(FEED_TIMESTAMP_1)
     );
-    // Window 2: 1 more pitch
+    // Tick 1 also fires feed/live — queue a default so tick 2's allPlays lands on tick 2.
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        allPlays: [
+          makeAllPlayWithPitches(0, [
+            { isStrike: true, isBall: false },
+            { isStrike: false, isBall: true },
+          ]),
+        ],
+      })
+    );
+    // Tick 3: 3 pitches total in allPlays
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(3));
     mockFetchGameFeed.mockResolvedValueOnce(
-      makeFeedResponseWithPitches(
-        1,
-        [{ isStrike: true, isBall: false }],
-        FEED_TIMESTAMP_2
-      )
+      makeEmptyFeedResponse(FEED_TIMESTAMP_2)
+    );
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({
+        allPlays: [
+          makeAllPlayWithPitches(0, [
+            { isStrike: true, isBall: false },
+            { isStrike: false, isBall: true },
+          ]),
+          makeAllPlayWithPitches(1, [{ isStrike: true, isBall: false }]),
+        ],
+      })
     );
 
     const io = createMockIo();
@@ -1742,10 +1751,10 @@ describe('pitcher stats accumulation', () => {
     await drainMicrotasks(); // tick 1
 
     vi.runOnlyPendingTimers();
-    await drainMicrotasks(); // tick 2: 2 pitches
+    await drainMicrotasks(); // tick 2
 
     vi.runOnlyPendingTimers();
-    await drainMicrotasks(); // tick 3: 1 more pitch
+    await drainMicrotasks(); // tick 3
 
     const updateCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
       ([event]) => event === SOCKET_EVENTS.GAME_UPDATE
@@ -1753,7 +1762,6 @@ describe('pitcher stats accumulation', () => {
     const tick3Update = updateCalls[updateCalls.length - 1]![1] as {
       pitchHistory: unknown[];
     };
-    // pitchHistory must contain all 3 pitches from both windows
     expect(tick3Update.pitchHistory).toHaveLength(3);
     scheduler.stop();
   });
@@ -1761,25 +1769,23 @@ describe('pitcher stats accumulation', () => {
   it('merges in-progress currentPlay pitches into pitchesThrown', async () => {
     // Tick 1: seeds enrichment state
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
-    // Tick 2: linescore delta → enrichment returns 2 completed pitches.
-    // feed/live returns a currentPlay with 1 in-progress pitch (isComplete: false).
-    // Total emitted should be 3 (2 enrichment + 1 live).
+    // Tick 2: feed/live returns 2 completed pitches in allPlays and 1 in-progress
+    // pitch in currentPlay (isComplete: false). Total must be 3.
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
     mockFetchGameFeed.mockResolvedValueOnce(
-      makeFeedResponseWithPitches(
-        0,
-        [
-          { isStrike: true, isBall: false },
-          { isStrike: false, isBall: true },
-        ],
-        FEED_TIMESTAMP_1
-      )
+      makeEmptyFeedResponse(FEED_TIMESTAMP_1)
     );
-    // tick 1 also fires feed/live (shouldFetchAtBat is true) — queue default first
-    // so the custom in-progress response is consumed on tick 2, not tick 1.
+    // Tick 1 also fires feed/live — queue a default so tick 2's allPlays+currentPlay
+    // lands on tick 2, not tick 1.
     mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
     mockFetchGameFeedLive.mockResolvedValueOnce(
       makeGameFeedLiveResponse({
+        allPlays: [
+          makeAllPlayWithPitches(0, [
+            { isStrike: true, isBall: false },
+            { isStrike: false, isBall: true },
+          ]),
+        ],
         currentPlay: {
           about: {
             atBatIndex: 1,
@@ -1835,32 +1841,32 @@ describe('pitcher stats accumulation', () => {
   it('does not double-count pitches when currentPlay is complete (isComplete: true)', async () => {
     // Tick 1: seeds enrichment state
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
-    // Tick 2: enrichment returns a completed play with 3 pitches.
-    // feed/live returns the SAME completed at-bat as currentPlay (isComplete: true).
-    // pitchesThrown must be 3, not 6.
+    // Tick 2: allPlays has the completed at-bat (3 pitches); currentPlay has the
+    // same at-bat marked isComplete: true — must not be counted again.
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
     mockFetchGameFeed.mockResolvedValueOnce(
-      makeFeedResponseWithPitches(
-        0,
-        [
-          { isStrike: true, isBall: false },
-          { isStrike: false, isBall: true },
-          { isStrike: true, isBall: false },
-        ],
-        FEED_TIMESTAMP_1
-      )
+      makeEmptyFeedResponse(FEED_TIMESTAMP_1)
     );
-    // tick 1 also fires feed/live — queue default first so the completed
-    // currentPlay response lands on tick 2.
+    // Tick 1 also fires feed/live — queue a default so tick 2's allPlays+currentPlay
+    // lands on tick 2, not tick 1.
+    // Tick 1 also fires feed/live — queue a default so tick 2's allPlays+currentPlay
+    // lands on tick 2, not tick 1.
     mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
     mockFetchGameFeedLive.mockResolvedValueOnce(
       makeGameFeedLiveResponse({
+        allPlays: [
+          makeAllPlayWithPitches(0, [
+            { isStrike: true, isBall: false },
+            { isStrike: false, isBall: true },
+            { isStrike: true, isBall: false },
+          ]),
+        ],
         currentPlay: {
           about: {
             atBatIndex: 0,
             halfInning: 'top',
             inning: 3,
-            isComplete: true, // ← completed — must be excluded from currentAtBatPitches
+            isComplete: true, // ← completed — must not be counted a second time
           },
           count: { balls: 1, strikes: 2, outs: 1 },
           matchup: {
@@ -1930,7 +1936,7 @@ describe('pitcher stats accumulation', () => {
       } | null;
       pitchHistory: unknown[];
     };
-    // Must be 3 from enrichment only — not 6
+    // Must be 3 from allPlays only — not 6
     expect(tick2Update.currentPitcher?.pitchesThrown).toBe(3);
     expect(tick2Update.currentPitcher?.strikes).toBe(2);
     expect(tick2Update.currentPitcher?.balls).toBe(1);
@@ -1940,27 +1946,20 @@ describe('pitcher stats accumulation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Pitcher stats cache management
+// Pitcher stats — null pitcher and cross-inning behavior
 // ---------------------------------------------------------------------------
 
-describe('pitcher stats cache management', () => {
+describe('pitcher stats — null pitcher and cross-inning behavior', () => {
   it('emits empty pitchHistory when currentPitcher is null even if previously cached', async () => {
     // Tick 1: seeds enrichment state (outs mode, pitcher present)
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
-    // Tick 2: linescore delta fires enrichment; 2 pitches cached
+    // Tick 2: linescore delta fires enrichment; feed/live has no allPlays so
+    // pitcherStats = null (stats only come from allPlays now).
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
     mockFetchGameFeed.mockResolvedValueOnce(
-      makeFeedResponseWithPitches(
-        0,
-        [
-          { isStrike: true, isBall: false },
-          { isStrike: false, isBall: true },
-        ],
-        FEED_TIMESTAMP_1
-      )
+      makeEmptyFeedResponse(FEED_TIMESTAMP_1)
     );
-    // Tick 3: between-innings (no currentPitcher) — pitcherId is null so the
-    // map is not looked up; pitchHistory emits as []. Cache is not cleared.
+    // Tick 3: between-innings — pitcherId is null; pitchHistory emits as [].
     // Linescore changed from tick 2 so enrichment fires; return empty feed.
     mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
     mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
@@ -1989,28 +1988,38 @@ describe('pitcher stats cache management', () => {
   });
 
   it('preserves pitcher stats across a between-innings break', async () => {
-    // Tick 1: seeds enrichment state
+    // allPlays is cumulative — stats for PITCHER_ID are always recomputed fresh
+    // from the full allPlays array. After a between-innings break, the next
+    // feed/live response still carries all historical plays, so stats are correct.
+    const twoCompletedPitches = [
+      makeAllPlayWithPitches(0, [
+        { isStrike: true, isBall: false },
+        { isStrike: false, isBall: true },
+      ]),
+    ];
+    // Tick 1: seeds enrichment state, no allPlays yet
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
-    // Tick 2: 2 pitches accumulated for PITCHER_ID
+    // Tick 2: 2 pitches visible in allPlays
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(2));
     mockFetchGameFeed.mockResolvedValueOnce(
-      makeFeedResponseWithPitches(
-        0,
-        [
-          { isStrike: true, isBall: false },
-          { isStrike: false, isBall: true },
-        ],
-        FEED_TIMESTAMP_1
-      )
+      makeEmptyFeedResponse(FEED_TIMESTAMP_1)
     );
-    // Tick 3: between-innings — pitcherId becomes null, enrichment fires
+    // Tick 1 also fires feed/live — queue a default so tick 2's allPlays lands on tick 2.
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({ allPlays: twoCompletedPitches })
+    );
+    // Tick 3: between-innings — shouldFetchAtBat is false, liveFeed not called
     mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
     mockFetchGameFeed.mockResolvedValueOnce(
       makeEmptyFeedResponse(FEED_TIMESTAMP_2)
     );
-    // Tick 4: PITCHER_ID back on the mound — 2 previous pitches must still be in cache
+    // Tick 4: PITCHER_ID back on the mound — allPlays still includes the 2 prior pitches
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
     mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
+    mockFetchGameFeedLive.mockResolvedValueOnce(
+      makeGameFeedLiveResponse({ allPlays: twoCompletedPitches })
+    );
 
     const io = createMockIo();
     const scheduler = startScheduler(io);
@@ -2018,7 +2027,7 @@ describe('pitcher stats cache management', () => {
     await drainMicrotasks(); // tick 1
 
     vi.runOnlyPendingTimers();
-    await drainMicrotasks(); // tick 2: 2 pitches cached
+    await drainMicrotasks(); // tick 2: 2 pitches
 
     vi.runOnlyPendingTimers();
     await drainMicrotasks(); // tick 3: between-innings
