@@ -903,10 +903,10 @@ describe('poll interval scheduling', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AtBat state persistence (Bug S-2)
+// AtBat state persistence
 // ---------------------------------------------------------------------------
 
-describe('atBat state persistence (S-2)', () => {
+describe('atBat state persistence', () => {
   it('emits previous atBat when parseCurrentPlay returns null during live mode', async () => {
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule());
     // Tick 1: populated atBat

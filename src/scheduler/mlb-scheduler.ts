@@ -298,7 +298,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         ? parseCurrentPlay(liveFeedResult, currentLinescore)
         : null;
 
-    // AtBat persistence (Bug S-2): keep the last known atBat alive during the
+    // AtBat persistence: keep the last known atBat alive during the
     // brief window between plays when parseCurrentPlay returns null (isComplete
     // === true but the next batter hasn't appeared yet). Clear on transitions.
     //
@@ -389,12 +389,12 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     //
     // Transition-only modes ('between-innings', 'final') emit once on entry;
     // 'live' emits every tick. atBat is persisted during 'live' to bridge the
-    // completed-play gap (S-2), and cleared on transitions so stale data never
+    // completed-play gap, and cleared on transitions so stale data never
     // leaks across half-innings.
     const isTransition =
       update?.trackingMode === 'between-innings' ||
       update?.trackingMode === 'final';
-    // Use lastAtBat only in the S-2 interstitial case: live feed succeeded but
+    // Use lastAtBat only in the interstitial case: live feed succeeded but
     // parseCurrentPlay returned null (completed play, next batter not yet loaded).
     // On fetch failure (shouldFetchAtBat && liveFeedResult === null), emit null
     // rather than serving a stale atBat that contradicts the fetch-failure log.

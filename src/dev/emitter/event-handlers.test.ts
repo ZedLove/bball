@@ -1,7 +1,7 @@
 /**
- * Tests for the dev simulator event handlers (Phase 5A parity).
+ * Tests for the dev simulator event handlers.
  *
- * Two concerns are verified for each Feature 1 command:
+ * Two concerns are verified for each simulator command:
  *  1. Payload contract — the emitted Socket.IO payload satisfies the shared
  *     TypeScript interface shape at runtime (correct fields, correct values).
  *  2. Behaviour — state side-effects (e.g. score increments) and validation
@@ -417,7 +417,7 @@ describe('handleSimGameSummary', () => {
 
 // ── pitching-change co-emission ───────────────────────────────────────────────
 
-describe('handlePitchingChange (Phase 5A co-emission)', () => {
+describe('handlePitchingChange (co-emission)', () => {
   it('emits both game-update and game-events', () => {
     handlePitchingChange(store, io, { pitcherName: 'Edwin Díaz' });
 

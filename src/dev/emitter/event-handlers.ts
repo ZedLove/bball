@@ -378,7 +378,7 @@ export function handleSetTeamBatting(store: StateStore): HandlerResult {
 }
 
 // ---------------------------------------------------------------------------
-// Rich-event commands (Phase 5A)
+// Rich-event commands
 // ---------------------------------------------------------------------------
 
 /** Default out-type event types for the plate-appearance command. */
@@ -630,7 +630,7 @@ export function handleSimGameSummary(
 }
 
 // ---------------------------------------------------------------------------
-// Live at-bat commands (Phase 5)
+// Live at-bat commands
 // ---------------------------------------------------------------------------
 
 export function handleNewBatter(
