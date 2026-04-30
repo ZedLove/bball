@@ -263,6 +263,13 @@ export interface GameFeedLiveResponse {
   liveData: {
     plays: {
       /**
+       * All completed plate appearances since game start, in chronological
+       * order by atBatIndex. Cumulative — always starts from atBatIndex 0 and
+       * grows as plays complete. Reuses the same AllPlay type as the diffPatch
+       * feed. Absent before the first play of the game.
+       */
+      allPlays?: AllPlay[];
+      /**
        * The in-progress plate appearance.
        * Absent before the first pitch of the game and between half-innings.
        */
