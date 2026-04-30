@@ -977,6 +977,29 @@ describe('parseGameUpdate', () => {
       expect(result!.trackingMode).toBe('final');
     });
 
+    it('emits final for a 7-inning doubleheader game when top 7th ends with home leading', () => {
+      // scheduledInnings=7 is used in doubleheader games. The >= condition must
+      // apply the same game-end logic regardless of scheduled inning count.
+      const schedule = makeSchedule([
+        makeBetweenInningGame('Middle', 7, 3, 1, 7),
+      ]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('final');
+    });
+
+    it('emits between-innings for a 7-inning game when top 6th ends with home leading', () => {
+      // Top 6th ends — game is not yet over even though home leads (still has bottom 6th+).
+      const schedule = makeSchedule([
+        makeBetweenInningGame('Middle', 6, 3, 1, 7),
+      ]);
+      const result = parseGameUpdate(schedule, STL_ID);
+
+      expect(result).not.toBeNull();
+      expect(result!.trackingMode).toBe('between-innings');
+    });
+
     // ── End state (bottom half just ended — home walk-off) ────────────────────
 
     it('emits final when bottom 9th ends with home leading (End state — walk-off)', () => {
