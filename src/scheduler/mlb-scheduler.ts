@@ -16,7 +16,12 @@ import type {
   NextGameScheduleResponse,
 } from './game-feed-types.ts';
 import { parseCurrentPlay } from './current-play-parser.ts';
-import type { AtBatState, GameUpdate } from '../server/socket-events.ts';
+import type {
+  AtBatState,
+  GameUpdate,
+  InningBreakSummary,
+} from '../server/socket-events.ts';
+import { buildInningBreakSummary } from './inning-break-parser.ts';
 import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import { parseFeedEvents } from './feed-parser.ts';
@@ -89,6 +94,11 @@ export interface Scheduler {
   stop(): void;
   /** Last game update that was emitted, or null if none yet. Used to replay state to newly connected clients. */
   getLastUpdate(): GameUpdate | null;
+  /**
+   * Last inning-break-summary emitted, or null if none or the break has ended.
+   * Used to replay the event to clients connecting during a between-innings break.
+   */
+  getLastBreakSummary(): InningBreakSummary | null;
 }
 
 /**
@@ -118,6 +128,70 @@ export function startScheduler(io: SocketIOServer): Scheduler {
   let lastAtBat: AtBatState | null = null;
   let lastKnownGamePk: number | null = null;
   let enrichmentState: EnrichmentState | null = null;
+  let lastEmittedBreakSummary: InningBreakSummary | null = null;
+  let highlightsRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function clearBreakSummaryState(): void {
+    lastEmittedBreakSummary = null;
+    if (highlightsRetryTimer !== null) {
+      clearTimeout(highlightsRetryTimer);
+      highlightsRetryTimer = null;
+    }
+  }
+
+  async function emitBreakSummary(update: GameUpdate): Promise<void> {
+    const feedResult = await fetchGameFeedLive(update.gamePk).catch((err) => {
+      logger.warn('Inning break summary: feed/live fetch failed', {
+        gamePk: update.gamePk,
+        message: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    });
+
+    if (stopped) return;
+
+    if (feedResult === null) {
+      scheduleHighlightsRetry(update);
+      return;
+    }
+
+    const upcomingBattingSide: 'home' | 'away' =
+      update.teams.home.abbreviation === update.battingTeam ? 'home' : 'away';
+
+    const summary = buildInningBreakSummary(
+      update.gamePk,
+      feedResult,
+      `${update.inning.half} ${update.inning.ordinal}`,
+      update.battingTeam,
+      upcomingBattingSide,
+      update.upcomingPitcher?.id ?? null,
+      update.teams.home.abbreviation,
+      update.teams.away.abbreviation
+    );
+
+    if (summary !== null) {
+      io.emit(SOCKET_EVENTS.INNING_BREAK_SUMMARY, summary);
+      lastEmittedBreakSummary = summary;
+      logger.info('inning-break-summary emitted', { gamePk: update.gamePk });
+    } else {
+      logger.warn('buildInningBreakSummary returned null — boxscore missing', {
+        gamePk: update.gamePk,
+      });
+      scheduleHighlightsRetry(update);
+    }
+  }
+
+  function scheduleHighlightsRetry(update: GameUpdate): void {
+    if (highlightsRetryTimer !== null) return; // already scheduled
+    highlightsRetryTimer = setTimeout(() => {
+      highlightsRetryTimer = null;
+      if (stopped || lastTrackingMode !== 'between-innings') return;
+      logger.info('Retrying inning-break-summary fetch', {
+        gamePk: update.gamePk,
+      });
+      void emitBreakSummary(update);
+    }, 15_000);
+  }
 
   const venueClient = new VenueClient();
   let currentVenueFieldInfo: VenueFieldInfo | null = null;
@@ -292,6 +366,7 @@ export function startScheduler(io: SocketIOServer): Scheduler {
     // holds the previous tick's gamePk at this point in the loop.
     if ((update?.gamePk ?? null) !== lastKnownGamePk) {
       lastAtBat = null;
+      clearBreakSummaryState();
     }
     if (atBat !== null) {
       lastAtBat = atBat;
@@ -353,10 +428,29 @@ export function startScheduler(io: SocketIOServer): Scheduler {
       fullUpdate !== null &&
       (!isTransition || lastTrackingMode !== fullUpdate.trackingMode);
 
+    // Clear break summary state when transitioning away from between-innings.
+    if (
+      lastTrackingMode === 'between-innings' &&
+      fullUpdate?.trackingMode !== 'between-innings'
+    ) {
+      clearBreakSummaryState();
+    }
+
     if (shouldEmit && fullUpdate !== null) {
       logUpdate(fullUpdate);
       io.emit(SOCKET_EVENTS.GAME_UPDATE, fullUpdate);
       lastEmittedUpdate = fullUpdate;
+    }
+
+    // Emit inning-break-summary on the first tick entering between-innings.
+    // The shouldEmit guard ensures this fires only once per break.
+    if (
+      shouldEmit &&
+      fullUpdate !== null &&
+      fullUpdate.trackingMode === 'between-innings'
+    ) {
+      lastEmittedBreakSummary = null;
+      void emitBreakSummary(fullUpdate);
     }
 
     lastTrackingMode = fullUpdate?.trackingMode ?? null;
@@ -554,10 +648,14 @@ export function startScheduler(io: SocketIOServer): Scheduler {
         clearTimeout(timer);
         timer = null;
       }
+      clearBreakSummaryState();
       logger.info('Scheduler stopped');
     },
     getLastUpdate() {
       return lastEmittedUpdate;
+    },
+    getLastBreakSummary() {
+      return lastEmittedBreakSummary;
     },
   };
 }

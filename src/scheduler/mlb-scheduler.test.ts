@@ -38,7 +38,12 @@ import { fetchBoxscore } from './boxscore-client.ts';
 import { fetchNextGame } from './next-game-client.ts';
 import * as summaryParserModule from './summary-parser.ts';
 import type { ScheduleResponse } from './schedule-client.ts';
-import type { GameFeedResponse, AllPlay } from './game-feed-types.ts';
+import type {
+  GameFeedResponse,
+  AllPlay,
+  LiveBoxscorePlayer,
+  GameFeedLiveResponse,
+} from './game-feed-types.ts';
 import type { VenueFieldInfo } from './venue-client.ts';
 import {
   createMockIo,
@@ -1357,8 +1362,9 @@ describe('live at-bat state', () => {
       SOCKET_EVENTS.GAME_UPDATE,
       expect.objectContaining({ trackingMode: 'between-innings', atBat: null })
     );
-    // feed/live must NOT be called for between-innings
-    expect(mockFetchGameFeedLive).not.toHaveBeenCalled();
+    // feed/live is NOT called for the atBat path (shouldFetchAtBat=false).
+    // It IS called by emitBreakSummary for highlights — exactly one call.
+    expect(mockFetchGameFeedLive).toHaveBeenCalledOnce();
     scheduler.stop();
   });
 
@@ -2008,10 +2014,16 @@ describe('pitcher stats — null pitcher and cross-inning behavior', () => {
       makeGameFeedLiveResponse({ allPlays: twoCompletedPitches })
     );
     // Tick 3: between-innings — shouldFetchAtBat is false, liveFeed not called
+    // for atBat; but emitBreakSummary calls fetchGameFeedLive once for highlights.
     mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
     mockFetchGameFeed.mockResolvedValueOnce(
       makeEmptyFeedResponse(FEED_TIMESTAMP_2)
     );
+    // Queue two responses for emitBreakSummary during tick 3:
+    //   1. initial attempt (no boxscore → null → schedules 15s retry)
+    //   2. retry fires inside the next vi.runOnlyPendingTimers() call
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
     // Tick 4: PITCHER_ID back on the mound — allPlays still includes the 2 prior pitches
     mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
     mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
@@ -2046,5 +2058,319 @@ describe('pitcher stats — null pitcher and cross-inning behavior', () => {
     expect(tick4Update.currentPitcher?.pitchesThrown).toBe(2);
     expect(tick4Update.pitchHistory).toHaveLength(2);
     scheduler.stop();
+  });
+});
+
+// ── Inning break summary emission ─────────────────────────────────────────────
+
+/**
+ * Build a minimal GameFeedLiveResponse that includes a valid LiveBoxscore so
+ * that buildInningBreakSummary can return a non-null summary.
+ *
+ * NYM (home) batting order: players NYM_P1..NYM_P9 with IDs 9001..9009.
+ * Pitcher on mound: LAD pitcher (ID 660271) in the away players map.
+ */
+function makeBreakFeedResponse() {
+  function makePlayer(id: number, slot: number): [string, LiveBoxscorePlayer] {
+    return [
+      `ID${id}`,
+      {
+        person: { id, fullName: `Player ${id}` },
+        battingOrder: slot * 100,
+        stats: {
+          batting: { atBats: 3, hits: 1, homeRuns: 0 },
+          pitching: {
+            gamesPlayed: 1,
+            gamesStarted: 0,
+            inningsPitched: '0.0',
+            earnedRuns: 0,
+            strikeOuts: 0,
+            baseOnBalls: 0,
+            hits: 0,
+            pitchesThrown: 0,
+          },
+        },
+        seasonStats: {
+          batting: {
+            stolenBases: 0,
+            caughtStealing: 0,
+            ops: '.750',
+            avg: '.280',
+            homeRuns: 5,
+            strikeOuts: 30,
+            baseOnBalls: 10,
+            plateAppearances: 100,
+          },
+          pitching: {
+            era: '0.00',
+            inningsPitched: '0.0',
+            strikeoutsPer9Inn: '0.0',
+            walksPer9Inn: '0.0',
+          },
+        },
+      },
+    ];
+  }
+
+  const homePlayers = Object.fromEntries(
+    [9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 9009].map((id, i) =>
+      makePlayer(id, i + 1)
+    )
+  );
+
+  const pitcherId = 660271;
+  const awayPitcherEntry: LiveBoxscorePlayer = {
+    person: { id: pitcherId, fullName: 'Shohei Ohtani' },
+    battingOrder: 0,
+    stats: {
+      batting: { atBats: 0, hits: 0, homeRuns: 0 },
+      pitching: {
+        gamesPlayed: 1,
+        gamesStarted: 1,
+        inningsPitched: '3.0',
+        earnedRuns: 0,
+        strikeOuts: 4,
+        baseOnBalls: 1,
+        hits: 2,
+        pitchesThrown: 45,
+      },
+    },
+    seasonStats: {
+      batting: {
+        stolenBases: 0,
+        caughtStealing: 0,
+        ops: '.000',
+        avg: '.000',
+        homeRuns: 0,
+        strikeOuts: 0,
+        baseOnBalls: 0,
+        plateAppearances: 0,
+      },
+      pitching: {
+        era: '2.50',
+        inningsPitched: '30.0',
+        strikeoutsPer9Inn: '10.5',
+        walksPer9Inn: '2.1',
+      },
+    },
+  };
+
+  return {
+    liveData: {
+      plays: { currentPlay: null },
+      boxscore: {
+        teams: {
+          home: {
+            battingOrder: [
+              9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 9009,
+            ],
+            players: homePlayers,
+          },
+          away: {
+            battingOrder: [],
+            players: { [`ID${pitcherId}`]: awayPitcherEntry },
+          },
+        },
+      },
+    },
+  } satisfies GameFeedLiveResponse;
+}
+
+describe('inning break summary emission', () => {
+  it('emits inning-break-summary after game-update on transition to between-innings', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    // emitBreakSummary will call fetchGameFeedLive once
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeBreakFeedResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks();
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.GAME_UPDATE,
+      expect.objectContaining({ trackingMode: 'between-innings' })
+    );
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.INNING_BREAK_SUMMARY,
+      expect.objectContaining({ gamePk: GAME_PK })
+    );
+    // game-update must precede inning-break-summary
+    const calls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.map(
+      ([event]) => event as string
+    );
+    const guIdx = calls.indexOf(SOCKET_EVENTS.GAME_UPDATE);
+    const ibsIdx = calls.indexOf(SOCKET_EVENTS.INNING_BREAK_SUMMARY);
+    expect(guIdx).toBeLessThan(ibsIdx);
+    scheduler.stop();
+  });
+
+  it('does not re-emit inning-break-summary on a second between-innings tick', async () => {
+    mockFetchSchedule.mockResolvedValue(makeBetweenInningsSchedule());
+    // First tick: summary emitted
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeBreakFeedResponse());
+    // Second tick: no fetchGameFeedLive queued — if called it would return undefined (default mock)
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2 (still between-innings)
+
+    const ibsCalls = (io.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([event]) => event === SOCKET_EVENTS.INNING_BREAK_SUMMARY
+    );
+    expect(ibsCalls).toHaveLength(1); // emitted exactly once
+    scheduler.stop();
+  });
+
+  it('schedules a 15s retry when feed/live fetch throws', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    mockFetchGameFeedLive.mockRejectedValueOnce(new Error('network error'));
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1 — fetch throws, retry scheduled
+
+    // Before 15s: no summary emitted
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.INNING_BREAK_SUMMARY,
+      expect.anything()
+    );
+
+    // After 15s retry fires: provide a valid response
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeBreakFeedResponse());
+    vi.advanceTimersByTime(15_000);
+    await drainMicrotasks();
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.INNING_BREAK_SUMMARY,
+      expect.objectContaining({ gamePk: GAME_PK })
+    );
+    scheduler.stop();
+  });
+
+  it('does not schedule a second retry if one is already pending', async () => {
+    mockFetchSchedule.mockResolvedValue(makeBetweenInningsSchedule());
+    // Both ticks fail — only one timer should be pending at a time
+    mockFetchGameFeedLive.mockRejectedValue(new Error('network error'));
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1 — retry scheduled
+
+    vi.runOnlyPendingTimers(); // advance scheduler tick
+    await drainMicrotasks(); // tick 2 — retry already exists, no second one
+
+    // Advance 15s: only the first retry fires
+    let retryCallCount = 0;
+    mockFetchGameFeedLive.mockImplementation(() => {
+      retryCallCount++;
+      return Promise.reject(new Error('still failing'));
+    });
+    vi.advanceTimersByTime(15_000);
+    await drainMicrotasks();
+
+    expect(retryCallCount).toBe(1); // only one retry fired
+    scheduler.stop();
+  });
+
+  it('emits inning-break-summary on retry when first attempt returns null boxscore', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    // First attempt: no boxscore → buildInningBreakSummary returns null → retry scheduled
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+    // Retry: valid boxscore → summary emitted
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeBreakFeedResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1 — null summary, retry scheduled
+
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.INNING_BREAK_SUMMARY,
+      expect.anything()
+    );
+
+    vi.advanceTimersByTime(15_000);
+    await drainMicrotasks();
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.INNING_BREAK_SUMMARY,
+      expect.objectContaining({ gamePk: GAME_PK })
+    );
+    scheduler.stop();
+  });
+
+  it('clears lastEmittedBreakSummary when transitioning out of between-innings', async () => {
+    // Tick 1: between-innings → summary emitted
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeBreakFeedResponse());
+    // Tick 2: back to live → break state cleared
+    mockFetchSchedule.mockResolvedValueOnce(makeLiveSchedule(1));
+    mockFetchGameFeed.mockResolvedValueOnce(makeEmptyFeedResponse());
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    expect(scheduler.getLastBreakSummary()).not.toBeNull();
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2 (live)
+
+    expect(scheduler.getLastBreakSummary()).toBeNull();
+    scheduler.stop();
+  });
+
+  it('clears lastEmittedBreakSummary when gamePk changes', async () => {
+    // Tick 1: between-innings → summary emitted
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeBreakFeedResponse());
+    // Tick 2: new gamePk → break state cleared
+    mockFetchSchedule.mockResolvedValueOnce(makeNewGameSchedule());
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeGameFeedLiveResponse());
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1
+
+    expect(scheduler.getLastBreakSummary()).not.toBeNull();
+
+    vi.runOnlyPendingTimers();
+    await drainMicrotasks(); // tick 2 (new game)
+
+    expect(scheduler.getLastBreakSummary()).toBeNull();
+    scheduler.stop();
+  });
+
+  it('cancels retry timer when scheduler is stopped', async () => {
+    mockFetchSchedule.mockResolvedValueOnce(makeBetweenInningsSchedule());
+    // First attempt throws → retry timer scheduled
+    mockFetchGameFeedLive.mockRejectedValueOnce(new Error('network error'));
+
+    const io = createMockIo();
+    const scheduler = startScheduler(io);
+
+    await drainMicrotasks(); // tick 1 — retry timer set
+
+    scheduler.stop();
+
+    // Advance past retry delay — stopped flag prevents emission
+    mockFetchGameFeedLive.mockResolvedValueOnce(makeBreakFeedResponse());
+    vi.advanceTimersByTime(15_000);
+    await drainMicrotasks();
+
+    expect(io.emit).not.toHaveBeenCalledWith(
+      SOCKET_EVENTS.INNING_BREAK_SUMMARY,
+      expect.anything()
+    );
   });
 });

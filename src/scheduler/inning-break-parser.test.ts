@@ -137,7 +137,10 @@ function makePitcherPlayer(
         baseOnBalls: 0,
         plateAppearances: 0,
       },
-      pitching: makeSeasonPitchingStats({ era: '2.17', inningsPitched: '12.1' }),
+      pitching: makeSeasonPitchingStats({
+        era: '2.17',
+        inningsPitched: '12.1',
+      }),
     },
   });
 }
@@ -229,7 +232,16 @@ describe('buildInningBreakSummary', () => {
   describe('scoring plays', () => {
     it('returns empty array when no scoring plays have occurred', () => {
       const plays = [
-        makeAllPlay({ atBatIndex: 0, about: { atBatIndex: 0, halfInning: 'top', inning: 1, isComplete: true, isScoringPlay: false } }),
+        makeAllPlay({
+          atBatIndex: 0,
+          about: {
+            atBatIndex: 0,
+            halfInning: 'top',
+            inning: 1,
+            isComplete: true,
+            isScoringPlay: false,
+          },
+        }),
       ];
       const result = call(makeFeed({ allPlays: plays }));
       expect(result!.scoringPlays).toEqual([]);
@@ -237,9 +249,51 @@ describe('buildInningBreakSummary', () => {
 
     it('returns all plays when fewer than 5 scoring plays exist', () => {
       const plays = [
-        makeAllPlay({ atBatIndex: 0, about: { atBatIndex: 0, halfInning: 'bottom', inning: 1, isComplete: true, isScoringPlay: true }, result: { eventType: 'home_run', description: 'Torres homers.', rbi: 1 } }),
-        makeAllPlay({ atBatIndex: 1, about: { atBatIndex: 1, halfInning: 'top', inning: 2, isComplete: true, isScoringPlay: true }, result: { eventType: 'single', description: 'Smith singles.', rbi: 2 } }),
-        makeAllPlay({ atBatIndex: 2, about: { atBatIndex: 2, halfInning: 'bottom', inning: 2, isComplete: true, isScoringPlay: true }, result: { eventType: 'double', description: 'Jones doubles.', rbi: 1 } }),
+        makeAllPlay({
+          atBatIndex: 0,
+          about: {
+            atBatIndex: 0,
+            halfInning: 'bottom',
+            inning: 1,
+            isComplete: true,
+            isScoringPlay: true,
+          },
+          result: {
+            eventType: 'home_run',
+            description: 'Torres homers.',
+            rbi: 1,
+          },
+        }),
+        makeAllPlay({
+          atBatIndex: 1,
+          about: {
+            atBatIndex: 1,
+            halfInning: 'top',
+            inning: 2,
+            isComplete: true,
+            isScoringPlay: true,
+          },
+          result: {
+            eventType: 'single',
+            description: 'Smith singles.',
+            rbi: 2,
+          },
+        }),
+        makeAllPlay({
+          atBatIndex: 2,
+          about: {
+            atBatIndex: 2,
+            halfInning: 'bottom',
+            inning: 2,
+            isComplete: true,
+            isScoringPlay: true,
+          },
+          result: {
+            eventType: 'double',
+            description: 'Jones doubles.',
+            rbi: 1,
+          },
+        }),
       ];
       const result = call(makeFeed({ allPlays: plays }));
       expect(result!.scoringPlays).toHaveLength(3);
@@ -251,8 +305,18 @@ describe('buildInningBreakSummary', () => {
         plays.push(
           makeAllPlay({
             atBatIndex: i,
-            about: { atBatIndex: i, halfInning: 'bottom', inning: i + 1, isComplete: true, isScoringPlay: true },
-            result: { eventType: 'home_run', description: `Play ${i}.`, rbi: 1 },
+            about: {
+              atBatIndex: i,
+              halfInning: 'bottom',
+              inning: i + 1,
+              isComplete: true,
+              isScoringPlay: true,
+            },
+            result: {
+              eventType: 'home_run',
+              description: `Play ${i}.`,
+              rbi: 1,
+            },
           })
         );
       }
@@ -262,8 +326,28 @@ describe('buildInningBreakSummary', () => {
 
     it('returns scoring plays most recent first', () => {
       const plays = [
-        makeAllPlay({ atBatIndex: 0, about: { atBatIndex: 0, halfInning: 'bottom', inning: 1, isComplete: true, isScoringPlay: true }, result: { eventType: 'hr', description: 'First.', rbi: 1 } }),
-        makeAllPlay({ atBatIndex: 1, about: { atBatIndex: 1, halfInning: 'bottom', inning: 2, isComplete: true, isScoringPlay: true }, result: { eventType: 'hr', description: 'Second.', rbi: 1 } }),
+        makeAllPlay({
+          atBatIndex: 0,
+          about: {
+            atBatIndex: 0,
+            halfInning: 'bottom',
+            inning: 1,
+            isComplete: true,
+            isScoringPlay: true,
+          },
+          result: { eventType: 'hr', description: 'First.', rbi: 1 },
+        }),
+        makeAllPlay({
+          atBatIndex: 1,
+          about: {
+            atBatIndex: 1,
+            halfInning: 'bottom',
+            inning: 2,
+            isComplete: true,
+            isScoringPlay: true,
+          },
+          result: { eventType: 'hr', description: 'Second.', rbi: 1 },
+        }),
       ];
       const result = call(makeFeed({ allPlays: plays }));
       expect(result!.scoringPlays[0].inning).toBe(2);
@@ -272,7 +356,17 @@ describe('buildInningBreakSummary', () => {
 
     it('skips incomplete plays', () => {
       const plays = [
-        makeAllPlay({ atBatIndex: 0, about: { atBatIndex: 0, halfInning: 'bottom', inning: 1, isComplete: false, isScoringPlay: true }, result: { eventType: 'hr', description: 'Incomplete.', rbi: 1 } }),
+        makeAllPlay({
+          atBatIndex: 0,
+          about: {
+            atBatIndex: 0,
+            halfInning: 'bottom',
+            inning: 1,
+            isComplete: false,
+            isScoringPlay: true,
+          },
+          result: { eventType: 'hr', description: 'Incomplete.', rbi: 1 },
+        }),
       ];
       const result = call(makeFeed({ allPlays: plays }));
       expect(result!.scoringPlays).toEqual([]);
@@ -280,8 +374,28 @@ describe('buildInningBreakSummary', () => {
 
     it('attributes scoring plays to the correct team based on halfInning', () => {
       const plays = [
-        makeAllPlay({ atBatIndex: 0, about: { atBatIndex: 0, halfInning: 'top', inning: 1, isComplete: true, isScoringPlay: true }, result: { eventType: 'hr', description: 'Away scores.', rbi: 1 } }),
-        makeAllPlay({ atBatIndex: 1, about: { atBatIndex: 1, halfInning: 'bottom', inning: 1, isComplete: true, isScoringPlay: true }, result: { eventType: 'hr', description: 'Home scores.', rbi: 2 } }),
+        makeAllPlay({
+          atBatIndex: 0,
+          about: {
+            atBatIndex: 0,
+            halfInning: 'top',
+            inning: 1,
+            isComplete: true,
+            isScoringPlay: true,
+          },
+          result: { eventType: 'hr', description: 'Away scores.', rbi: 1 },
+        }),
+        makeAllPlay({
+          atBatIndex: 1,
+          about: {
+            atBatIndex: 1,
+            halfInning: 'bottom',
+            inning: 1,
+            isComplete: true,
+            isScoringPlay: true,
+          },
+          result: { eventType: 'hr', description: 'Home scores.', rbi: 2 },
+        }),
       ];
       const result = call(makeFeed({ allPlays: plays }));
       // Most recent first: bottom inning 1 then top inning 1
@@ -311,8 +425,17 @@ describe('buildInningBreakSummary', () => {
       const plays = [
         makeAllPlay({
           atBatIndex: 10,
-          about: { atBatIndex: 10, halfInning: 'bottom', inning: 3, isComplete: true, isScoringPlay: false },
-          matchup: { batter: { id: 1005, fullName: 'Batter 5' }, pitcher: { id: 200, fullName: 'P' } },
+          about: {
+            atBatIndex: 10,
+            halfInning: 'bottom',
+            inning: 3,
+            isComplete: true,
+            isScoringPlay: false,
+          },
+          matchup: {
+            batter: { id: 1005, fullName: 'Batter 5' },
+            pitcher: { id: 200, fullName: 'P' },
+          },
         }),
       ];
       const result = call(makeFeed({ allPlays: plays, homePlayers }), {
@@ -330,8 +453,17 @@ describe('buildInningBreakSummary', () => {
       const plays = [
         makeAllPlay({
           atBatIndex: 5,
-          about: { atBatIndex: 5, halfInning: 'bottom', inning: 2, isComplete: true, isScoringPlay: false },
-          matchup: { batter: { id: 1009, fullName: 'Batter 9' }, pitcher: { id: 200, fullName: 'P' } },
+          about: {
+            atBatIndex: 5,
+            halfInning: 'bottom',
+            inning: 2,
+            isComplete: true,
+            isScoringPlay: false,
+          },
+          matchup: {
+            batter: { id: 1009, fullName: 'Batter 9' },
+            pitcher: { id: 200, fullName: 'P' },
+          },
         }),
       ];
       const result = call(makeFeed({ allPlays: plays, homePlayers }), {
@@ -348,8 +480,17 @@ describe('buildInningBreakSummary', () => {
       const plays = [
         makeAllPlay({
           atBatIndex: 5,
-          about: { atBatIndex: 5, halfInning: 'bottom', inning: 2, isComplete: true, isScoringPlay: false },
-          matchup: { batter: { id: 1007, fullName: 'Batter 7' }, pitcher: { id: 200, fullName: 'P' } },
+          about: {
+            atBatIndex: 5,
+            halfInning: 'bottom',
+            inning: 2,
+            isComplete: true,
+            isScoringPlay: false,
+          },
+          matchup: {
+            batter: { id: 1007, fullName: 'Batter 7' },
+            pitcher: { id: 200, fullName: 'P' },
+          },
         }),
       ];
       const result = call(makeFeed({ allPlays: plays, homePlayers }), {
@@ -367,8 +508,17 @@ describe('buildInningBreakSummary', () => {
       const plays = [
         makeAllPlay({
           atBatIndex: 3,
-          about: { atBatIndex: 3, halfInning: 'top', inning: 1, isComplete: true, isScoringPlay: false },
-          matchup: { batter: { id: 1005, fullName: 'Batter 5' }, pitcher: { id: 200, fullName: 'P' } },
+          about: {
+            atBatIndex: 3,
+            halfInning: 'top',
+            inning: 1,
+            isComplete: true,
+            isScoringPlay: false,
+          },
+          matchup: {
+            batter: { id: 1005, fullName: 'Batter 5' },
+            pitcher: { id: 200, fullName: 'P' },
+          },
         }),
       ];
       const result = call(makeFeed({ allPlays: plays, homePlayers }), {
@@ -383,18 +533,45 @@ describe('buildInningBreakSummary', () => {
       const plays = [
         makeAllPlay({
           atBatIndex: 2,
-          about: { atBatIndex: 2, halfInning: 'bottom', inning: 1, isComplete: true, isScoringPlay: false },
-          matchup: { batter: { id: 1003, fullName: 'Batter 3' }, pitcher: { id: 200, fullName: 'P' } },
+          about: {
+            atBatIndex: 2,
+            halfInning: 'bottom',
+            inning: 1,
+            isComplete: true,
+            isScoringPlay: false,
+          },
+          matchup: {
+            batter: { id: 1003, fullName: 'Batter 3' },
+            pitcher: { id: 200, fullName: 'P' },
+          },
         }),
         makeAllPlay({
           atBatIndex: 7,
-          about: { atBatIndex: 7, halfInning: 'bottom', inning: 2, isComplete: true, isScoringPlay: false },
-          matchup: { batter: { id: 1006, fullName: 'Batter 6' }, pitcher: { id: 200, fullName: 'P' } },
+          about: {
+            atBatIndex: 7,
+            halfInning: 'bottom',
+            inning: 2,
+            isComplete: true,
+            isScoringPlay: false,
+          },
+          matchup: {
+            batter: { id: 1006, fullName: 'Batter 6' },
+            pitcher: { id: 200, fullName: 'P' },
+          },
         }),
         makeAllPlay({
           atBatIndex: 4,
-          about: { atBatIndex: 4, halfInning: 'bottom', inning: 2, isComplete: true, isScoringPlay: false },
-          matchup: { batter: { id: 1005, fullName: 'Batter 5' }, pitcher: { id: 200, fullName: 'P' } },
+          about: {
+            atBatIndex: 4,
+            halfInning: 'bottom',
+            inning: 2,
+            isComplete: true,
+            isScoringPlay: false,
+          },
+          matchup: {
+            batter: { id: 1005, fullName: 'Batter 5' },
+            pitcher: { id: 200, fullName: 'P' },
+          },
         }),
       ];
       const result = call(makeFeed({ allPlays: plays, homePlayers }), {
@@ -492,11 +669,12 @@ describe('buildInningBreakSummary', () => {
       expect(result!.pitcher).not.toBeNull();
       expect(result!.pitcher!.role).toBe('starter');
       expect(result!.pitcher!.fullName).toBe('Ace Pitcher');
-      if (result!.pitcher!.role === 'starter') {
-        expect(result!.pitcher.gameStats.inningsPitched).toBe('5.0');
-        expect(result!.pitcher.gameStats.earnedRuns).toBe(2);
-        expect(result!.pitcher.gameStats.strikeOuts).toBe(6);
-        expect(result!.pitcher.gameStats.pitchesThrown).toBe(82);
+      const starter = result!.pitcher!;
+      if (starter.role === 'starter') {
+        expect(starter.gameStats.inningsPitched).toBe('5.0');
+        expect(starter.gameStats.earnedRuns).toBe(2);
+        expect(starter.gameStats.strikeOuts).toBe(6);
+        expect(starter.gameStats.pitchesThrown).toBe(82);
       }
     });
 
@@ -513,11 +691,12 @@ describe('buildInningBreakSummary', () => {
       });
       expect(result!.pitcher!.role).toBe('reliever');
       expect(result!.pitcher!.fullName).toBe('Relief Pitcher');
-      if (result!.pitcher!.role === 'reliever') {
-        expect(result!.pitcher.seasonStats.era).toBe('2.17');
-        expect(result!.pitcher.seasonStats.inningsPitched).toBe('12.1');
-        expect(result!.pitcher.seasonStats.strikeoutsPer9).toBe('9.00');
-        expect(result!.pitcher.seasonStats.walksPer9).toBe('2.50');
+      const reliever = result!.pitcher!;
+      if (reliever.role === 'reliever') {
+        expect(reliever.seasonStats.era).toBe('2.17');
+        expect(reliever.seasonStats.inningsPitched).toBe('12.1');
+        expect(reliever.seasonStats.strikeoutsPer9).toBe('9.00');
+        expect(reliever.seasonStats.walksPer9).toBe('2.50');
       }
     });
 

@@ -118,6 +118,7 @@ describe('registerConnectionHandlers', () => {
     const scheduler: Scheduler = {
       stop: vi.fn(),
       getLastUpdate: vi.fn(() => SAMPLE_UPDATE),
+      getLastBreakSummary: vi.fn(() => null),
     };
 
     const server = await createTestServer(scheduler);
@@ -145,6 +146,7 @@ describe('registerConnectionHandlers', () => {
     const scheduler: Scheduler = {
       stop: vi.fn(),
       getLastUpdate: vi.fn(() => null),
+      getLastBreakSummary: vi.fn(() => null),
     };
 
     const server = await createTestServer(scheduler);
@@ -168,6 +170,7 @@ describe('registerConnectionHandlers', () => {
     const scheduler: Scheduler = {
       stop: vi.fn(),
       getLastUpdate: vi.fn(() => SAMPLE_UPDATE),
+      getLastBreakSummary: vi.fn(() => null),
     };
 
     const server = await createTestServer(scheduler);
@@ -191,6 +194,7 @@ describe('registerConnectionHandlers', () => {
     const scheduler: Scheduler = {
       stop: vi.fn(),
       getLastUpdate: vi.fn(() => SAMPLE_UPDATE),
+      getLastBreakSummary: vi.fn(() => null),
     };
 
     const server = await createTestServer(scheduler);

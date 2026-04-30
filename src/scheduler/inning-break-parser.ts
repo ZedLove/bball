@@ -81,14 +81,19 @@ function buildScoringPlays(
     (p) => p.about.isScoringPlay && p.about.isComplete
   );
 
-  return scoring.slice(-5).reverse().map((p): InningBreakScoringPlay => ({
-    inning: p.about.inning,
-    halfInning: p.about.halfInning,
-    description: p.result.description,
-    rbi: p.result.rbi,
-    // 'top' = away team batting, 'bottom' = home team batting.
-    battingTeam: p.about.halfInning === 'top' ? awayTeamAbbr : homeTeamAbbr,
-  }));
+  return scoring
+    .slice(-5)
+    .reverse()
+    .map(
+      (p): InningBreakScoringPlay => ({
+        inning: p.about.inning,
+        halfInning: p.about.halfInning,
+        description: p.result.description,
+        rbi: p.result.rbi,
+        // 'top' = away team batting, 'bottom' = home team batting.
+        battingTeam: p.about.halfInning === 'top' ? awayTeamAbbr : homeTeamAbbr,
+      })
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -190,14 +195,8 @@ function mapBatter(
   const season = seasonStats.batting;
 
   const pa = season.plateAppearances ?? 0;
-  const kPct =
-    pa > 0
-      ? Math.round((season.strikeOuts / pa) * 100) / 100
-      : 0;
-  const bbPct =
-    pa > 0
-      ? Math.round((season.baseOnBalls / pa) * 100) / 100
-      : 0;
+  const kPct = pa > 0 ? Math.round((season.strikeOuts / pa) * 100) / 100 : 0;
+  const bbPct = pa > 0 ? Math.round((season.baseOnBalls / pa) * 100) / 100 : 0;
 
   return {
     id: person.id,
