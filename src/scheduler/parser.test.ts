@@ -892,7 +892,7 @@ describe('parseGameUpdate', () => {
     });
   });
 
-  describe('game-end detection (S-1)', () => {
+  describe('game-end detection', () => {
     // 'Middle' = top half just completed (API state before bottom-half begins).
     // 'End'    = bottom half just completed (walk-off scenario).
     // Both are between-innings states. The dominant real-world case observed in
@@ -1083,10 +1083,10 @@ describe('parseGameUpdate', () => {
     });
   });
 
-  describe('extras walk-off (S-1 integration)', () => {
+  describe('extras walk-off', () => {
     it('emits live when home team is batting in extras with a lead (walk-off in progress)', () => {
       // STL (home) batting in Bottom of 10th, leading 4-3.
-      // Game not over yet at API level — S-1 detects game-end when 'End' or 'Middle' state fires.
+      // Game not over yet at API level — game-end is detected when 'End' or 'Middle' state fires.
       const game = makeGame({
         teams: {
           away: {

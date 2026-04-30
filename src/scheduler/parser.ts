@@ -89,7 +89,7 @@ export function parseGameUpdate(
   let totalOutsRemaining: number | null = null;
   let runsNeeded: number | null = null;
 
-  // Client-side game-end detection (Bug S-1): when a half-inning at or beyond
+  // Client-side game-end detection: when a half-inning at or beyond
   // scheduledInnings ends with the home team leading, the remaining half is
   // never played. This covers two real-world API states:
   //   'Middle' — top half just completed (home already leading; bottom half not needed).
@@ -130,7 +130,7 @@ export function parseGameUpdate(
 
     // Populate extras batting context when tracked team is batting in extras
     // while tied or losing. When leading (walk-off in progress), runsNeeded
-    // stays null — S-1 game-end detection handles the 'final' transition once
+    // stays null — game-end detection handles the 'final' transition once
     // the inning state transitions to 'End'.
     if (isExtraInnings && battingEntry.team.id === targetTeamId) {
       const targetScore = battingEntry.score;

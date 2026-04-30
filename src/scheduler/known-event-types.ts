@@ -9,7 +9,7 @@
  * clients.  Unknown event types are logged with context and suppressed from
  * the emitted `game-events` batch.
  *
- * Seeded from real MLB API data observed during the Phase 0 spike.
+ * Seeded from real MLB API data.
  */
 
 export type EventCategory =
