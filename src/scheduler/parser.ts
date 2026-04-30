@@ -11,13 +11,16 @@ function isDelayedState(detailedState: string): boolean {
 
 /**
  * Walks through the schedule response and returns either:
- *   - a GameUpdate when the target team should be tracked, or
- *   - null (no game, game not in valid state, or nothing to track)
+ *   - a GameUpdate for any live, delayed, or final game involving the target team, or
+ *   - null (no game found, no linescore, or non-live state such as pre-game/scheduled)
  *
  * Tracking rules:
  *   1. API says Final → trackingMode 'final', emitted once
- *   2. Linescore game-over: top half ends with home leading, currentInning >= scheduledInnings
- *      → trackingMode 'final' (client-side detection before API catches up)
+ *   2. Linescore game-over: half-inning at or beyond scheduledInnings ends with home
+ *      leading → trackingMode 'final' (client-side detection before API catches up).
+ *      Applies in both regular season (9th Middle with home ahead) and extras (any
+ *      inning > scheduledInnings Middle/End with home ahead). Delayed games are
+ *      excluded via the !isDelayed guard — a suspended game is not yet over.
  *   3. Between half-innings (Middle/End) → trackingMode 'between-innings', emitted once
  *   4. Active play → trackingMode 'live', emitted every tick
  *      - outsRemaining/totalOutsRemaining populated only when target team is defending
@@ -89,11 +92,14 @@ export function parseGameUpdate(
   // Client-side game-end detection (Bug S-1): when a half-inning at or beyond
   // scheduledInnings ends with the home team leading, the remaining half is
   // never played. This covers two real-world API states:
-  //   'Middle' — top half just completed (home was already leading; bottom not needed)
+  //   'Middle' — top half just completed (home already leading; bottom half not needed).
+  //              Applies in any qualifying inning: 9th in a 9-inning game AND any
+  //              extra inning (10th+). If home leads after the top of any extra inning,
+  //              they win — the home team never needs to bat in that inning.
   //   'End'    — bottom half just completed (home walked off)
-  // Both are captured by isBetweenInnings. The 'End' && check was too narrow:
-  // captured games show the API dwelling in 'Middle' for multiple polls before
+  // Captured games show the API dwelling in 'Middle' for multiple polls before
   // reporting 'Final', making 'Middle' the dominant real-world case.
+  // Delayed/suspended games are excluded by !isDelayed — a suspended game is not over.
   const gameOverFromLinescore =
     !isFinal &&
     isBetweenInnings &&
