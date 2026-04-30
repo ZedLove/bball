@@ -4,6 +4,7 @@ import { SOCKET_EVENTS } from '../../server/socket-events.ts';
 import type {
   GameEventsPayload,
   GameSummary,
+  InningBreakSummary,
 } from '../../server/socket-events.ts';
 import type { GameUpdate } from '../../server/socket-events.ts';
 import type { DashboardDispatch } from '../types.ts';
@@ -38,6 +39,13 @@ export function useSocket(dispatch: DashboardDispatch): void {
     socket.on(SOCKET_EVENTS.GAME_SUMMARY, (payload: GameSummary) => {
       dispatch({ type: 'game-summary', payload });
     });
+
+    socket.on(
+      SOCKET_EVENTS.INNING_BREAK_SUMMARY,
+      (payload: InningBreakSummary) => {
+        dispatch({ type: 'inning-break-summary', payload });
+      }
+    );
 
     return () => {
       socket.disconnect();
