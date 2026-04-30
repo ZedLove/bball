@@ -1,4 +1,7 @@
-import type { GameUpdate } from '../../server/socket-events.ts';
+import type {
+  GameUpdate,
+  InningBreakSummary,
+} from '../../server/socket-events.ts';
 import type { SimulationState } from '../types.ts';
 import { toOrdinal } from '../types.ts';
 
@@ -28,11 +31,14 @@ export interface StateStore {
   reset(): void;
   getLastEmitted(): GameUpdate | null;
   setLastEmitted(update: GameUpdate): void;
+  getLastEmittedBreakSummary(): InningBreakSummary | null;
+  setLastEmittedBreakSummary(summary: InningBreakSummary | null): void;
 }
 
 export function createStateStore(): StateStore {
   let state: SimulationState = deepCopy(DEFAULT_STATE);
   let lastEmitted: GameUpdate | null = null;
+  let lastEmittedBreakSummary: InningBreakSummary | null = null;
 
   return {
     getState() {
@@ -69,6 +75,7 @@ export function createStateStore(): StateStore {
     reset() {
       state = deepCopy(DEFAULT_STATE);
       lastEmitted = null;
+      lastEmittedBreakSummary = null;
     },
 
     getLastEmitted() {
@@ -77,6 +84,14 @@ export function createStateStore(): StateStore {
 
     setLastEmitted(update) {
       lastEmitted = update;
+    },
+
+    getLastEmittedBreakSummary() {
+      return lastEmittedBreakSummary;
+    },
+
+    setLastEmittedBreakSummary(summary) {
+      lastEmittedBreakSummary = summary;
     },
   };
 }

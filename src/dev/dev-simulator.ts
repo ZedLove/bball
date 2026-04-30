@@ -20,6 +20,15 @@ export function startDevSimulator(io: SocketIOServer): void {
     const lastUpdate = store.getLastEmitted();
     if (lastUpdate) {
       socket.emit(SOCKET_EVENTS.GAME_UPDATE, lastUpdate);
+
+      // Replay inning-break-summary if currently in a break.
+      const lastBreakSummary = store.getLastEmittedBreakSummary();
+      if (
+        lastBreakSummary !== null &&
+        lastUpdate.trackingMode === 'between-innings'
+      ) {
+        socket.emit(SOCKET_EVENTS.INNING_BREAK_SUMMARY, lastBreakSummary);
+      }
     }
 
     socket.on('disconnect', () => {

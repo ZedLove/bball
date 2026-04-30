@@ -21,6 +21,8 @@ import {
   handlePitchingChange,
   handleNewBatter,
   handlePitch,
+  handleBetweenInnings,
+  handleBattingBegins,
 } from './event-handlers.ts';
 import { SOCKET_EVENTS } from '../../server/socket-events.ts';
 import type {
@@ -31,6 +33,7 @@ import type {
   DefensiveSubstitutionEvent,
   GameSummary,
   AtBatState,
+  InningBreakSummary,
 } from '../../server/socket-events.ts';
 
 import type { GameUpdate } from '../../server/socket-events.ts';
@@ -730,5 +733,100 @@ describe('buildPayload atBat field vs trackingMode', () => {
     const update = buildPayload(state, 'live');
     expect(update.atBat).not.toBeNull();
     expect((update.atBat as AtBatState).batter.fullName).toBe('Test Batter');
+  });
+});
+
+// ── handleBetweenInnings — inning-break-summary ───────────────────────────────
+
+describe('handleBetweenInnings', () => {
+  it('emits inning-break-summary on SOCKET_EVENTS.INNING_BREAK_SUMMARY', () => {
+    store.setState({ gameStarted: true });
+
+    handleBetweenInnings(store, io);
+
+    expect(io.emit).toHaveBeenCalledWith(
+      SOCKET_EVENTS.INNING_BREAK_SUMMARY,
+      expect.objectContaining({ gamePk: expect.any(Number) })
+    );
+  });
+
+  it('stores the emitted summary in store.getLastEmittedBreakSummary()', () => {
+    store.setState({ gameStarted: true });
+
+    handleBetweenInnings(store, io);
+
+    const summary = store.getLastEmittedBreakSummary();
+    expect(summary).not.toBeNull();
+    expect(summary?.upcomingBatters).toHaveLength(3);
+  });
+
+  it('inningLabel matches current inning state', () => {
+    store.setState({ gameStarted: true }); // Top of 1st
+
+    handleBetweenInnings(store, io);
+
+    const summary = store.getLastEmittedBreakSummary() as InningBreakSummary;
+    // Top → "End" in label
+    expect(summary.inningLabel).toBe('End 1st');
+  });
+
+  it('upcomingBattingTeam is home abbreviation when current half is Top', () => {
+    store.setState({ gameStarted: true }); // Top → home bats next
+
+    handleBetweenInnings(store, io);
+
+    const summary = store.getLastEmittedBreakSummary() as InningBreakSummary;
+    expect(summary.upcomingBattingTeam).toBe(
+      store.getState().teams.home.abbreviation
+    );
+  });
+
+  it('pitcher is null when currentPitcher is null', () => {
+    store.setState({ gameStarted: true, currentPitcher: null });
+
+    handleBetweenInnings(store, io);
+
+    const summary = store.getLastEmittedBreakSummary() as InningBreakSummary;
+    expect(summary.pitcher).toBeNull();
+  });
+
+  it('pitcher.fullName matches state.currentPitcher.fullName when non-null', () => {
+    store.setState({
+      gameStarted: true,
+      currentPitcher: { id: 999, fullName: 'Test Pitcher' },
+    });
+
+    handleBetweenInnings(store, io);
+
+    const summary = store.getLastEmittedBreakSummary() as InningBreakSummary;
+    expect(summary.pitcher?.fullName).toBe('Test Pitcher');
+    expect(summary.pitcher?.role).toBe('starter');
+  });
+
+  it('scoringPlays is empty when score is 0-0', () => {
+    store.setState({ gameStarted: true, score: { away: 0, home: 0 } });
+
+    handleBetweenInnings(store, io);
+
+    const summary = store.getLastEmittedBreakSummary() as InningBreakSummary;
+    expect(summary.scoringPlays).toHaveLength(0);
+  });
+
+  it('scoringPlays is non-empty when score is non-zero', () => {
+    store.setState({ gameStarted: true, score: { away: 1, home: 2 } });
+
+    handleBetweenInnings(store, io);
+
+    const summary = store.getLastEmittedBreakSummary() as InningBreakSummary;
+    expect(summary.scoringPlays.length).toBeGreaterThan(0);
+  });
+
+  it('handleBattingBegins clears lastEmittedBreakSummary', () => {
+    store.setState({ gameStarted: true });
+    handleBetweenInnings(store, io);
+    expect(store.getLastEmittedBreakSummary()).not.toBeNull();
+
+    handleBattingBegins(store, io);
+    expect(store.getLastEmittedBreakSummary()).toBeNull();
   });
 });
