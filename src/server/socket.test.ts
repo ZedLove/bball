@@ -34,7 +34,7 @@ import {
 } from './socket.ts';
 import { logger } from '../config/logger.ts';
 import { SOCKET_EVENTS } from './socket-events.ts';
-import type { GameUpdate } from './socket-events.ts';
+import type { GameUpdate, InningBreakSummary } from './socket-events.ts';
 import type { Scheduler } from '../scheduler/mlb-scheduler.ts';
 
 // ---------------------------------------------------------------------------
@@ -209,6 +209,114 @@ describe('registerConnectionHandlers', () => {
     await waitMs(50);
 
     expect(gameSummaryReceived).toHaveLength(0);
+
+    client.disconnect();
+    await destroyTestServer(server);
+  });
+
+  it('replays inning-break-summary after game-update when connecting during between-innings', async () => {
+    const breakSummary: InningBreakSummary = {
+      gamePk: 823963,
+      inningLabel: 'Middle 3rd',
+      scoringPlays: [],
+      upcomingBatters: [],
+      upcomingBattingTeam: 'NYM',
+      pitcher: null,
+    };
+    const betweenInningsUpdate: GameUpdate = {
+      ...SAMPLE_UPDATE,
+      trackingMode: 'between-innings',
+    };
+    const scheduler: Scheduler = {
+      stop: vi.fn(),
+      getLastUpdate: vi.fn(() => betweenInningsUpdate),
+      getLastBreakSummary: vi.fn(() => breakSummary),
+    };
+
+    const server = await createTestServer(scheduler);
+
+    const client = ioc(`http://localhost:${server.port}`, {
+      autoConnect: false,
+    });
+    const receivedEvents: string[] = [];
+    const breakReceivedPromise = new Promise<InningBreakSummary>((resolve) => {
+      client.once(SOCKET_EVENTS.GAME_UPDATE, () => {
+        receivedEvents.push(SOCKET_EVENTS.GAME_UPDATE);
+      });
+      client.once(
+        SOCKET_EVENTS.INNING_BREAK_SUMMARY,
+        (data: InningBreakSummary) => {
+          receivedEvents.push(SOCKET_EVENTS.INNING_BREAK_SUMMARY);
+          resolve(data);
+        }
+      );
+    });
+    client.connect();
+
+    expect(await breakReceivedPromise).toEqual(breakSummary);
+    // game-update must be emitted before inning-break-summary
+    expect(receivedEvents[0]).toBe(SOCKET_EVENTS.GAME_UPDATE);
+    expect(receivedEvents[1]).toBe(SOCKET_EVENTS.INNING_BREAK_SUMMARY);
+
+    client.disconnect();
+    await destroyTestServer(server);
+  });
+
+  it('does not replay inning-break-summary when connecting during between-innings with no summary stored', async () => {
+    const betweenInningsUpdate: GameUpdate = {
+      ...SAMPLE_UPDATE,
+      trackingMode: 'between-innings',
+    };
+    const scheduler: Scheduler = {
+      stop: vi.fn(),
+      getLastUpdate: vi.fn(() => betweenInningsUpdate),
+      getLastBreakSummary: vi.fn(() => null),
+    };
+
+    const server = await createTestServer(scheduler);
+    const breakReceived: unknown[] = [];
+
+    const client = ioc(`http://localhost:${server.port}`);
+    client.on(SOCKET_EVENTS.INNING_BREAK_SUMMARY, (data: unknown) =>
+      breakReceived.push(data)
+    );
+
+    await new Promise<void>((resolve) => client.once('connect', resolve));
+    await waitMs(50);
+
+    expect(breakReceived).toHaveLength(0);
+
+    client.disconnect();
+    await destroyTestServer(server);
+  });
+
+  it('does not replay inning-break-summary when connecting during live mode', async () => {
+    const breakSummary: InningBreakSummary = {
+      gamePk: 823963,
+      inningLabel: 'Middle 3rd',
+      scoringPlays: [],
+      upcomingBatters: [],
+      upcomingBattingTeam: 'NYM',
+      pitcher: null,
+    };
+    const scheduler: Scheduler = {
+      stop: vi.fn(),
+      getLastUpdate: vi.fn(() => SAMPLE_UPDATE), // trackingMode: 'live'
+      getLastBreakSummary: vi.fn(() => breakSummary),
+    };
+
+    const server = await createTestServer(scheduler);
+    const breakReceived: unknown[] = [];
+
+    const client = ioc(`http://localhost:${server.port}`);
+    client.on(SOCKET_EVENTS.INNING_BREAK_SUMMARY, (data: unknown) =>
+      breakReceived.push(data)
+    );
+
+    await new Promise<void>((resolve) => client.once('connect', resolve));
+    await waitMs(50);
+
+    expect(breakReceived).toHaveLength(0);
 
     client.disconnect();
     await destroyTestServer(server);
